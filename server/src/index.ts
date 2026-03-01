@@ -24,6 +24,7 @@ import { GmailAdapter } from './channels/gmail.js'
 import { handleMessage } from './agent/loop.js'
 import { initTodosTable } from './mcp-server/tools/todos.js'
 import { sendMorningBriefing, sendEveningRecap } from './proactive/briefing.js'
+import { initCanvasWebSocket } from './canvas/renderer.js'
 
 config()
 
@@ -74,9 +75,11 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: 'Internal server error' })
 })
 
-app.listen(PORT, () => {
+const httpServer = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
 })
+
+initCanvasWebSocket(httpServer)
 
 // Initialize databases
 initDb()

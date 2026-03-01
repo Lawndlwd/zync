@@ -47,6 +47,7 @@ import {
 } from './tools/files.js'
 import { webSearchTool, webSearchSchema } from './tools/web-search.js'
 import { browseTool, browseSchema, screenshotTool, screenshotSchema } from './tools/browser.js'
+import { renderCanvasTool, renderCanvasSchema, clearCanvasTool, clearCanvasSchema } from './tools/canvas.js'
 
 const server = new McpServer({
   name: 'ai-dashboard',
@@ -282,6 +283,14 @@ server.tool('browse', 'Navigate to a URL and extract page content', browseSchema
 
 server.tool('screenshot', 'Take a screenshot of a URL', screenshotSchema.shape,
   async (args) => ({ content: [{ type: 'text' as const, text: await screenshotTool(args) }] }))
+
+// --- Canvas tools (2) ---
+
+server.tool('render_canvas', 'Render HTML/CSS/JS content in the live canvas (A2UI)', renderCanvasSchema.shape,
+  async (args) => ({ content: [{ type: 'text' as const, text: await renderCanvasTool(args) }] }))
+
+server.tool('clear_canvas', 'Clear the live canvas', clearCanvasSchema.shape,
+  async () => ({ content: [{ type: 'text' as const, text: await clearCanvasTool() }] }))
 
 // --- Start server ---
 
