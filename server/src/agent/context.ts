@@ -1,4 +1,5 @@
 import { searchMemory } from '../bot/memory/index.js'
+import { matchSkills } from '../skills/loader.js'
 
 export interface AgentContext {
   memories: string[]
@@ -16,9 +17,11 @@ export function assembleContext(text: string, channelType: string, chatId: strin
     // FTS match errors on short/special queries are fine
   }
 
+  const matched = matchSkills(text)
+
   return {
     memories,
-    skills: [],
+    skills: matched.map(s => `### ${s.name}\n${s.content}`),
     channelType,
     chatId,
   }

@@ -24,6 +24,8 @@
     "googleapis": "^171.4.0",
     "grammy": "^1.40.1",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "playwright": "^1.58.2",
     "zod": "^3.24.0"
   },
   "pnpm": {
@@ -36,6 +38,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/multer": "^2.0.0",
+    "@types/node-cron": "^3.0.11",
     "tsx": "^4.19.0",
     "typescript": "~5.6.3"
   }

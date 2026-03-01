@@ -46,6 +46,7 @@ import {
   searchFilesMcp, searchFilesSchema,
 } from './tools/files.js'
 import { webSearchTool, webSearchSchema } from './tools/web-search.js'
+import { browseTool, browseSchema, screenshotTool, screenshotSchema } from './tools/browser.js'
 
 const server = new McpServer({
   name: 'ai-dashboard',
@@ -273,6 +274,14 @@ server.tool(
     content: [{ type: 'text' as const, text: await webSearchTool(args) }],
   })
 )
+
+// --- Browser tools (2) ---
+
+server.tool('browse', 'Navigate to a URL and extract page content', browseSchema.shape,
+  async (args) => ({ content: [{ type: 'text' as const, text: await browseTool(args) }] }))
+
+server.tool('screenshot', 'Take a screenshot of a URL', screenshotSchema.shape,
+  async (args) => ({ content: [{ type: 'text' as const, text: await screenshotTool(args) }] }))
 
 // --- Start server ---
 

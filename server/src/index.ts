@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import cron from 'node-cron'
 import { config } from 'dotenv'
 import { jiraRouter } from './routes/jira.js'
 import { llmRouter } from './routes/llm.js'
@@ -22,6 +23,7 @@ import { WhatsAppAdapter } from './channels/whatsapp.js'
 import { GmailAdapter } from './channels/gmail.js'
 import { handleMessage } from './agent/loop.js'
 import { initTodosTable } from './mcp-server/tools/todos.js'
+import { sendMorningBriefing, sendEveningRecap } from './proactive/briefing.js'
 
 config()
 
@@ -109,6 +111,19 @@ if (process.env.GMAIL_ENABLED === 'true') {
     tokenPath: process.env.GMAIL_TOKEN_PATH || './data/gmail-token.json',
     pollIntervalMs: Number(process.env.GMAIL_POLL_INTERVAL_MS) || 300_000,
   }))
+}
+
+// Schedule briefings
+if (process.env.DEFAULT_CHAT_ID) {
+  cron.schedule(process.env.MORNING_BRIEFING_CRON || '0 8 * * 1-5', () => {
+    sendMorningBriefing().catch(err => console.error('Morning briefing failed:', err))
+  }, { timezone: 'Europe/Paris' })
+
+  cron.schedule(process.env.EVENING_RECAP_CRON || '0 18 * * 1-5', () => {
+    sendEveningRecap().catch(err => console.error('Evening recap failed:', err))
+  }, { timezone: 'Europe/Paris' })
+
+  console.log('Proactive briefings scheduled')
 }
 
 channelManager.startAll().catch(err => console.error('Channels failed to start:', err))
