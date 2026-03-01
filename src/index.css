@@ -1,0 +1,693 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* TipTap editor styles */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #52525b;
+  pointer-events: none;
+  height: 0;
+}
+
+.ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #e4e4e7;
+}
+
+.ProseMirror h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #a1a1aa;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5rem;
+}
+
+.ProseMirror li {
+  margin: 0.25rem 0;
+}
+
+.ProseMirror code {
+  background: #27272a;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.ProseMirror pre {
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.ProseMirror ul[data-type="taskList"] li input[type="checkbox"] {
+  margin-top: 0.25rem;
+}
+
+/* Markdown content — word wrapping and overflow */
+.markdown-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  min-width: 0;
+}
+
+.markdown-content pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* HTML details/summary (used by Renovate bot, GitLab, etc.) */
+.markdown-content details {
+  margin: 0.75rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-zinc-800, #27272a);
+  background: rgba(24, 24, 27, 0.5);
+  overflow: hidden;
+}
+
+.markdown-content details > summary {
+  cursor: pointer;
+  user-select: none;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-zinc-200, #e4e4e7);
+  background: rgba(24, 24, 27, 0.8);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.15s;
+}
+
+.markdown-content details > summary:hover {
+  background: rgba(39, 39, 42, 0.8);
+}
+
+.markdown-content details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-content details > summary::before {
+  content: "▶";
+  font-size: 0.625rem;
+  color: var(--color-zinc-500, #71717a);
+  transition: transform 0.15s;
+}
+
+.markdown-content details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.markdown-content details > :not(summary) {
+  padding: 0 1rem;
+}
+
+.markdown-content details > :last-child {
+  padding-bottom: 0.75rem;
+}
+
+/* Raw HTML tables (Renovate bot dependency tables, etc.) */
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.8125rem;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border: 1px solid var(--color-zinc-800, #27272a);
+}
+
+.markdown-content table th {
+  background: var(--color-zinc-800, #27272a);
+  font-weight: 600;
+  color: var(--color-zinc-200, #e4e4e7);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.markdown-content table td {
+  color: var(--color-zinc-400, #a1a1aa);
+}
+
+.markdown-content table tr:nth-child(even) td {
+  background: rgba(39, 39, 42, 0.3);
+}
+
+/* Renovate bot comment/checkbox styling */
+.markdown-content input[type="checkbox"] {
+  appearance: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 1px solid var(--color-zinc-600, #52525b);
+  border-radius: 0.25rem;
+  background: var(--color-zinc-900, #18181b);
+  vertical-align: middle;
+  margin-right: 0.375rem;
+  position: relative;
+}
+
+.markdown-content input[type="checkbox"]:checked {
+  background: var(--color-indigo-500, #6366f1);
+  border-color: var(--color-indigo-500, #6366f1);
+}
+
+.markdown-content input[type="checkbox"]:checked::after {
+  content: "✓";
+  color: white;
+  font-size: 0.625rem;
+  position: absolute;
+  top: -1px;
+  left: 1px;
+}
+
+/* Prose-like markdown styling for document editor & preview */
+.prose-docs .markdown-content {
+  color: var(--color-zinc-300, #d4d4d8);
+  font-size: 0.875rem;
+  line-height: 1.8;
+}
+
+.prose-docs .markdown-content > *:first-child {
+  margin-top: 0;
+}
+
+.prose-docs .markdown-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.prose-docs .markdown-content p {
+  margin-bottom: 0.875rem;
+}
+
+.prose-docs .markdown-content h1 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--color-zinc-100, #f4f4f5);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-zinc-800, #27272a);
+}
+
+.prose-docs .markdown-content h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-zinc-100, #f4f4f5);
+  margin-top: 1.75rem;
+  margin-bottom: 0.625rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--color-zinc-800, #27272a);
+}
+
+.prose-docs .markdown-content h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-zinc-200, #e4e4e7);
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-docs .markdown-content ul,
+.prose-docs .markdown-content ol {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  padding-left: 1.75rem;
+}
+
+.prose-docs .markdown-content li {
+  margin-top: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.prose-docs .markdown-content li > p {
+  margin-bottom: 0.25rem;
+}
+
+.prose-docs .markdown-content li > ul,
+.prose-docs .markdown-content li > ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.prose-docs .markdown-content blockquote {
+  border-left-width: 3px;
+  border-color: var(--color-teal-500, #14b8a6);
+  padding: 0.625rem 1rem;
+  margin: 1rem 0;
+  background: rgba(20, 184, 166, 0.05);
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.prose-docs .markdown-content blockquote p {
+  color: var(--color-zinc-400, #a1a1aa);
+  font-style: italic;
+  margin-bottom: 0.25rem;
+}
+
+.prose-docs .markdown-content code:not(pre code) {
+  background: var(--color-zinc-800, #27272a);
+  border: 1px solid var(--color-zinc-700, #3f3f46);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-teal-300, #5eead4);
+}
+
+.prose-docs .markdown-content pre {
+  background: var(--color-zinc-950, #09090b);
+  border: 1px solid var(--color-zinc-800, #27272a);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.prose-docs .markdown-content pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-zinc-300, #d4d4d8);
+}
+
+.prose-docs .markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--color-zinc-800, #27272a);
+  margin: 1.5rem 0;
+}
+
+.prose-docs .markdown-content a {
+  color: var(--color-teal-400, #2dd4bf);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-docs .markdown-content a:hover {
+  color: var(--color-teal-300, #5eead4);
+}
+
+.prose-docs .markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.8125rem;
+}
+
+.prose-docs .markdown-content th {
+  background: var(--color-zinc-800, #27272a);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-zinc-700, #3f3f46);
+  color: var(--color-zinc-200, #e4e4e7);
+}
+
+.prose-docs .markdown-content td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-zinc-800, #27272a);
+  color: var(--color-zinc-400, #a1a1aa);
+}
+
+.prose-docs .markdown-content tr:nth-child(even) td {
+  background: rgba(39, 39, 42, 0.3);
+}
+
+.prose-docs .markdown-content img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.prose-docs .markdown-content input[type="checkbox"] {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--color-zinc-600, #52525b);
+  border-radius: 0.25rem;
+  background: var(--color-zinc-900, #18181b);
+  vertical-align: middle;
+  margin-right: 0.375rem;
+  position: relative;
+  top: -1px;
+}
+
+.prose-docs .markdown-content input[type="checkbox"]:checked {
+  background: var(--color-teal-500, #14b8a6);
+  border-color: var(--color-teal-500, #14b8a6);
+}
+
+.prose-docs .markdown-content input[type="checkbox"]:checked::after {
+  content: "✓";
+  color: white;
+  font-size: 0.75rem;
+  position: absolute;
+  top: -1px;
+  left: 2px;
+}
+
+/* Prose-like markdown styling for GitLab MR descriptions & notes */
+.prose-gitlab .markdown-content {
+  color: var(--color-zinc-300, #d4d4d8);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.prose-gitlab .markdown-content > *:first-child {
+  margin-top: 0;
+}
+
+.prose-gitlab .markdown-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.prose-gitlab .markdown-content p {
+  margin-bottom: 0.75rem;
+}
+
+.prose-gitlab .markdown-content h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-zinc-100, #f4f4f5);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--color-zinc-800, #27272a);
+}
+
+.prose-gitlab .markdown-content h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-zinc-100, #f4f4f5);
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-zinc-800, #27272a);
+}
+
+.prose-gitlab .markdown-content h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-zinc-200, #e4e4e7);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-gitlab .markdown-content ul,
+.prose-gitlab .markdown-content ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.prose-gitlab .markdown-content li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.prose-gitlab .markdown-content li > ul,
+.prose-gitlab .markdown-content li > ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.prose-gitlab .markdown-content li > p {
+  margin-bottom: 0.25rem;
+}
+
+.prose-gitlab .markdown-content blockquote {
+  border-left-width: 3px;
+  border-color: var(--color-indigo-500, #6366f1);
+  padding: 0.5rem 1rem;
+  margin: 0.75rem 0;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.prose-gitlab .markdown-content blockquote p {
+  color: var(--color-zinc-400, #a1a1aa);
+  font-style: italic;
+}
+
+.prose-gitlab .markdown-content code:not(pre code) {
+  background: var(--color-zinc-800, #27272a);
+  border: 1px solid var(--color-zinc-700, #3f3f46);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.prose-gitlab .markdown-content pre {
+  background: var(--color-zinc-950, #09090b);
+  border: 1px solid var(--color-zinc-800, #27272a);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+.prose-gitlab .markdown-content pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-zinc-300, #d4d4d8);
+}
+
+.prose-gitlab .markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.8125rem;
+}
+
+.prose-gitlab .markdown-content th {
+  background: var(--color-zinc-800, #27272a);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-zinc-700, #3f3f46);
+  color: var(--color-zinc-200, #e4e4e7);
+}
+
+.prose-gitlab .markdown-content td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-zinc-800, #27272a);
+  color: var(--color-zinc-400, #a1a1aa);
+}
+
+.prose-gitlab .markdown-content tr:nth-child(even) td {
+  background: rgba(39, 39, 42, 0.3);
+}
+
+.prose-gitlab .markdown-content hr {
+  border-color: var(--color-zinc-800, #27272a);
+  margin: 1.25rem 0;
+}
+
+.prose-gitlab .markdown-content img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-zinc-800, #27272a);
+  margin: 0.75rem 0;
+}
+
+.prose-gitlab .markdown-content a {
+  color: var(--color-indigo-400, #818cf8);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-gitlab .markdown-content a:hover {
+  color: var(--color-indigo-300, #a5b4fc);
+}
+
+/* Task list checkboxes (GFM) */
+.prose-gitlab .markdown-content input[type="checkbox"] {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--color-zinc-600, #52525b);
+  border-radius: 0.25rem;
+  background: var(--color-zinc-900, #18181b);
+  vertical-align: middle;
+  margin-right: 0.375rem;
+  position: relative;
+  top: -1px;
+}
+
+.prose-gitlab .markdown-content input[type="checkbox"]:checked {
+  background: var(--color-indigo-500, #6366f1);
+  border-color: var(--color-indigo-500, #6366f1);
+}
+
+.prose-gitlab .markdown-content input[type="checkbox"]:checked::after {
+  content: "✓";
+  color: white;
+  font-size: 0.75rem;
+  position: absolute;
+  top: -1px;
+  left: 2px;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.16 0.005 160);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(1 0 0 / 6%);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.17 0.005 160 / 95%);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(1 0 0 / 6%);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(1 0 0 / 6%);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(1 0 0 / 8%);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(1 0 0 / 3%);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(1 0 0 / 8%);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

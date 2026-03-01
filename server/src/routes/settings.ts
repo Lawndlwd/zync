@@ -1,0 +1,68 @@
+import { Router } from 'express'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
+import { resolve, dirname } from 'path'
+import { loadGitlabConfig } from './gitlab.js'
+
+export const settingsRouter = Router()
+
+// --- Agent model config (simple JSON file) ---
+
+const AGENT_MODELS_PATH = resolve(import.meta.dirname, '../../data/agent-models.json')
+
+interface AgentModelConfig {
+  prAgent?: { model: string }
+  opencode?: { model: string }
+  bot?: { model: string }
+}
+
+function loadAgentModels(): AgentModelConfig {
+  try {
+    if (existsSync(AGENT_MODELS_PATH)) {
+      return JSON.parse(readFileSync(AGENT_MODELS_PATH, 'utf-8'))
+    }
+  } catch { /* use defaults */ }
+  return {}
+}
+
+function saveAgentModels(config: AgentModelConfig): void {
+  mkdirSync(dirname(AGENT_MODELS_PATH), { recursive: true })
+  writeFileSync(AGENT_MODELS_PATH, JSON.stringify(config, null, 2))
+}
+
+// Expose env config to frontend (secrets are masked)
+settingsRouter.get('/', (_req, res) => {
+  res.json({
+    jira: {
+      baseUrl: process.env.JIRA_BASE_URL || '',
+      email: process.env.JIRA_EMAIL || '',
+      apiToken: process.env.JIRA_API_TOKEN ? '••••••••' : '',
+      projectKey: process.env.JIRA_PROJECT_KEY || '',
+    },
+    gitlab: (() => {
+      const saved = loadGitlabConfig()
+      return {
+        baseUrl: process.env.GITLAB_BASE_URL || saved.baseUrl || '',
+        pat: (process.env.GITLAB_PAT || saved.pat) ? '••••••••' : '',
+      }
+    })(),
+    messages: {
+      customEndpoint: process.env.MESSAGES_ENDPOINT || '',
+    },
+  })
+})
+
+// GET /api/settings/agent-models — get per-feature model overrides
+settingsRouter.get('/agent-models', (_req, res) => {
+  res.json(loadAgentModels())
+})
+
+// PUT /api/settings/agent-models — save per-feature model overrides
+settingsRouter.put('/agent-models', (req, res) => {
+  try {
+    const config = req.body as AgentModelConfig
+    saveAgentModels(config)
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})

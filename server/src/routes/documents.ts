@@ -1,0 +1,275 @@
+import { Router } from 'express'
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmSync, statSync, existsSync } from 'fs'
+import { join, basename, extname, relative } from 'path'
+
+export const documentsRouter = Router()
+
+function getDocsRoot(): string {
+  const root = process.env.DOCUMENTS_PATH
+  if (!root) throw new Error('DOCUMENTS_PATH env var is not set')
+  mkdirSync(root, { recursive: true })
+  return root
+}
+
+/** Prevent path traversal — resolve and verify the path stays inside root */
+function safePath(root: string, ...segments: string[]): string {
+  const resolved = join(root, ...segments)
+  const rel = relative(root, resolved)
+  if (rel.startsWith('..') || rel.includes('..')) {
+    throw new Error('Invalid path')
+  }
+  return resolved
+}
+
+function getFileStat(filePath: string) {
+  const stat = statSync(filePath)
+  return {
+    createdAt: stat.birthtime.toISOString(),
+    updatedAt: stat.mtime.toISOString(),
+  }
+}
+
+// ── Folders (directories) ──
+
+documentsRouter.get('/folders', (_req, res) => {
+  try {
+    const root = getDocsRoot()
+    const entries = readdirSync(root, { withFileTypes: true })
+    const folders = entries
+      .filter(e => e.isDirectory())
+      .map(e => {
+        const dirPath = join(root, e.name)
+        const files = readdirSync(dirPath).filter(f => f.endsWith('.md'))
+        const stat = statSync(dirPath)
+        return {
+          name: e.name,
+          docCount: files.length,
+          createdAt: stat.birthtime.toISOString(),
+        }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+    res.json(folders)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+documentsRouter.post('/folders', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const { name } = req.body
+    if (!name?.trim()) {
+      res.status(400).json({ error: 'Name is required' })
+      return
+    }
+    const dirPath = safePath(root, name.trim())
+    mkdirSync(dirPath, { recursive: true })
+    res.json({ name: name.trim(), docCount: 0, createdAt: new Date().toISOString() })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+documentsRouter.put('/folders/:name', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const { name: newName } = req.body
+    if (!newName?.trim()) {
+      res.status(400).json({ error: 'Name is required' })
+      return
+    }
+    const oldPath = safePath(root, req.params.name)
+    const newPath = safePath(root, newName.trim())
+    renameSync(oldPath, newPath)
+    const files = readdirSync(newPath).filter(f => f.endsWith('.md'))
+    res.json({ name: newName.trim(), docCount: files.length, createdAt: statSync(newPath).birthtime.toISOString() })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+documentsRouter.delete('/folders/:name', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const dirPath = safePath(root, req.params.name)
+    rmSync(dirPath, { recursive: true, force: true })
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Documents (markdown files) ──
+
+documentsRouter.get('/', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const folder = req.query.folder as string | undefined
+    const results: any[] = []
+
+    const scanFolder = (folderName: string) => {
+      const dirPath = safePath(root, folderName)
+      if (!existsSync(dirPath)) return
+      const files = readdirSync(dirPath).filter(f => f.endsWith('.md'))
+      for (const file of files) {
+        const filePath = join(dirPath, file)
+        const content = readFileSync(filePath, 'utf-8')
+        const stat = getFileStat(filePath)
+        results.push({
+          path: `${folderName}/${file}`,
+          folder: folderName,
+          title: basename(file, '.md'),
+          content,
+          ...stat,
+        })
+      }
+    }
+
+    if (folder) {
+      scanFolder(folder)
+    } else {
+      const dirs = readdirSync(root, { withFileTypes: true }).filter(e => e.isDirectory())
+      for (const dir of dirs) {
+        scanFolder(dir.name)
+      }
+    }
+
+    results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    res.json(results)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+/** GET a single document by path (folder/file.md) */
+documentsRouter.get('/file/*', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const docPath = (req.params as any)[0] as string
+    const filePath = safePath(root, docPath)
+    if (!existsSync(filePath)) {
+      res.status(404).json({ error: 'Document not found' })
+      return
+    }
+    const content = readFileSync(filePath, 'utf-8')
+    const stat = getFileStat(filePath)
+    const parts = docPath.split('/')
+    res.json({
+      path: docPath,
+      folder: parts.slice(0, -1).join('/'),
+      title: basename(docPath, '.md'),
+      content,
+      ...stat,
+    })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+/** Create a new document */
+documentsRouter.post('/', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const { folder, title, content } = req.body
+    if (!folder || !title?.trim()) {
+      res.status(400).json({ error: 'folder and title are required' })
+      return
+    }
+    const fileName = `${title.trim()}.md`
+    const filePath = safePath(root, folder, fileName)
+    mkdirSync(join(root, folder), { recursive: true })
+    writeFileSync(filePath, content || '', 'utf-8')
+    const stat = getFileStat(filePath)
+    res.json({
+      path: `${folder}/${fileName}`,
+      folder,
+      title: title.trim(),
+      content: content || '',
+      ...stat,
+    })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+/** Update a document — path is the current path */
+documentsRouter.put('/file/*', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const docPath = (req.params as any)[0] as string
+    const filePath = safePath(root, docPath)
+    const { title, content, folder: newFolder } = req.body
+
+    if (!existsSync(filePath)) {
+      res.status(404).json({ error: 'Document not found' })
+      return
+    }
+
+    // If title or folder changed, we need to move the file
+    const oldFolder = docPath.split('/').slice(0, -1).join('/')
+    const oldTitle = basename(docPath, '.md')
+    const finalTitle = title?.trim() ?? oldTitle
+    const finalFolder = newFolder ?? oldFolder
+    const newFileName = `${finalTitle}.md`
+    const newFilePath = safePath(root, finalFolder, newFileName)
+
+    if (content !== undefined) {
+      writeFileSync(filePath, content, 'utf-8')
+    }
+
+    if (newFilePath !== filePath) {
+      mkdirSync(join(root, finalFolder), { recursive: true })
+      renameSync(filePath, newFilePath)
+    }
+
+    const finalContent = content !== undefined ? content : readFileSync(newFilePath, 'utf-8')
+    const stat = getFileStat(newFilePath)
+    res.json({
+      path: `${finalFolder}/${newFileName}`,
+      folder: finalFolder,
+      title: finalTitle,
+      content: finalContent,
+      ...stat,
+    })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+/** Delete a document */
+documentsRouter.delete('/file/*', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const docPath = (req.params as any)[0] as string
+    const filePath = safePath(root, docPath)
+    rmSync(filePath, { force: true })
+    res.json({ success: true })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Bulk fetch for PR-Agent ──
+
+documentsRouter.post('/bulk', (req, res) => {
+  try {
+    const root = getDocsRoot()
+    const { paths } = req.body
+    if (!Array.isArray(paths) || paths.length === 0) {
+      res.json([])
+      return
+    }
+    const docs = paths.map((p: string) => {
+      const filePath = safePath(root, p)
+      const content = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : ''
+      return {
+        path: p,
+        title: basename(p, '.md'),
+        content,
+      }
+    })
+    res.json(docs)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
