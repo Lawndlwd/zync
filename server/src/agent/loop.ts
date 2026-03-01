@@ -29,8 +29,19 @@ async function waitForReply(sessionId: string, msgCountBefore: number, timeoutMs
 
 export async function handleMessage(msg: InboundMessage): Promise<void> {
   const manager = getChannelManager()
-  const text = msg.text
-  if (!text) return
+  // Transcribe audio messages
+  let processedText = msg.text
+  if (!processedText && msg.mediaType === 'audio' && msg.mediaUrl) {
+    try {
+      const { transcribeFromUrl } = await import('../voice/transcribe.js')
+      processedText = await transcribeFromUrl(msg.mediaUrl)
+    } catch (err) {
+      console.error('Transcription failed:', err)
+      await manager.send(msg.channelType, msg.chatId, { text: 'Could not transcribe audio.' })
+      return
+    }
+  }
+  if (!processedText) return
 
   const typingInterval = setInterval(() => {
     manager.sendTyping(msg.channelType, msg.chatId).catch(() => {})
@@ -40,14 +51,14 @@ export async function handleMessage(msg: InboundMessage): Promise<void> {
   try {
     const startTime = Date.now()
 
-    const ctx = assembleContext(text, msg.channelType, msg.chatId)
+    const ctx = assembleContext(processedText, msg.channelType, msg.chatId)
     const systemPrompt = buildSystemPrompt(ctx)
 
     const sessionKey = `${msg.channelType}-${msg.chatId}`
     const sessionId = await getOrCreateSession(sessionKey)
     const msgsBefore = await getSessionMessages(sessionId)
 
-    const prompt = `${systemPrompt}\n\n---\n\nUser message:\n${text}`
+    const prompt = `${systemPrompt}\n\n---\n\nUser message:\n${processedText}`
     await sendPromptAsync(sessionId, prompt)
 
     const reply = await waitForReply(sessionId, msgsBefore.length)

@@ -14,9 +14,12 @@ import { gitLocalRouter } from './routes/git-local.js'
 import { prAgentRouter } from './routes/pr-agent.js'
 import { documentsRouter } from './routes/documents.js'
 import opencodeRouter from './routes/opencode.js'
+import { voiceRouter } from './routes/voice.js'
 import { initDb, initHeartbeat } from './bot/index.js'
 import { getChannelManager } from './channels/manager.js'
 import { TelegramAdapter } from './channels/telegram.js'
+import { WhatsAppAdapter } from './channels/whatsapp.js'
+import { GmailAdapter } from './channels/gmail.js'
 import { handleMessage } from './agent/loop.js'
 import { initTodosTable } from './mcp-server/tools/todos.js'
 
@@ -60,6 +63,7 @@ app.use('/api/git-local', gitLocalRouter)
 app.use('/api/pr-agent', prAgentRouter)
 app.use('/api/documents', documentsRouter)
 app.use('/api/opencode', opencodeRouter)
+app.use('/api/voice', voiceRouter)
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -87,6 +91,23 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
   channelManager.register(new TelegramAdapter({
     botToken: process.env.TELEGRAM_BOT_TOKEN,
     allowedUsers,
+  }))
+}
+
+// Register WhatsApp if configured
+if (process.env.WHATSAPP_ENABLED === 'true') {
+  channelManager.register(new WhatsAppAdapter({
+    authDir: process.env.WHATSAPP_AUTH_DIR || './data/whatsapp-auth',
+    allowedNumbers: process.env.WHATSAPP_ALLOWED_NUMBERS?.split(',').map(s => s.trim()).filter(Boolean),
+  }))
+}
+
+// Register Gmail if configured
+if (process.env.GMAIL_ENABLED === 'true') {
+  channelManager.register(new GmailAdapter({
+    credentialsPath: process.env.GMAIL_CREDENTIALS_PATH || './data/gmail-credentials.json',
+    tokenPath: process.env.GMAIL_TOKEN_PATH || './data/gmail-token.json',
+    pollIntervalMs: Number(process.env.GMAIL_POLL_INTERVAL_MS) || 300_000,
   }))
 }
 
