@@ -118,5 +118,24 @@ export function initDb(): void {
       ON pr_agent_results(project_id, mr_iid);
   `)
 
+  // Migrate: add vector search and evolving memory columns
+  const memoriesInfo = db.prepare("PRAGMA table_info(memories)").all() as Array<{ name: string }>
+  const memCols = memoriesInfo.map((c) => c.name)
+  if (!memCols.includes('embedding')) {
+    db.exec(`ALTER TABLE memories ADD COLUMN embedding BLOB`)
+  }
+  if (!memCols.includes('access_count')) {
+    db.exec(`ALTER TABLE memories ADD COLUMN access_count INTEGER DEFAULT 0`)
+  }
+  if (!memCols.includes('last_accessed')) {
+    db.exec(`ALTER TABLE memories ADD COLUMN last_accessed TEXT`)
+  }
+  if (!memCols.includes('relevance_score')) {
+    db.exec(`ALTER TABLE memories ADD COLUMN relevance_score REAL DEFAULT 1.0`)
+  }
+  if (!memCols.includes('embedding_model')) {
+    db.exec(`ALTER TABLE memories ADD COLUMN embedding_model TEXT`)
+  }
+
   console.log('Memory database initialized')
 }
