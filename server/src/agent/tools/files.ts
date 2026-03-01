@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, unlinkSync, readdirSync, statSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, unlinkSync, readdirSync, statSync, existsSync, realpathSync, mkdirSync } from 'fs'
 import { resolve, join } from 'path'
 
 const CONFIG_PATH = resolve(import.meta.dirname, '../../../data/tool-config.json')
@@ -22,8 +22,24 @@ function getMaxFileSize(): number {
 }
 
 function isPathAllowed(filePath: string): boolean {
+  // Resolve the logical path first
   const resolved = resolve(filePath)
-  return getAllowedPaths().some(allowed => resolved.startsWith(allowed))
+  // If the path exists, resolve symlinks to get the real path
+  let real = resolved
+  try {
+    real = realpathSync(resolved)
+  } catch {
+    // Path doesn't exist yet (e.g. write to new file) — check parent
+    const parent = resolve(resolved, '..')
+    try {
+      const realParent = realpathSync(parent)
+      real = join(realParent, resolved.slice(parent.length))
+    } catch {
+      // Parent doesn't exist either — deny
+      return false
+    }
+  }
+  return getAllowedPaths().some(allowed => real.startsWith(allowed))
 }
 
 export function readFileTool(filePath: string): string {

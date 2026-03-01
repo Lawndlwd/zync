@@ -1,5 +1,7 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'http'
+import type { IncomingMessage } from 'http'
+import { URL } from 'url'
 
 interface CanvasUpdate {
   type: 'render' | 'update' | 'clear'
@@ -12,10 +14,40 @@ interface CanvasUpdate {
 let wss: WebSocketServer | null = null
 const clients = new Set<WebSocket>()
 
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+])
+
+function isConnectionAllowed(req: IncomingMessage): boolean {
+  const origin = req.headers.origin
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return false
+
+  // Check for auth token in query string
+  try {
+    const url = new URL(req.url || '', `http://${req.headers.host}`)
+    const token = url.searchParams.get('token')
+    const expectedToken = process.env.CANVAS_WS_TOKEN
+    // If a token is configured, require it
+    if (expectedToken && token !== expectedToken) return false
+  } catch {
+    return false
+  }
+
+  return true
+}
+
 export function initCanvasWebSocket(server: Server): void {
   wss = new WebSocketServer({ server, path: '/ws/canvas' })
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    if (!isConnectionAllowed(req)) {
+      ws.close(4401, 'Unauthorized')
+      return
+    }
+
     clients.add(ws)
     console.log('Canvas client connected')
 
