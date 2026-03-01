@@ -14,7 +14,10 @@ import { gitLocalRouter } from './routes/git-local.js'
 import { prAgentRouter } from './routes/pr-agent.js'
 import { documentsRouter } from './routes/documents.js'
 import opencodeRouter from './routes/opencode.js'
-import { startBot, initDb, initHeartbeat } from './bot/index.js'
+import { initDb, initHeartbeat } from './bot/index.js'
+import { getChannelManager } from './channels/manager.js'
+import { TelegramAdapter } from './channels/telegram.js'
+import { handleMessage } from './agent/loop.js'
 import { initTodosTable } from './mcp-server/tools/todos.js'
 
 config()
@@ -74,5 +77,17 @@ initDb()
 initTodosTable()
 initHeartbeat()
 
-// Start Telegram bot (runs concurrently with Express)
-startBot().catch(err => console.error('Bot failed to start:', err))
+// Start channels
+const channelManager = getChannelManager()
+channelManager.onMessage(handleMessage)
+
+if (process.env.TELEGRAM_BOT_TOKEN) {
+  const allowedUsers = (process.env.TELEGRAM_ALLOWED_USERS || '')
+    .split(',').map(s => s.trim()).filter(Boolean).map(Number)
+  channelManager.register(new TelegramAdapter({
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
+    allowedUsers,
+  }))
+}
+
+channelManager.startAll().catch(err => console.error('Channels failed to start:', err))
