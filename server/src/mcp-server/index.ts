@@ -37,6 +37,15 @@ import {
   deleteScheduleHandler, deleteScheduleSchema,
   toggleScheduleHandler, toggleScheduleSchema,
 } from './tools/schedules.js'
+import { runShell, runShellSchema } from './tools/shell.js'
+import {
+  readFileMcp, readFileSchema,
+  writeFileMcp, writeFileSchema,
+  deleteFileMcp, deleteFileSchema,
+  listFilesMcp, listFilesSchema,
+  searchFilesMcp, searchFilesSchema,
+} from './tools/files.js'
+import { webSearchTool, webSearchSchema } from './tools/web-search.js'
 
 const server = new McpServer({
   name: 'ai-dashboard',
@@ -193,6 +202,75 @@ server.tool(
   updateDocumentSchema.shape,
   async (args) => ({
     content: [{ type: 'text' as const, text: await updateDocument(args) }],
+  })
+)
+
+// --- Shell tool (1) ---
+
+server.tool(
+  'run_shell',
+  'Execute a shell command (restricted to allowlist)',
+  runShellSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await runShell(args) }],
+  })
+)
+
+// --- File tools (5) ---
+
+server.tool(
+  'read_file',
+  'Read a file from allowed paths',
+  readFileSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await readFileMcp(args) }],
+  })
+)
+
+server.tool(
+  'write_file',
+  'Write content to a file in allowed paths',
+  writeFileSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await writeFileMcp(args) }],
+  })
+)
+
+server.tool(
+  'delete_file',
+  'Delete a file from allowed paths',
+  deleteFileSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await deleteFileMcp(args) }],
+  })
+)
+
+server.tool(
+  'list_files',
+  'List files in a directory',
+  listFilesSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await listFilesMcp(args) }],
+  })
+)
+
+server.tool(
+  'search_files',
+  'Search for files matching a regex pattern',
+  searchFilesSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await searchFilesMcp(args) }],
+  })
+)
+
+// --- Web search tool (1) ---
+
+server.tool(
+  'web_search',
+  'Search the web using DuckDuckGo',
+  webSearchSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await webSearchTool(args) }],
   })
 )
 
