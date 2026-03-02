@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import cronstrue from 'cronstrue'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -125,6 +125,22 @@ function parseSimpleCron(
   return { time, days }
 }
 
+function collapseToRanges(sorted: number[]): string {
+  if (sorted.length === 0) return '*'
+  const parts: string[] = []
+  let start = sorted[0], end = sorted[0]
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === end + 1) {
+      end = sorted[i]
+    } else {
+      parts.push(start === end ? String(start) : `${start}-${end}`)
+      start = end = sorted[i]
+    }
+  }
+  parts.push(start === end ? String(start) : `${start}-${end}`)
+  return parts.join(',')
+}
+
 function buildCron(time: string, days: Set<string>): string {
   const [hh, mm] = time.split(':')
   const h = parseInt(hh, 10)
@@ -136,7 +152,7 @@ function buildCron(time: string, days: Set<string>): string {
   } else {
     // Sort numerically and try to collapse into ranges
     const sorted = [...days].map(Number).sort((a, b) => a - b)
-    dow = sorted.join(',')
+    dow = collapseToRanges(sorted)
   }
 
   return `${m} ${h} * * ${dow}`
@@ -159,6 +175,7 @@ export function SchedulePicker({
   // Determine initial mode from value
   const parsed = useMemo(() => parseSimpleCron(value), [value])
   const [advanced, setAdvanced] = useState(!parsed)
+  const userChoseMode = useRef(false)
   const [rawCron, setRawCron] = useState(value)
   const [time, setTime] = useState(parsed?.time ?? '09:00')
   const [dayPreset, setDayPreset] = useState<DayPreset>(
@@ -176,7 +193,9 @@ export function SchedulePicker({
       const preset = daySetToPreset(p.days)
       setDayPreset(preset)
       setCustomDays(p.days)
-      setAdvanced(false)
+      if (!userChoseMode.current) {
+        setAdvanced(false)
+      }
     } else {
       setAdvanced(true)
     }
@@ -237,12 +256,14 @@ export function SchedulePicker({
   )
 
   const switchToAdvanced = useCallback(() => {
+    userChoseMode.current = true
     setAdvanced(true)
   }, [])
 
   const switchToSimple = useCallback(() => {
     const p = parseSimpleCron(rawCron)
     if (p) {
+      userChoseMode.current = true
       setTime(p.time)
       setDayPreset(daySetToPreset(p.days))
       setCustomDays(p.days)
@@ -260,7 +281,7 @@ export function SchedulePicker({
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
-        <label className="text-xs font-medium text-zinc-400">{label}</label>
+        <label className="block text-xs font-medium text-zinc-400">{label}</label>
       )}
 
       {!advanced ? (
