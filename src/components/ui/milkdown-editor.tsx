@@ -6,6 +6,14 @@ import '@milkdown/crepe/theme/frame-dark.css'
 import '@/styles/milkdown.css'
 import { cn } from '@/lib/utils'
 
+const TRAILING_LINES = 5
+const TRAILING_NEWLINES = '\n'.repeat(TRAILING_LINES)
+
+/** Ensure content has trailing blank lines so users can click below and type */
+function withTrailingLines(content: string): string {
+  return content.trimEnd() + TRAILING_NEWLINES
+}
+
 interface MilkdownEditorProps {
   value: string
   onChange: (value: string) => void
@@ -42,7 +50,7 @@ export function MilkdownEditor({
 
     const config: CrepeConfig = {
       root,
-      defaultValue: value,
+      defaultValue: withTrailingLines(value),
       features: {
         [CrepeFeature.Placeholder]: true,
       },
@@ -99,7 +107,7 @@ export function MilkdownEditor({
 
       const config: CrepeConfig = {
         root,
-        defaultValue: value,
+        defaultValue: withTrailingLines(value),
         features: {
           [CrepeFeature.Placeholder]: true,
         },
