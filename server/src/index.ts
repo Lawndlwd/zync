@@ -17,6 +17,7 @@ import opencodeRouter from './routes/opencode.js'
 import { voiceRouter } from './routes/voice.js'
 import { canvasRouter } from './routes/canvas.js'
 import { secretsRouter } from './routes/secrets.js'
+import configRouter from './routes/config.js'
 import { initDb, initHeartbeat } from './bot/index.js'
 import { getChannelManager } from './channels/manager.js'
 import { handleMessage } from './agent/loop.js'
@@ -75,6 +76,7 @@ app.use('/api/opencode', opencodeRouter)
 app.use('/api/voice', voiceRouter)
 app.use('/api/canvas', canvasRouter)
 app.use('/api/secrets', secretsRouter)
+app.use('/api/config', configRouter)
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

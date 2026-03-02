@@ -205,3 +205,17 @@ export const SecretSetSchema = z.object({
   value: z.string().min(1),
   category: z.string().max(64).default('general'),
 })
+
+// --- Config ---
+export const ConfigSetSchema = z.object({
+  value: z.string(),
+  category: z.string().max(64).default('general'),
+})
+
+export const ConfigBulkSetSchema = z.array(
+  z.object({
+    key: z.string().min(1).max(255),
+    value: z.string(),
+    category: z.string().max(64).default('general'),
+  })
+)
