@@ -141,7 +141,7 @@ export function MilkdownEditor({
     <div
       ref={containerRef}
       className={cn(
-        'milkdown-editor-wrapper overflow-hidden',
+        'milkdown-editor-wrapper',
         variant === 'default' && 'rounded-lg border border-white/[0.1] bg-white/[0.04]',
         className,
       )}
