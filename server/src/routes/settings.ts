@@ -1,37 +1,11 @@
 import { Router } from 'express'
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
-import { resolve, dirname } from 'path'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { AgentModelConfigSchema } from '../lib/schemas.js'
 import { getSecret } from '../secrets/index.js'
-import { getConfig } from '../config/index.js'
+import { getConfig, getConfigService } from '../config/index.js'
 
 export const settingsRouter = Router()
-
-// --- Agent model config (simple JSON file) ---
-
-const AGENT_MODELS_PATH = resolve(import.meta.dirname, '../../data/agent-models.json')
-
-interface AgentModelConfig {
-  prAgent?: { model: string }
-  opencode?: { model: string }
-  bot?: { model: string }
-}
-
-function loadAgentModels(): AgentModelConfig {
-  try {
-    if (existsSync(AGENT_MODELS_PATH)) {
-      return JSON.parse(readFileSync(AGENT_MODELS_PATH, 'utf-8'))
-    }
-  } catch { /* use defaults */ }
-  return {}
-}
-
-function saveAgentModels(config: AgentModelConfig): void {
-  mkdirSync(dirname(AGENT_MODELS_PATH), { recursive: true })
-  writeFileSync(AGENT_MODELS_PATH, JSON.stringify(config, null, 2))
-}
 
 // Expose env config to frontend (secrets are masked)
 settingsRouter.get('/', (_req, res) => {
@@ -54,14 +28,23 @@ settingsRouter.get('/', (_req, res) => {
 
 // GET /api/settings/agent-models — get per-feature model overrides
 settingsRouter.get('/agent-models', (_req, res) => {
-  res.json(loadAgentModels())
+  const svc = getConfigService()
+  res.json({
+    prAgent: { model: svc?.get('AGENT_MODEL_PR') || '' },
+    opencode: { model: svc?.get('AGENT_MODEL_OPENCODE') || '' },
+    bot: { model: svc?.get('AGENT_MODEL_BOT') || '' },
+  })
 })
 
 // PUT /api/settings/agent-models — save per-feature model overrides
 settingsRouter.put('/agent-models', validate(AgentModelConfigSchema), (req, res) => {
   try {
-    const config = req.body as AgentModelConfig
-    saveAgentModels(config)
+    const svc = getConfigService()
+    if (!svc) return res.status(503).json({ error: 'Config service unavailable' })
+    const data = req.body as { prAgent?: { model: string }; opencode?: { model: string }; bot?: { model: string } }
+    if (data.prAgent?.model) svc.set('AGENT_MODEL_PR', data.prAgent.model, 'llm')
+    if (data.opencode?.model) svc.set('AGENT_MODEL_OPENCODE', data.opencode.model, 'llm')
+    if (data.bot?.model) svc.set('AGENT_MODEL_BOT', data.bot.model, 'llm')
     res.json({ success: true })
   } catch (err) {
     errorResponse(res, err)
