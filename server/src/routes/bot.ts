@@ -12,8 +12,8 @@ import {
   WhatsAppConfigSchema,
   GmailConfigSchema,
 } from '../lib/schemas.js'
-import { getSecret } from '../secrets/index.js'
-import { getConfig } from '../config/index.js'
+import { getSecret, getSecrets } from '../secrets/index.js'
+import { getConfig, getConfigService } from '../config/index.js'
 import { searchMemory, saveMemory, deleteMemory, listAllMemories, getMemoryCount } from '../bot/memory/index.js'
 import { getAllSchedules } from '../bot/heartbeat/db.js'
 import { addSchedule, adminRemoveSchedule, adminToggleSchedule } from '../bot/heartbeat/scheduler.js'
@@ -30,25 +30,6 @@ import type { ChannelType } from '../channels/types.js'
 import { logger } from '../lib/logger.js'
 
 const DATA_DIR = resolve(import.meta.dirname, '../../data')
-const CHANNEL_CONFIG_PATH = resolve(DATA_DIR, 'channel-config.json')
-
-interface ChannelConfigData {
-  telegram?: { botToken: string; allowedUsers: string }
-  whatsapp?: { allowedNumbers: string; autoReply?: boolean; autoReplyInstructions?: string }
-  gmail?: { clientId: string; clientSecret: string; refreshToken: string }
-}
-
-export function loadChannelConfig(): ChannelConfigData {
-  if (existsSync(CHANNEL_CONFIG_PATH)) {
-    return JSON.parse(readFileSync(CHANNEL_CONFIG_PATH, 'utf-8'))
-  }
-  return {}
-}
-
-function saveChannelConfig(cfg: ChannelConfigData): void {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-  writeFileSync(CHANNEL_CONFIG_PATH, JSON.stringify(cfg, null, 2))
-}
 
 const OAUTH_BASE_URL = getConfig('OAUTH_BASE_URL') || `http://localhost:${process.env.PORT || 3001}`
 const FRONTEND_BASE_URL = getConfig('FRONTEND_BASE_URL') || `http://localhost:${getConfig('FRONTEND_PORT', '5173') || '5173'}`
@@ -97,14 +78,13 @@ botRouter.get('/status', async (_req, res) => {
 botRouter.get('/channels', (_req, res) => {
   try {
     const registered = getChannelManager().getRegisteredChannels()
-    const cfg = loadChannelConfig()
 
     const channels: ChannelType[] = ['telegram', 'whatsapp', 'gmail']
     const result = channels.map((channel) => {
       let configured = false
-      if (channel === 'telegram') configured = !!cfg.telegram?.botToken
-      if (channel === 'whatsapp') configured = !!cfg.whatsapp
-      if (channel === 'gmail') configured = !!(cfg.gmail?.clientId && cfg.gmail?.clientSecret && cfg.gmail?.refreshToken)
+      if (channel === 'telegram') configured = !!(getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN'))
+      if (channel === 'whatsapp') configured = !!getConfig('WHATSAPP_ALLOWED_NUMBERS')
+      if (channel === 'gmail') configured = !!(getSecret('CHANNEL_GMAIL_CLIENT_ID') && getSecret('CHANNEL_GMAIL_CLIENT_SECRET') && getSecret('CHANNEL_GMAIL_REFRESH_TOKEN'))
 
       const adapter = getChannelManager().getAdapter(channel)
       let connectionState = 'disconnected'
@@ -136,31 +116,44 @@ botRouter.get('/channels', (_req, res) => {
 // GET /api/bot/channels/config — saved channel configuration (tokens masked)
 botRouter.get('/channels/config', (_req, res) => {
   try {
-    const cfg = loadChannelConfig()
-    // Mask secrets
     const masked: any = {}
-    if (cfg.telegram) {
+
+    // Telegram
+    const botToken = getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN')
+    const allowedUsers = getConfig('TELEGRAM_ALLOWED_USERS') || ''
+    if (botToken || allowedUsers) {
       masked.telegram = {
-        botToken: cfg.telegram.botToken ? '••••' + cfg.telegram.botToken.slice(-6) : '',
-        allowedUsers: cfg.telegram.allowedUsers || '',
-        hasBotToken: !!cfg.telegram.botToken,
+        botToken: botToken ? '••••' + botToken.slice(-6) : '',
+        allowedUsers,
+        hasBotToken: !!botToken,
       }
     }
-    if (cfg.whatsapp) {
+
+    // WhatsApp
+    const waAllowedNumbers = getConfig('WHATSAPP_ALLOWED_NUMBERS') || ''
+    const autoReply = getConfig('WHATSAPP_AUTO_REPLY') === 'true'
+    const autoReplyInstructions = getConfig('WHATSAPP_AUTO_REPLY_INSTRUCTIONS') || ''
+    if (waAllowedNumbers || autoReply || autoReplyInstructions) {
       masked.whatsapp = {
-        allowedNumbers: cfg.whatsapp.allowedNumbers || '',
-        autoReply: cfg.whatsapp.autoReply ?? false,
-        autoReplyInstructions: cfg.whatsapp.autoReplyInstructions || '',
+        allowedNumbers: waAllowedNumbers,
+        autoReply,
+        autoReplyInstructions,
       }
     }
-    if (cfg.gmail) {
+
+    // Gmail
+    const clientId = getSecret('CHANNEL_GMAIL_CLIENT_ID') || ''
+    const clientSecret = getSecret('CHANNEL_GMAIL_CLIENT_SECRET')
+    const refreshToken = getSecret('CHANNEL_GMAIL_REFRESH_TOKEN')
+    if (clientId || clientSecret || refreshToken) {
       masked.gmail = {
-        clientId: cfg.gmail.clientId || '',
-        hasClientSecret: !!cfg.gmail.clientSecret,
-        authorized: !!cfg.gmail.refreshToken,
+        clientId,
+        hasClientSecret: !!clientSecret,
+        authorized: !!refreshToken,
         mode: 'on-demand',
       }
     }
+
     res.json(masked)
   } catch (err) {
     errorResponse(res, err)
@@ -171,7 +164,8 @@ botRouter.get('/channels/config', (_req, res) => {
 botRouter.put('/channels/config/:channel', (req, res) => {
   try {
     const channel = req.params.channel as ChannelType
-    const cfg = loadChannelConfig()
+    const secretsSvc = getSecrets()
+    const configSvc = getConfigService()
 
     let schema: z.ZodType
     if (channel === 'telegram') schema = TelegramConfigSchema
@@ -183,24 +177,28 @@ botRouter.put('/channels/config/:channel', (req, res) => {
 
     if (channel === 'telegram') {
       const { botToken, allowedUsers } = parsed.data as z.infer<typeof TelegramConfigSchema>
-      cfg.telegram = { botToken: botToken || cfg.telegram?.botToken || '', allowedUsers: allowedUsers ?? '' }
+      if (secretsSvc && botToken && botToken !== '••••••••' && !botToken.startsWith('••••')) {
+        secretsSvc.set('CHANNEL_TELEGRAM_BOT_TOKEN', botToken, 'channel')
+      }
+      if (configSvc && allowedUsers !== undefined) {
+        configSvc.set('TELEGRAM_ALLOWED_USERS', allowedUsers ?? '', 'channels')
+      }
     } else if (channel === 'whatsapp') {
       const { allowedNumbers, autoReply, autoReplyInstructions } = parsed.data as z.infer<typeof WhatsAppConfigSchema>
-      cfg.whatsapp = {
-        allowedNumbers: allowedNumbers ?? cfg.whatsapp?.allowedNumbers ?? '',
-        autoReply: autoReply ?? cfg.whatsapp?.autoReply ?? false,
-        autoReplyInstructions: autoReplyInstructions ?? cfg.whatsapp?.autoReplyInstructions ?? '',
+      if (configSvc) {
+        if (allowedNumbers !== undefined) configSvc.set('WHATSAPP_ALLOWED_NUMBERS', allowedNumbers ?? '', 'channels')
+        if (autoReply !== undefined) configSvc.set('WHATSAPP_AUTO_REPLY', String(autoReply), 'channels')
+        if (autoReplyInstructions !== undefined) configSvc.set('WHATSAPP_AUTO_REPLY_INSTRUCTIONS', autoReplyInstructions ?? '', 'channels')
       }
     } else if (channel === 'gmail') {
       const { clientId, clientSecret, refreshToken } = parsed.data as z.infer<typeof GmailConfigSchema>
-      cfg.gmail = {
-        clientId: clientId || cfg.gmail?.clientId || '',
-        clientSecret: clientSecret || cfg.gmail?.clientSecret || '',
-        refreshToken: refreshToken || cfg.gmail?.refreshToken || '',
+      if (secretsSvc) {
+        if (clientId) secretsSvc.set('CHANNEL_GMAIL_CLIENT_ID', clientId, 'channel')
+        if (clientSecret && !clientSecret.startsWith('••••')) secretsSvc.set('CHANNEL_GMAIL_CLIENT_SECRET', clientSecret, 'channel')
+        if (refreshToken) secretsSvc.set('CHANNEL_GMAIL_REFRESH_TOKEN', refreshToken, 'channel')
       }
     }
 
-    saveChannelConfig(cfg)
     res.json({ success: true })
   } catch (err) {
     errorResponse(res, err)
@@ -210,8 +208,7 @@ botRouter.put('/channels/config/:channel', (req, res) => {
 // GET /api/bot/channels/gmail/auth-url — get Google OAuth consent URL
 botRouter.get('/channels/gmail/auth-url', (_req, res) => {
   try {
-    const cfg = loadChannelConfig()
-    const clientId = cfg.gmail?.clientId
+    const clientId = getSecret('CHANNEL_GMAIL_CLIENT_ID')
     if (!clientId) {
       return res.status(400).json({ error: 'Save Client ID and Client Secret first.' })
     }
@@ -240,9 +237,8 @@ botRouter.get('/channels/gmail/callback', async (req, res) => {
     const code = req.query.code as string
     if (!code) return res.redirect(`${FRONTEND_BASE_URL}/settings?gmail_error=no_code`)
 
-    const cfg = loadChannelConfig()
-    const clientId = cfg.gmail?.clientId
-    const clientSecret = cfg.gmail?.clientSecret
+    const clientId = getSecret('CHANNEL_GMAIL_CLIENT_ID')
+    const clientSecret = getSecret('CHANNEL_GMAIL_CLIENT_SECRET')
     if (!clientId || !clientSecret) {
       return res.status(400).send('Gmail Client ID/Secret not configured')
     }
@@ -271,12 +267,9 @@ botRouter.get('/channels/gmail/callback', async (req, res) => {
       return res.status(400).send('No refresh token received. Try revoking access at myaccount.google.com/permissions and retry.')
     }
 
-    // Save refresh token to config
-    cfg.gmail = {
-      ...cfg.gmail!,
-      refreshToken: tokens.refresh_token,
-    }
-    saveChannelConfig(cfg)
+    // Save refresh token to vault
+    const secretsSvc = getSecrets()
+    if (secretsSvc) secretsSvc.set('CHANNEL_GMAIL_REFRESH_TOKEN', tokens.refresh_token, 'channel')
 
     // Gmail is accessed on-demand via MCP tools — no polling adapter needed
     logger.info('Gmail: OAuth tokens saved, available for on-demand access')
@@ -294,15 +287,14 @@ botRouter.post('/channels/:channel/connect', async (req, res) => {
   try {
     const channel = req.params.channel as ChannelType
     const manager = getChannelManager()
-    const cfg = loadChannelConfig()
 
     // Disconnect existing if running
     await manager.unregister(channel)
 
     if (channel === 'telegram') {
-      const botToken = cfg.telegram?.botToken || getSecret('TELEGRAM_BOT_TOKEN')
+      const botToken = getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN')
       if (!botToken) return res.status(400).json({ error: 'No bot token configured. Save a token first.' })
-      const allowedUsers = (cfg.telegram?.allowedUsers || getSecret('TELEGRAM_ALLOWED_USERS') || '')
+      const allowedUsers = (getConfig('TELEGRAM_ALLOWED_USERS') || getSecret('TELEGRAM_ALLOWED_USERS') || '')
         .split(',').map(s => s.trim()).filter(Boolean).map(Number)
       const adapter = new TelegramAdapter({ botToken, allowedUsers })
       manager.register(adapter)
@@ -310,7 +302,7 @@ botRouter.post('/channels/:channel/connect', async (req, res) => {
       await adapter.start()
     } else if (channel === 'whatsapp') {
       const authDir = getConfig('WHATSAPP_AUTH_DIR', './data/whatsapp-auth') || './data/whatsapp-auth'
-      const allowedNumbers = (cfg.whatsapp?.allowedNumbers || '')
+      const allowedNumbers = (getConfig('WHATSAPP_ALLOWED_NUMBERS') || '')
         .split(',').map(s => s.trim()).filter(Boolean)
         .map(n => n.includes('@') ? n : `${n}@s.whatsapp.net`)
       const adapter = new WhatsAppAdapter({ authDir, allowedNumbers: allowedNumbers.length > 0 ? allowedNumbers : undefined })
@@ -346,14 +338,16 @@ botRouter.post('/channels/gmail/reply', validate(GmailReplySchema), async (req, 
   try {
     const { threadId, to, subject, body, messageId } = req.body
 
-    const cfg = loadChannelConfig()
-    if (!cfg.gmail?.refreshToken) {
+    const gmailClientId = getSecret('CHANNEL_GMAIL_CLIENT_ID') || ''
+    const gmailClientSecret = getSecret('CHANNEL_GMAIL_CLIENT_SECRET') || ''
+    const gmailRefreshToken = getSecret('CHANNEL_GMAIL_REFRESH_TOKEN')
+    if (!gmailRefreshToken) {
       return res.status(400).json({ error: 'Gmail not configured' })
     }
 
     const { google } = await import('googleapis')
-    const auth = new google.auth.OAuth2(cfg.gmail.clientId, cfg.gmail.clientSecret)
-    auth.setCredentials({ refresh_token: cfg.gmail.refreshToken })
+    const auth = new google.auth.OAuth2(gmailClientId, gmailClientSecret)
+    auth.setCredentials({ refresh_token: gmailRefreshToken })
     const gmail = google.gmail({ version: 'v1', auth })
 
     const headers = [
@@ -469,8 +463,19 @@ botRouter.put('/briefing/config', (req, res) => {
     if (!result.success) {
       return res.status(400).json({ error: 'Invalid config', details: result.error.flatten() })
     }
-    const cfgPath = resolve(DATA_DIR, 'briefing-config.json')
-    writeFileSync(cfgPath, JSON.stringify(result.data, null, 2))
+    const configSvc = getConfigService()
+    if (configSvc) {
+      const d = result.data
+      configSvc.set('BRIEFING_MORNING_CRON', d.morningCron, 'briefing')
+      configSvc.set('BRIEFING_EVENING_CRON', d.eveningCron, 'briefing')
+      configSvc.set('BRIEFING_CHANNEL', d.channel, 'briefing')
+      configSvc.set('BRIEFING_CHAT_ID', d.chatId, 'briefing')
+      configSvc.set('BRIEFING_ENABLED', String(d.enabled), 'briefing')
+    } else {
+      // Fallback to JSON file if config service unavailable
+      const cfgPath = resolve(DATA_DIR, 'briefing-config.json')
+      writeFileSync(cfgPath, JSON.stringify(result.data, null, 2))
+    }
     res.json({ success: true })
   } catch (err) {
     errorResponse(res, err)

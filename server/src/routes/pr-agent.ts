@@ -2,7 +2,8 @@ import { Router } from 'express'
 import { spawn, execFile } from 'child_process'
 import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
-import { loadGitlabConfig } from './gitlab.js'
+import { getSecret } from '../secrets/index.js'
+import { getConfig } from '../config/index.js'
 import { getOpenCodeUrl } from '../opencode/client.js'
 import { getDb } from '../bot/memory/db.js'
 import { validate } from '../lib/validate.js'
@@ -17,13 +18,14 @@ const VALID_TOOLS = ['review', 'describe', 'improve', 'ask'] as const
 type PRAgentTool = (typeof VALID_TOOLS)[number]
 
 async function buildPRAgentEnv(tool: PRAgentTool, question?: string, extraInstructions?: string): Promise<Record<string, string>> {
-  const gitlab = loadGitlabConfig()
+  const gitlabBaseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL') || ''
+  const gitlabPat = getSecret('GITLAB_PAT') || ''
 
   const env: Record<string, string> = {
     ...process.env as Record<string, string>,
     CONFIG__GIT_PROVIDER: 'gitlab',
-    GITLAB__URL: gitlab.baseUrl.replace(/\/api\/v4\/?$/, ''),
-    GITLAB__PERSONAL_ACCESS_TOKEN: gitlab.pat,
+    GITLAB__URL: gitlabBaseUrl.replace(/\/api\/v4\/?$/, ''),
+    GITLAB__PERSONAL_ACCESS_TOKEN: gitlabPat,
     OPENCODE_URL: getOpenCodeUrl(),
   }
 

@@ -3,7 +3,7 @@ import { insertLLMCall } from '../bot/memory/activity.js'
 import { assembleContext, buildSystemPrompt } from './context.js'
 import type { InboundMessage } from '../channels/types.js'
 import { getChannelManager } from '../channels/manager.js'
-import { loadChannelConfig } from '../routes/bot.js'
+import { getConfig } from '../config/index.js'
 import { logger } from '../lib/logger.js'
 
 async function waitForReply(sessionId: string, msgCountBefore: number, timeoutMs = 120_000): Promise<string> {
@@ -36,8 +36,7 @@ async function waitForReply(sessionId: string, msgCountBefore: number, timeoutMs
 export async function handleMessage(msg: InboundMessage): Promise<void> {
   // Check if auto-reply is enabled for this channel
   if (msg.channelType === 'whatsapp') {
-    const cfg = loadChannelConfig()
-    if (!cfg.whatsapp?.autoReply) {
+    if (getConfig('WHATSAPP_AUTO_REPLY') !== 'true') {
       logger.info({ senderId: msg.senderId }, 'WhatsApp: message received (auto-reply OFF, ignoring)')
       return
     }
@@ -70,9 +69,9 @@ export async function handleMessage(msg: InboundMessage): Promise<void> {
 
     // Inject custom auto-reply instructions if configured
     if (msg.channelType === 'whatsapp') {
-      const waCfg = loadChannelConfig().whatsapp
-      if (waCfg?.autoReplyInstructions) {
-        ctx.skills.unshift(`### Auto-Reply Instructions\n${waCfg.autoReplyInstructions}`)
+      const waAutoReplyInstructions = getConfig('WHATSAPP_AUTO_REPLY_INSTRUCTIONS')
+      if (waAutoReplyInstructions) {
+        ctx.skills.unshift(`### Auto-Reply Instructions\n${waAutoReplyInstructions}`)
       }
     }
 

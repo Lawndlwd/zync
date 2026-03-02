@@ -27,7 +27,7 @@ import { initCanvasWebSocket } from './canvas/renderer.js'
 import { startWakeWordServer, stopWakeWordServer } from './voice/wakeword.js'
 import { WhatsAppAdapter } from './channels/whatsapp.js'
 import { TelegramAdapter } from './channels/telegram.js'
-import { loadChannelConfig } from './routes/bot.js'
+// Channel config now read from vault/config services (no JSON file)
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 import { logger } from './lib/logger.js'
@@ -111,13 +111,11 @@ channelManager.onMessage(handleMessage)
 
 // Auto-reconnect channels that have saved auth state
 ;(async () => {
-  const cfg = loadChannelConfig()
-
   // WhatsApp: reconnect if auth state exists
   const waAuthDir = getConfig('WHATSAPP_AUTH_DIR', './data/whatsapp-auth') || './data/whatsapp-auth'
   if (existsSync(resolve(waAuthDir, 'creds.json'))) {
     logger.info('WhatsApp: found saved auth, auto-reconnecting...')
-    const allowedNumbers = (cfg.whatsapp?.allowedNumbers || '')
+    const allowedNumbers = (getConfig('WHATSAPP_ALLOWED_NUMBERS') || '')
       .split(',').map(s => s.trim()).filter(Boolean)
       .map(n => n.includes('@') ? n : `${n}@s.whatsapp.net`)
     const adapter = new WhatsAppAdapter({ authDir: waAuthDir, allowedNumbers: allowedNumbers.length > 0 ? allowedNumbers : undefined })
@@ -126,10 +124,10 @@ channelManager.onMessage(handleMessage)
   }
 
   // Telegram: reconnect if bot token exists
-  const telegramToken = cfg.telegram?.botToken || getSecret('TELEGRAM_BOT_TOKEN')
+  const telegramToken = getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN')
   if (telegramToken) {
     logger.info('Telegram: found saved token, auto-reconnecting...')
-    const allowedUsers = (cfg.telegram?.allowedUsers || getSecret('TELEGRAM_ALLOWED_USERS') || '')
+    const allowedUsers = (getConfig('TELEGRAM_ALLOWED_USERS') || getSecret('TELEGRAM_ALLOWED_USERS') || '')
       .split(',').map(s => s.trim()).filter(Boolean).map(Number)
     const adapter = new TelegramAdapter({ botToken: telegramToken, allowedUsers })
     channelManager.register(adapter)

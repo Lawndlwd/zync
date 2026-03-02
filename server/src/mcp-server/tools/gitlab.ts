@@ -1,21 +1,12 @@
 import { z } from 'zod'
-import { readFileSync, existsSync } from 'fs'
-import { resolve } from 'path'
 import { getSecret } from '../../secrets/index.js'
-
-const GITLAB_CONFIG_PATH = resolve(import.meta.dirname, '../../../data/gitlab.json')
+import { getConfig } from '../../config/index.js'
 
 function getGitlabConfig() {
-  let saved = { baseUrl: '', pat: '' }
-  try {
-    if (existsSync(GITLAB_CONFIG_PATH)) {
-      saved = JSON.parse(readFileSync(GITLAB_CONFIG_PATH, 'utf-8'))
-    }
-  } catch { /* ignore */ }
-  const baseUrl = getSecret('GITLAB_BASE_URL') || saved.baseUrl
-  const pat = getSecret('GITLAB_PAT') || saved.pat
+  const baseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL')
+  const pat = getSecret('GITLAB_PAT')
   if (!baseUrl || !pat) {
-    throw new Error('GitLab not configured. Set GITLAB_BASE_URL and GITLAB_PAT in .env or Settings.')
+    throw new Error('GitLab not configured. Add GITLAB_BASE_URL and GITLAB_PAT in Settings > Integrations > GitLab or the Vault.')
   }
   return { baseUrl: baseUrl.replace(/\/$/, ''), pat }
 }

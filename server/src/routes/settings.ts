@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
-import { loadGitlabConfig } from './gitlab.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { AgentModelConfigSchema } from '../lib/schemas.js'
 import { getSecret } from '../secrets/index.js'
+import { getConfig } from '../config/index.js'
 
 export const settingsRouter = Router()
 
@@ -42,13 +42,10 @@ settingsRouter.get('/', (_req, res) => {
       apiToken: getSecret('JIRA_API_TOKEN') ? '••••••••' : '',
       projectKey: getSecret('JIRA_PROJECT_KEY') || '',
     },
-    gitlab: (() => {
-      const saved = loadGitlabConfig()
-      return {
-        baseUrl: getSecret('GITLAB_BASE_URL') || saved.baseUrl || '',
-        pat: (getSecret('GITLAB_PAT') || saved.pat) ? '••••••••' : '',
-      }
-    })(),
+    gitlab: {
+      baseUrl: getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL') || '',
+      pat: getSecret('GITLAB_PAT') ? '••••••••' : '',
+    },
     messages: {
       customEndpoint: getSecret('MESSAGES_ENDPOINT') || '',
     },

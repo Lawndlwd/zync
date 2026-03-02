@@ -1,41 +1,16 @@
 import { Router } from 'express'
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
-import { resolve, dirname } from 'path'
 import { validate } from '../lib/validate.js'
 import { GitlabConfigSchema, GitlabNoteSchema, GitlabDiscussionSchema, GitlabCreateMrSchema } from '../lib/schemas.js'
-import { getSecret } from '../secrets/index.js'
+import { getSecret, getSecrets } from '../secrets/index.js'
+import { getConfig, getConfigService } from '../config/index.js'
 
 export const gitlabRouter = Router()
 
-const GITLAB_CONFIG_PATH = resolve(import.meta.dirname, '../../data/gitlab.json')
-
-interface GitLabConfig {
-  baseUrl: string
-  pat: string
-}
-
-export function loadGitlabConfig(): GitLabConfig {
-  try {
-    if (existsSync(GITLAB_CONFIG_PATH)) {
-      return JSON.parse(readFileSync(GITLAB_CONFIG_PATH, 'utf-8'))
-    }
-  } catch { /* ignore parse errors */ }
-  return { baseUrl: '', pat: '' }
-}
-
-export function saveGitlabConfig(config: GitLabConfig) {
-  const dir = dirname(GITLAB_CONFIG_PATH)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-  writeFileSync(GITLAB_CONFIG_PATH, JSON.stringify(config, null, 2))
-}
-
 function getGitlabConfig() {
-  // Env vars take priority, then fall back to saved config file
-  const saved = loadGitlabConfig()
-  const baseUrl = getSecret('GITLAB_BASE_URL') || saved.baseUrl
-  const pat = getSecret('GITLAB_PAT') || saved.pat
+  const baseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL')
+  const pat = getSecret('GITLAB_PAT')
   if (!baseUrl || !pat) {
-    throw new Error('GitLab not configured. Add your GitLab URL and PAT in Settings.')
+    throw new Error('GitLab not configured. Add GITLAB_BASE_URL and GITLAB_PAT in Settings > Integrations > GitLab or the Vault.')
   }
   return { baseUrl: baseUrl.replace(/\/$/, ''), pat }
 }
@@ -195,10 +170,11 @@ gitlabRouter.get('/proxy/image', async (req, res) => {
 
 // Get saved gitlab config (secrets masked)
 gitlabRouter.get('/config', (_req, res) => {
-  const saved = loadGitlabConfig()
+  const baseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL') || ''
+  const pat = getSecret('GITLAB_PAT')
   res.json({
-    baseUrl: getSecret('GITLAB_BASE_URL') || saved.baseUrl,
-    pat: (getSecret('GITLAB_PAT') || saved.pat) ? '••••••••' : '',
+    baseUrl,
+    pat: pat ? '••••••••' : '',
     fromEnv: !!(getSecret('GITLAB_BASE_URL') && getSecret('GITLAB_PAT')),
   })
 })
@@ -207,12 +183,15 @@ gitlabRouter.get('/config', (_req, res) => {
 gitlabRouter.put('/config', validate(GitlabConfigSchema), (req, res) => {
   try {
     const { baseUrl, pat } = req.body
-    const current = loadGitlabConfig()
-    saveGitlabConfig({
-      baseUrl: baseUrl.replace(/\/$/, ''),
-      // Preserve existing PAT if masked value is sent
-      pat: pat === '••••••••' ? current.pat : pat,
-    })
+
+    // Save baseUrl to config service
+    const configSvc = getConfigService()
+    if (configSvc) configSvc.set('GITLAB_BASE_URL', baseUrl.replace(/\/$/, ''), 'gitlab')
+
+    // Save PAT to vault (only if not masked)
+    const secretsSvc = getSecrets()
+    if (secretsSvc && pat && pat !== '••••••••') secretsSvc.set('GITLAB_PAT', pat, 'gitlab')
+
     res.json({ success: true })
   } catch (err: any) {
     const ge = classifyError(err)
@@ -335,11 +314,23 @@ gitlabRouter.get('/projects/:id/merge_requests/stats', async (req, res) => {
 gitlabRouter.get('/projects/:id/merge_requests', async (req, res) => {
   try {
     const { id } = req.params
-    const { state = 'opened', scope, reviewer_username, author_username, search } = req.query as Record<string, string>
-    const params = new URLSearchParams({ state, order_by: 'updated_at', sort: 'desc' })
-    if (scope) params.set('scope', scope)
-    if (reviewer_username) params.set('reviewer_username', reviewer_username)
-    if (author_username) params.set('author_username', author_username)
+    const { state = 'opened', scope, reviewer_username, author_username, search, per_page = '100' } = req.query as Record<string, string>
+    const params = new URLSearchParams({ state, order_by: 'updated_at', sort: 'desc', per_page })
+
+    // scope only works with global /merge_requests, not project-specific
+    // For project-level MRs, use author_username/reviewer_username instead
+    if (scope === 'created_by_me') {
+      if (!author_username) return res.json([])
+      params.set('author_username', author_username)
+    } else if (scope === 'assigned_to_me') {
+      if (!reviewer_username) return res.json([])
+      params.set('reviewer_username', reviewer_username)
+    } else {
+      // 'all' or no scope - pass through any filters
+      if (reviewer_username) params.set('reviewer_username', reviewer_username)
+      if (author_username) params.set('author_username', author_username)
+    }
+
     if (search) params.set('search', search)
     const mrs = await gitlabFetchAllPages(`/projects/${encodeURIComponent(id)}/merge_requests?${params}`)
     res.json(mrs)

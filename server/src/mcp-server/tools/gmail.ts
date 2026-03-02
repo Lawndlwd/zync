@@ -1,23 +1,17 @@
 import { z } from 'zod'
 import { google } from 'googleapis'
-import { readFileSync, existsSync } from 'fs'
-import { resolve } from 'path'
 import { getDb } from '../../bot/memory/db.js'
-
-const DATA_DIR = resolve(import.meta.dirname, '../../../data')
-const CHANNEL_CONFIG_PATH = resolve(DATA_DIR, 'channel-config.json')
+import { getSecret } from '../../secrets/index.js'
 
 function getGmailClient() {
-  if (!existsSync(CHANNEL_CONFIG_PATH)) {
+  const clientId = getSecret('CHANNEL_GMAIL_CLIENT_ID')
+  const clientSecret = getSecret('CHANNEL_GMAIL_CLIENT_SECRET')
+  const refreshToken = getSecret('CHANNEL_GMAIL_REFRESH_TOKEN')
+  if (!clientId || !clientSecret || !refreshToken) {
     throw new Error('Gmail not configured. Connect Gmail in Settings first.')
   }
-  const cfg = JSON.parse(readFileSync(CHANNEL_CONFIG_PATH, 'utf-8'))
-  const gmail = cfg.gmail
-  if (!gmail?.clientId || !gmail?.clientSecret || !gmail?.refreshToken) {
-    throw new Error('Gmail not configured. Connect Gmail in Settings first.')
-  }
-  const auth = new google.auth.OAuth2(gmail.clientId, gmail.clientSecret)
-  auth.setCredentials({ refresh_token: gmail.refreshToken })
+  const auth = new google.auth.OAuth2(clientId, clientSecret)
+  auth.setCredentials({ refresh_token: refreshToken })
   return google.gmail({ version: 'v1', auth })
 }
 
