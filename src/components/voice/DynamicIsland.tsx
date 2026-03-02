@@ -310,9 +310,8 @@ export function DynamicIsland() {
   useEffect(() => {
     if (voice.isActive && mode === 'idle') {
       setMode('expanded')
-      // Delay content visibility for the expansion animation
-      const timer = setTimeout(() => setContentVisible(true), 200)
-      return () => clearTimeout(timer)
+      // Brief delay so width transition starts first, then fade content in
+      requestAnimationFrame(() => requestAnimationFrame(() => setContentVisible(true)))
     }
     if (!voice.isActive && mode !== 'idle') {
       setMode('idle')
@@ -448,12 +447,12 @@ export function DynamicIsland() {
         style={{
           top: 12,
           width: pillWidth,
-          height: isExpanded ? 'auto' : PILL_HEIGHT,
-          minHeight: PILL_HEIGHT,
+          ...(isExpanded
+            ? { maxHeight: '70vh' }
+            : { height: PILL_HEIGHT }),
           backgroundColor: '#0a0a0a',
           boxShadow: pillGlow,
-          transition: `width ${TRANSITION_DURATION} ${TRANSITION_EASING}, height ${TRANSITION_DURATION} ${TRANSITION_EASING}, border-radius ${TRANSITION_DURATION} ${TRANSITION_EASING}, box-shadow ${TRANSITION_DURATION} ${TRANSITION_EASING}`,
-          overflow: 'hidden',
+          transition: `width ${TRANSITION_DURATION} ${TRANSITION_EASING}, border-radius ${TRANSITION_DURATION} ${TRANSITION_EASING}, box-shadow ${TRANSITION_DURATION} ${TRANSITION_EASING}`,
         }}
       >
         {/* Idle pill content (shown when NOT expanded) */}
