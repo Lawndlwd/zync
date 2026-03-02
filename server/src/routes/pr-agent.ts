@@ -5,6 +5,8 @@ import { resolve } from 'path'
 import { loadGitlabConfig } from './gitlab.js'
 import { getOpenCodeUrl } from '../opencode/client.js'
 import { getDb } from '../bot/memory/db.js'
+import { validate } from '../lib/validate.js'
+import { PrAgentRunSchema } from '../lib/schemas.js'
 
 export const prAgentRouter = Router()
 
@@ -81,7 +83,7 @@ function rewriteMrUrl(webUrl: string, projectId: number): string {
 }
 
 // POST /api/pr-agent/run — Execute a PR-Agent tool
-prAgentRouter.post('/run', async (req, res) => {
+prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
   const { tool, mrUrl, projectId, mrIid, headSha, question, extraInstructions } = req.body as {
     tool: string
     mrUrl: string
@@ -90,16 +92,6 @@ prAgentRouter.post('/run', async (req, res) => {
     headSha?: string
     question?: string
     extraInstructions?: string
-  }
-
-  if (!tool || !VALID_TOOLS.includes(tool as PRAgentTool)) {
-    res.status(400).json({ error: `Invalid tool. Must be one of: ${VALID_TOOLS.join(', ')}` })
-    return
-  }
-
-  if (!mrUrl) {
-    res.status(400).json({ error: 'mrUrl is required' })
-    return
   }
 
   if (!existsSync(VENV_PYTHON)) {

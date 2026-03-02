@@ -3,11 +3,13 @@ import { getOrCreateSession, sendPromptAsync, getSessionMessages, getOpenCodeUrl
 import { insertLLMCall } from '../bot/memory/activity.js'
 import { assembleContext, buildSystemPrompt } from '../agent/context.js'
 import { EventSource } from 'eventsource'
+import { validate } from '../lib/validate.js'
+import { LlmChatSchema } from '../lib/schemas.js'
 
 export const llmRouter = Router()
 
 // Non-streaming chat — send prompt, poll for result
-llmRouter.post('/chat', async (req, res) => {
+llmRouter.post('/chat', validate(LlmChatSchema), async (req, res) => {
   const startTime = Date.now()
   try {
     const { messages } = req.body
@@ -81,7 +83,7 @@ async function pollForReply(sessionId: string, timeoutMs: number, promptSnippet?
 //   - Primary: session.updated with idle/completed
 //   - Backup: 4s idle timer after a real message completes
 //   - Fallback: 60s global timeout
-llmRouter.post('/chat/stream', async (req, res) => {
+llmRouter.post('/chat/stream', validate(LlmChatSchema), async (req, res) => {
   const startTime = Date.now()
   const { messages } = req.body
   const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')

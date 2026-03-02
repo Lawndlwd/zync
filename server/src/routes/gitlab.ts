@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
+import { validate } from '../lib/validate.js'
+import { GitlabConfigSchema, GitlabNoteSchema, GitlabDiscussionSchema, GitlabCreateMrSchema } from '../lib/schemas.js'
 
 export const gitlabRouter = Router()
 
@@ -201,12 +203,9 @@ gitlabRouter.get('/config', (_req, res) => {
 })
 
 // Save gitlab config
-gitlabRouter.put('/config', (req, res) => {
+gitlabRouter.put('/config', validate(GitlabConfigSchema), (req, res) => {
   try {
     const { baseUrl, pat } = req.body
-    if (!baseUrl || !pat) {
-      return res.status(400).json({ error: 'baseUrl and pat are required' })
-    }
     const current = loadGitlabConfig()
     saveGitlabConfig({
       baseUrl: baseUrl.replace(/\/$/, ''),
@@ -398,11 +397,11 @@ gitlabRouter.get('/projects/:id/merge_requests/:iid/notes', async (req, res) => 
 })
 
 // Create MR discussion (positioned comment)
-gitlabRouter.post('/projects/:id/merge_requests/:iid/discussions', async (req, res) => {
+gitlabRouter.post('/projects/:id/merge_requests/:iid/discussions', validate(GitlabDiscussionSchema), async (req, res) => {
   try {
-    const { id, iid } = req.params
+    const id = req.params.id as string
+    const iid = req.params.iid as string
     const { body, position } = req.body
-    if (!body) return res.status(400).json({ error: 'body is required' })
     const payload: Record<string, any> = { body }
     if (position) payload.position = position
     const discussion = await gitlabFetch(`/projects/${encodeURIComponent(id)}/merge_requests/${iid}/discussions`, {
@@ -417,11 +416,11 @@ gitlabRouter.post('/projects/:id/merge_requests/:iid/discussions', async (req, r
 })
 
 // Add MR note (comment)
-gitlabRouter.post('/projects/:id/merge_requests/:iid/notes', async (req, res) => {
+gitlabRouter.post('/projects/:id/merge_requests/:iid/notes', validate(GitlabNoteSchema), async (req, res) => {
   try {
-    const { id, iid } = req.params
+    const id = req.params.id as string
+    const iid = req.params.iid as string
     const { body } = req.body
-    if (!body) return res.status(400).json({ error: 'body is required' })
     const note = await gitlabFetch(`/projects/${encodeURIComponent(id)}/merge_requests/${iid}/notes`, {
       method: 'POST',
       body: JSON.stringify({ body }),
@@ -446,9 +445,9 @@ gitlabRouter.get('/projects/:id/merge_requests/:iid/approvals', async (req, res)
 })
 
 // Create MR
-gitlabRouter.post('/projects/:id/merge_requests', async (req, res) => {
+gitlabRouter.post('/projects/:id/merge_requests', validate(GitlabCreateMrSchema), async (req, res) => {
   try {
-    const { id } = req.params
+    const id = req.params.id as string
     const mr = await gitlabFetch(`/projects/${encodeURIComponent(id)}/merge_requests`, {
       method: 'POST',
       body: JSON.stringify(req.body),
@@ -476,11 +475,12 @@ gitlabRouter.get('/projects/:id/repository/branches', async (req, res) => {
 })
 
 // Edit MR note
-gitlabRouter.put('/projects/:id/merge_requests/:iid/notes/:noteId', async (req, res) => {
+gitlabRouter.put('/projects/:id/merge_requests/:iid/notes/:noteId', validate(GitlabNoteSchema), async (req, res) => {
   try {
-    const { id, iid, noteId } = req.params
+    const id = req.params.id as string
+    const iid = req.params.iid as string
+    const noteId = req.params.noteId as string
     const { body } = req.body
-    if (!body) return res.status(400).json({ error: 'body is required' })
     const note = await gitlabFetch(`/projects/${encodeURIComponent(id)}/merge_requests/${iid}/notes/${noteId}`, {
       method: 'PUT',
       body: JSON.stringify({ body }),

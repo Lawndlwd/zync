@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmSync, statSync, existsSync } from 'fs'
 import { join, basename, extname, relative } from 'path'
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
+import { validate } from '../lib/validate.js'
+import { FolderCreateSchema, FolderRenameSchema, DocumentCreateSchema, DocumentUpdateSchema, DocumentBulkSchema } from '../lib/schemas.js'
 
 export const documentsRouter = Router()
 
@@ -55,14 +57,10 @@ documentsRouter.get('/folders', (_req, res) => {
   }
 })
 
-documentsRouter.post('/folders', (req, res) => {
+documentsRouter.post('/folders', validate(FolderCreateSchema), (req, res) => {
   try {
     const root = getDocsRoot()
     const { name } = req.body
-    if (!name?.trim()) {
-      res.status(400).json({ error: 'Name is required' })
-      return
-    }
     const dirPath = safePath(root, name.trim())
     mkdirSync(dirPath, { recursive: true })
     res.json({ name: name.trim(), docCount: 0, createdAt: new Date().toISOString() })
@@ -71,15 +69,11 @@ documentsRouter.post('/folders', (req, res) => {
   }
 })
 
-documentsRouter.put('/folders/:name', (req, res) => {
+documentsRouter.put('/folders/:name', validate(FolderRenameSchema), (req, res) => {
   try {
     const root = getDocsRoot()
     const { name: newName } = req.body
-    if (!newName?.trim()) {
-      res.status(400).json({ error: 'Name is required' })
-      return
-    }
-    const oldPath = safePath(root, req.params.name)
+    const oldPath = safePath(root, req.params.name as string)
     const newPath = safePath(root, newName.trim())
     renameSync(oldPath, newPath)
     const files = readdirSync(newPath).filter(f => f.endsWith('.md'))
@@ -172,14 +166,10 @@ documentsRouter.get('/file/:path(*)', (req, res) => {
 })
 
 /** Create a new document */
-documentsRouter.post('/', (req, res) => {
+documentsRouter.post('/', validate(DocumentCreateSchema), (req, res) => {
   try {
     const root = getDocsRoot()
     const { folder, title, content, metadata } = req.body
-    if (!folder || !title?.trim()) {
-      res.status(400).json({ error: 'folder and title are required' })
-      return
-    }
     const fileName = `${title.trim()}.md`
     const filePath = safePath(root, folder, fileName)
     mkdirSync(join(root, folder), { recursive: true })
@@ -201,7 +191,7 @@ documentsRouter.post('/', (req, res) => {
 })
 
 /** Update a document — path is the current path */
-documentsRouter.put('/file/:path(*)', (req, res) => {
+documentsRouter.put('/file/:path(*)', validate(DocumentUpdateSchema), (req, res) => {
   try {
     const root = getDocsRoot()
     const docPath = (req.params as Record<string, string>).path
@@ -267,14 +257,10 @@ documentsRouter.delete('/file/:path(*)', (req, res) => {
 
 // ── Bulk fetch for PR-Agent ──
 
-documentsRouter.post('/bulk', (req, res) => {
+documentsRouter.post('/bulk', validate(DocumentBulkSchema), (req, res) => {
   try {
     const root = getDocsRoot()
     const { paths } = req.body
-    if (!Array.isArray(paths) || paths.length === 0) {
-      res.json([])
-      return
-    }
     const docs = paths.map((p: string) => {
       const filePath = safePath(root, p)
       const raw = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : ''

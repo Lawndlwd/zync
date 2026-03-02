@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmSync, statSync, existsSync } from 'fs'
 import { join, relative } from 'path'
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
+import { validate } from '../lib/validate.js'
+import { ProjectCreateSchema, ProjectUpdateSchema, TaskCreateSchema, TaskUpdateSchema } from '../lib/schemas.js'
 
 export const projectsRouter = Router()
 
@@ -85,14 +87,10 @@ projectsRouter.get('/', (_req, res) => {
 })
 
 // 2. POST / — create project
-projectsRouter.post('/', (req, res) => {
+projectsRouter.post('/', validate(ProjectCreateSchema), (req, res) => {
   try {
     const root = getProjectsRoot()
     const { name, metadata, content } = req.body
-    if (!name?.trim()) {
-      res.status(400).json({ error: 'Name is required' })
-      return
-    }
     const slug = slugify(name)
     const dirPath = safePath(root, slug)
     if (existsSync(dirPath)) {
@@ -182,10 +180,10 @@ projectsRouter.get('/:name', (req, res) => {
 })
 
 // 5. PUT /:name — update project
-projectsRouter.put('/:name', (req, res) => {
+projectsRouter.put('/:name', validate(ProjectUpdateSchema), (req, res) => {
   try {
     const root = getProjectsRoot()
-    const dirPath = safePath(root, req.params.name)
+    const dirPath = safePath(root, req.params.name as string)
     if (!existsSync(dirPath)) {
       res.status(404).json({ error: 'Project not found' })
       return
@@ -207,7 +205,7 @@ projectsRouter.put('/:name', (req, res) => {
     const finalContent = content !== undefined ? content : existingContent
     writeFileSync(readmePath, serializeFrontmatter(finalMetadata, finalContent), 'utf-8')
 
-    let finalName = req.params.name
+    let finalName = req.params.name as string
     if (newName) {
       const newSlug = slugify(newName)
       const newDirPath = safePath(root, newSlug)
@@ -267,22 +265,19 @@ projectsRouter.get('/:name/tasks', (req, res) => {
 })
 
 // 8. POST /:name/tasks — create task
-projectsRouter.post('/:name/tasks', (req, res) => {
+projectsRouter.post('/:name/tasks', validate(TaskCreateSchema), (req, res) => {
   try {
     const root = getProjectsRoot()
-    const dirPath = safePath(root, req.params.name)
+    const name = req.params.name as string
+    const dirPath = safePath(root, name)
     if (!existsSync(dirPath)) {
       res.status(404).json({ error: 'Project not found' })
       return
     }
     const { title, metadata, content } = req.body
-    if (!title?.trim()) {
-      res.status(400).json({ error: 'Title is required' })
-      return
-    }
     const slug = slugify(title)
     const fileName = `${slug}.md`
-    const filePath = safePath(root, req.params.name, fileName)
+    const filePath = safePath(root, name, fileName)
     if (existsSync(filePath)) {
       res.status(409).json({ error: 'Task already exists' })
       return
@@ -304,7 +299,7 @@ projectsRouter.post('/:name/tasks', (req, res) => {
     res.json({
       id: slug,
       fileName,
-      project: req.params.name,
+      project: name,
       metadata: defaultMetadata,
       content: body,
       createdAt: stat.birthtime.toISOString(),
@@ -316,11 +311,13 @@ projectsRouter.post('/:name/tasks', (req, res) => {
 })
 
 // 9. PUT /:name/tasks/:taskFile — update task
-projectsRouter.put('/:name/tasks/:taskFile', (req, res) => {
+projectsRouter.put('/:name/tasks/:taskFile', validate(TaskUpdateSchema), (req, res) => {
   try {
     const root = getProjectsRoot()
-    const taskFile = req.params.taskFile.endsWith('.md') ? req.params.taskFile : `${req.params.taskFile}.md`
-    const filePath = safePath(root, req.params.name, taskFile)
+    const paramName = req.params.name as string
+    const paramTaskFile = req.params.taskFile as string
+    const taskFile = paramTaskFile.endsWith('.md') ? paramTaskFile : `${paramTaskFile}.md`
+    const filePath = safePath(root, paramName, taskFile)
     if (!existsSync(filePath)) {
       res.status(404).json({ error: 'Task not found' })
       return
@@ -342,7 +339,7 @@ projectsRouter.put('/:name/tasks/:taskFile', (req, res) => {
     res.json({
       id: taskFile.replace(/\.md$/, ''),
       fileName: taskFile,
-      project: req.params.name,
+      project: paramName,
       metadata: finalMetadata,
       content: finalContent,
       createdAt: stat.birthtime.toISOString(),

@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { getDb } from '../bot/memory/db.js'
+import { validate } from '../lib/validate.js'
+import { TodoCreateSchema, TodoUpdateSchema } from '../lib/schemas.js'
 
 export const todosRouter = Router()
 
@@ -15,7 +17,7 @@ todosRouter.get('/', (_req, res) => {
   }
 })
 
-todosRouter.post('/', (req, res) => {
+todosRouter.post('/', validate(TodoCreateSchema), (req, res) => {
   try {
     const db = getDb()
     const { title, description, linkedIssue, priority, dueDate } = req.body
@@ -30,7 +32,7 @@ todosRouter.post('/', (req, res) => {
   }
 })
 
-todosRouter.put('/:id', (req, res) => {
+todosRouter.put('/:id', validate(TodoUpdateSchema), (req, res) => {
   try {
     const db = getDb()
     const { title, description, linkedIssue, priority, dueDate, status, order } = req.body

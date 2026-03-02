@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
+import { validate } from '../lib/validate.js'
+import { JiraTransitionSchema, JiraCommentSchema, JiraCreateIssueSchema } from '../lib/schemas.js'
 
 export const jiraRouter = Router()
 
@@ -195,7 +197,7 @@ jiraRouter.get('/issue/:key/transitions', async (req, res) => {
 })
 
 // Transition issue
-jiraRouter.post('/issue/:key/transition', async (req, res) => {
+jiraRouter.post('/issue/:key/transition', validate(JiraTransitionSchema), async (req, res) => {
   try {
     await jiraFetch(`/issue/${req.params.key}/transitions`, {
       method: 'POST',
@@ -208,7 +210,7 @@ jiraRouter.post('/issue/:key/transition', async (req, res) => {
 })
 
 // Add comment
-jiraRouter.post('/issue/:key/comment', async (req, res) => {
+jiraRouter.post('/issue/:key/comment', validate(JiraCommentSchema), async (req, res) => {
   try {
     const { isCloud } = getJiraConfig()
     // Cloud uses ADF format, Server uses plain string
@@ -524,7 +526,7 @@ jiraRouter.get('/project/:key/issuetype/:typeId/fields', async (req, res) => {
 })
 
 // Create issue
-jiraRouter.post('/issue', async (req, res) => {
+jiraRouter.post('/issue', validate(JiraCreateIssueSchema), async (req, res) => {
   try {
     const { isCloud } = getJiraConfig()
     const {

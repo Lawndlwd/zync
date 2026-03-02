@@ -1,5 +1,16 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import { validate } from '../lib/validate.js'
+import {
+  GmailReplySchema,
+  BriefingTriggerSchema,
+  MemoryCreateSchema,
+  ScheduleCreateSchema,
+  BotChatSchema,
+  TelegramConfigSchema,
+  WhatsAppConfigSchema,
+  GmailConfigSchema,
+} from '../lib/schemas.js'
 import { searchMemory, saveMemory, deleteMemory, listAllMemories, getMemoryCount } from '../bot/memory/index.js'
 import { getAllSchedules } from '../bot/heartbeat/db.js'
 import { addSchedule, adminRemoveSchedule, adminToggleSchedule } from '../bot/heartbeat/scheduler.js'
@@ -159,25 +170,31 @@ botRouter.put('/channels/config/:channel', (req, res) => {
     const channel = req.params.channel as ChannelType
     const cfg = loadChannelConfig()
 
+    let schema: z.ZodType
+    if (channel === 'telegram') schema = TelegramConfigSchema
+    else if (channel === 'whatsapp') schema = WhatsAppConfigSchema
+    else if (channel === 'gmail') schema = GmailConfigSchema
+    else return res.status(400).json({ error: 'Unknown channel' })
+    const parsed = schema.safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ error: 'Validation failed', details: parsed.error.flatten() })
+
     if (channel === 'telegram') {
-      const { botToken, allowedUsers } = req.body
+      const { botToken, allowedUsers } = parsed.data as z.infer<typeof TelegramConfigSchema>
       cfg.telegram = { botToken: botToken || cfg.telegram?.botToken || '', allowedUsers: allowedUsers ?? '' }
     } else if (channel === 'whatsapp') {
-      const { allowedNumbers, autoReply, autoReplyInstructions } = req.body
+      const { allowedNumbers, autoReply, autoReplyInstructions } = parsed.data as z.infer<typeof WhatsAppConfigSchema>
       cfg.whatsapp = {
         allowedNumbers: allowedNumbers ?? cfg.whatsapp?.allowedNumbers ?? '',
         autoReply: autoReply ?? cfg.whatsapp?.autoReply ?? false,
         autoReplyInstructions: autoReplyInstructions ?? cfg.whatsapp?.autoReplyInstructions ?? '',
       }
     } else if (channel === 'gmail') {
-      const { clientId, clientSecret, refreshToken } = req.body
+      const { clientId, clientSecret, refreshToken } = parsed.data as z.infer<typeof GmailConfigSchema>
       cfg.gmail = {
         clientId: clientId || cfg.gmail?.clientId || '',
         clientSecret: clientSecret || cfg.gmail?.clientSecret || '',
         refreshToken: refreshToken || cfg.gmail?.refreshToken || '',
       }
-    } else {
-      return res.status(400).json({ error: `Unknown channel: ${channel}` })
     }
 
     saveChannelConfig(cfg)
@@ -321,12 +338,9 @@ botRouter.post('/channels/:channel/disconnect', async (req, res) => {
 })
 
 // POST /api/bot/channels/gmail/reply — send a reply via Gmail API (kept as backend utility)
-botRouter.post('/channels/gmail/reply', async (req, res) => {
+botRouter.post('/channels/gmail/reply', validate(GmailReplySchema), async (req, res) => {
   try {
     const { threadId, to, subject, body, messageId } = req.body
-    if (!to || !body) {
-      return res.status(400).json({ error: 'Missing required fields: to, body' })
-    }
 
     const cfg = loadChannelConfig()
     if (!cfg.gmail?.refreshToken) {
@@ -460,15 +474,13 @@ botRouter.put('/briefing/config', (req, res) => {
 })
 
 // POST /api/bot/briefing/trigger
-botRouter.post('/briefing/trigger', async (req, res) => {
+botRouter.post('/briefing/trigger', validate(BriefingTriggerSchema), async (req, res) => {
   try {
     const { type } = req.body
     if (type === 'morning') {
       await sendMorningBriefing()
-    } else if (type === 'evening') {
-      await sendEveningRecap()
     } else {
-      return res.status(400).json({ error: 'type must be "morning" or "evening"' })
+      await sendEveningRecap()
     }
     res.json({ success: true })
   } catch (err: any) {
@@ -549,12 +561,9 @@ botRouter.get('/memories', (req, res) => {
 })
 
 // POST /api/bot/memories
-botRouter.post('/memories', (req, res) => {
+botRouter.post('/memories', validate(MemoryCreateSchema), (req, res) => {
   try {
     const { content, category } = req.body
-    if (!content) {
-      return res.status(400).json({ error: 'content is required' })
-    }
     const result = saveMemory(content, category || 'general')
     res.json(result)
   } catch (err: any) {
@@ -584,12 +593,9 @@ botRouter.get('/schedules', (_req, res) => {
 })
 
 // POST /api/bot/schedules
-botRouter.post('/schedules', (req, res) => {
+botRouter.post('/schedules', validate(ScheduleCreateSchema), (req, res) => {
   try {
     const { cron_expression, prompt, chat_id } = req.body
-    if (!cron_expression || !prompt || !chat_id) {
-      return res.status(400).json({ error: 'cron_expression, prompt, and chat_id are required' })
-    }
     const schedule = addSchedule(Number(chat_id), cron_expression, prompt)
     res.json(schedule)
   } catch (err: any) {
@@ -663,12 +669,9 @@ botRouter.get('/tools', async (_req, res) => {
 })
 
 // POST /api/bot/chat
-botRouter.post('/chat', async (req, res) => {
+botRouter.post('/chat', validate(BotChatSchema), async (req, res) => {
   try {
     const { message } = req.body
-    if (!message) {
-      return res.status(400).json({ error: 'message is required' })
-    }
     const sessionId = await getOrCreateSession('bot-web')
     await sendPromptAsync(sessionId, message)
 

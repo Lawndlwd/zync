@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { renderCanvas, clearCanvas } from '../canvas/renderer.js'
 import { getDb } from '../bot/memory/db.js'
 import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
+import { validate } from '../lib/validate.js'
+import { CanvasRenderSchema, CanvasPromptSchema } from '../lib/schemas.js'
 
 export const canvasRouter = Router()
 
@@ -56,10 +58,9 @@ function flushRender(): void {
 }
 
 // POST /api/canvas/render — debounced broadcast + save
-canvasRouter.post('/render', (req, res) => {
+canvasRouter.post('/render', validate(CanvasRenderSchema), (req, res) => {
   try {
     const { html, css, js, title } = req.body
-    if (!html) return res.status(400).json({ error: 'html is required' })
 
     // Queue the render — only the last one in a 500ms burst actually fires
     pendingRender = { html, css, js, title: title || 'Untitled' }
@@ -121,10 +122,9 @@ canvasRouter.delete('/history/:id', (req, res) => {
 })
 
 // POST /api/canvas/prompt — send a prompt to edit/create canvas content
-canvasRouter.post('/prompt', async (req, res) => {
+canvasRouter.post('/prompt', validate(CanvasPromptSchema), async (req, res) => {
   try {
     const { prompt, canvasId } = req.body
-    if (!prompt) return res.status(400).json({ error: 'prompt is required' })
 
     ensureTable()
     const db = getDb()

@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { loadGitlabConfig } from './gitlab.js'
+import { validate } from '../lib/validate.js'
+import { AgentModelConfigSchema } from '../lib/schemas.js'
 
 export const settingsRouter = Router()
 
@@ -57,7 +59,7 @@ settingsRouter.get('/agent-models', (_req, res) => {
 })
 
 // PUT /api/settings/agent-models — save per-feature model overrides
-settingsRouter.put('/agent-models', (req, res) => {
+settingsRouter.put('/agent-models', validate(AgentModelConfigSchema), (req, res) => {
   try {
     const config = req.body as AgentModelConfig
     saveAgentModels(config)
