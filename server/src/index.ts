@@ -4,12 +4,10 @@ import cron from 'node-cron'
 import { config } from 'dotenv'
 import { jiraRouter } from './routes/jira.js'
 import { llmRouter } from './routes/llm.js'
-import { messagesRouter } from './routes/messages.js'
 import { settingsRouter } from './routes/settings.js'
 import { botRouter } from './routes/bot.js'
 import { activityRouter } from './routes/activity.js'
 import { todosRouter } from './routes/todos.js'
-import { googleProxyRouter } from './routes/google-proxy.js'
 import { gitlabRouter } from './routes/gitlab.js'
 import { gitLocalRouter } from './routes/git-local.js'
 import { prAgentRouter } from './routes/pr-agent.js'
@@ -58,12 +56,10 @@ app.get('/api/health', (_req, res) => {
 // Routes
 app.use('/api/jira', jiraRouter)
 app.use('/api/llm', llmRouter)
-app.use('/api/messages', messagesRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/bot', botRouter)
 app.use('/api/activity', activityRouter)
 app.use('/api/todos', todosRouter)
-app.use('/api/google-proxy', googleProxyRouter)
 app.use('/api/gitlab', gitlabRouter)
 app.use('/api/git-local', gitLocalRouter)
 app.use('/api/pr-agent', prAgentRouter)

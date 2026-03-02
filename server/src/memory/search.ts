@@ -108,22 +108,3 @@ export async function saveMemoryWithEmbedding(content: string, category = 'gener
 
   return { id: Number(result.lastInsertRowid) }
 }
-
-export async function reembedAllMemories(): Promise<number> {
-  const db = getDb()
-  const rows = db.prepare('SELECT id, content FROM memories').all() as Array<{ id: number; content: string }>
-
-  let count = 0
-  for (const row of rows) {
-    try {
-      const embedding = await generateEmbedding(row.content)
-      const buf = embeddingToBuffer(embedding)
-      db.prepare('UPDATE memories SET embedding = ?, embedding_model = ? WHERE id = ?')
-        .run(buf, getModelName(), row.id)
-      count++
-    } catch (err) {
-      logger.error({ err, memoryId: row.id }, 'Failed to embed memory')
-    }
-  }
-  return count
-}

@@ -76,10 +76,6 @@ export async function isSessionIdle(sessionId: string): Promise<boolean> {
   }
 }
 
-export function getSSEStream(signal?: AbortSignal): EventSource {
-  return new EventSource(`${OPENCODE_URL}/global/event`)
-}
-
 export function getOpenCodeUrl(): string {
   return OPENCODE_URL
 }
@@ -93,7 +89,7 @@ export async function checkConnection(): Promise<boolean> {
   }
 }
 
-export async function listSessions(): Promise<any[]> {
+async function listSessions(): Promise<any[]> {
   const data = await oc('/session')
   return Array.isArray(data) ? data : []
 }

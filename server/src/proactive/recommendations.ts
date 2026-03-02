@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 
 const PATTERNS_PATH = resolve(import.meta.dirname, '../../data/patterns.json')
@@ -19,26 +19,6 @@ function loadPatterns(): PatternsData {
     return JSON.parse(readFileSync(PATTERNS_PATH, 'utf-8'))
   }
   return { patterns: [], lastRecommendation: null }
-}
-
-function savePatterns(data: PatternsData): void {
-  writeFileSync(PATTERNS_PATH, JSON.stringify(data, null, 2))
-}
-
-export function trackAction(action: string): void {
-  const data = loadPatterns()
-  const existing = data.patterns.find(p => p.action === action)
-  const now = new Date().toISOString()
-
-  if (existing) {
-    existing.timestamps.push(now)
-    if (existing.timestamps.length > 100) existing.timestamps = existing.timestamps.slice(-100)
-    existing.count++
-  } else {
-    data.patterns.push({ action, timestamps: [now], count: 1 })
-  }
-
-  savePatterns(data)
 }
 
 export function getRecommendations(): string[] {

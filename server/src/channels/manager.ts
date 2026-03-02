@@ -12,7 +12,7 @@ const MAX_LENGTHS: Record<ChannelType, number> = {
   gmail: Infinity,
 }
 
-export function splitMessage(text: string, maxLength: number): string[] {
+function splitMessage(text: string, maxLength: number): string[] {
   if (maxLength === Infinity || text.length <= maxLength) return [text]
   const chunks: string[] = []
   let remaining = text
