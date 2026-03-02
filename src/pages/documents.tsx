@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { MarkdownEditor } from '@/components/ui/markdown-editor'
+import { MilkdownEditor } from '@/components/ui/milkdown-editor'
 import { MarkdownContent } from '@/components/ui/markdown'
 import { cn } from '@/lib/utils'
 import { FolderOpen, Plus, FileText, Pencil, Trash2, Save, Loader2, ArrowLeft, ChevronRight, Eye } from 'lucide-react'
@@ -449,7 +449,7 @@ function DocumentsView({
                 </div>
 
                 <div className="flex-1 min-h-0">
-                  <MarkdownEditor
+                  <MilkdownEditor
                     value={docContent}
                     onChange={setDocContent}
                     placeholder="Write your rules, guidelines, or coding standards in markdown..."
