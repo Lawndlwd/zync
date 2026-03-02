@@ -43,6 +43,7 @@ interface HabitsState {
   isHabitDueToday: (id: string) => boolean
   getActiveHabits: () => Habit[]
   getArchivedHabits: () => Habit[]
+  ensureJournalHabit: () => void
 }
 
 function isDueOnDay(habit: Habit, dayOfWeek: number): boolean {
@@ -259,13 +260,29 @@ export const useHabitsStore = create<HabitsState>()(
         return get().logs.filter((l) => l.date === date)
       },
 
-      getDayNumber: (date) => {
-        const { journey } = get()
-        if (!journey || !journey.active) return null
-        const diff = differenceInCalendarDays(new Date(date), new Date(journey.startDate))
-        if (diff < 0) return null
-        return diff + 1
-      },
+  getDayNumber: (date) => {
+    const { journey } = get()
+    if (!journey || !journey.active) return null
+    const diff = differenceInCalendarDays(new Date(date), new Date(journey.startDate))
+    if (diff < 0) return null
+    return diff + 1
+  },
+
+  ensureJournalHabit: () => {
+    const journalHabit = get().habits.find(h => h.name === 'Journal')
+    if (!journalHabit) {
+      const habit: Habit = {
+        id: 'journal-system-habit', // Special ID for system habit
+        name: 'Journal',
+        icon: 'BookOpen',
+        frequency: 'daily',
+        startDate: format(new Date(), 'yyyy-MM-dd'),
+        createdAt: new Date().toISOString(),
+        system: true, // Mark as system habit
+      }
+      set((s) => ({ habits: [...s.habits, habit] }))
+    }
+  },
     }),
     { name: 'zync-habits' }
   )

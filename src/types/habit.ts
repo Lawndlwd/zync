@@ -9,6 +9,7 @@ export interface Habit {
   startDate: string // yyyy-MM-dd, reset on restart
   archived?: boolean
   createdAt: string
+  system?: boolean
 }
 
 export interface HabitLog {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MetricsRow } from '@/components/productivity/metrics-row'
 import { CompletionChart } from '@/components/productivity/completion-chart'
 import { Heatmap } from '@/components/productivity/heatmap'
@@ -17,6 +17,10 @@ export function ProductivityPage() {
   const archivedHabits = habits.filter((h) => h.archived)
   const [showArchived, setShowArchived] = useState(false)
   const [activeTab, setActiveTab] = useState('habits')
+
+  useEffect(() => {
+    useHabitsStore.getState().ensureJournalHabit()
+  }, [])
 
   return (
     <div>
