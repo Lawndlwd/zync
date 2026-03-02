@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { mkdirSync } from 'fs'
 import { dirname, resolve } from 'path'
+import { logger } from '../../lib/logger.js'
 
 const DB_PATH = resolve(import.meta.dirname, '../../../data/memory.db')
 
@@ -147,5 +148,5 @@ export function initDb(): void {
     );
   `)
 
-  console.log('Memory database initialized')
+  logger.info('Memory database initialized')
 }

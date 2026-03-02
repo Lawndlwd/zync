@@ -6,6 +6,7 @@ import type {
   MessageHandler,
   OutboundMessage,
 } from './types.js'
+import { logger } from '../lib/logger.js'
 
 interface TelegramAdapterConfig {
   botToken: string
@@ -106,12 +107,12 @@ export class TelegramAdapter implements ChannelAdapter {
 
     // Error handler
     bot.catch((err) => {
-      console.error('Telegram bot error:', err)
+      logger.error({ err }, 'Telegram bot error')
     })
 
     // bot.start() blocks forever (long-polling), so fire-and-forget
     bot.start()
-    console.log('Telegram adapter started')
+    logger.info('Telegram adapter started')
   }
 
   async stop(): Promise<void> {
@@ -159,7 +160,7 @@ export class TelegramAdapter implements ChannelAdapter {
       try {
         await handler(msg)
       } catch (err) {
-        console.error('Error in message handler:', err)
+        logger.error({ err }, 'Error in message handler')
       }
     }
   }

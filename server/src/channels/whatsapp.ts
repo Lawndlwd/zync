@@ -16,6 +16,7 @@ import type {
   MessageHandler,
   OutboundMessage,
 } from './types.js'
+import { logger } from '../lib/logger.js'
 
 interface WhatsAppAdapterConfig {
   authDir: string
@@ -63,7 +64,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       for (const f of readdirSync(authDir)) {
         rmSync(resolve(authDir, f), { force: true, recursive: true })
       }
-      console.log('WhatsApp: auth state cleared')
+      logger.info('WhatsApp: auth state cleared')
     }
   }
 
@@ -85,12 +86,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
     try {
       const result = await fetchLatestWaWebVersion({})
       version = result.version as [number, number, number]
-      console.log(`WhatsApp: using WA Web version ${version.join('.')}`)
+      logger.info(`WhatsApp: using WA Web version ${version.join('.')}`)
     } catch {
-      console.log('WhatsApp: could not fetch latest version, using default')
+      logger.info('WhatsApp: could not fetch latest version, using default')
     }
 
-    console.log(`WhatsApp: connecting (auth=${!!state.creds?.me ? 'exists' : 'new'})...`)
+    logger.info(`WhatsApp: connecting (auth=${!!state.creds?.me ? 'exists' : 'new'})...`)
 
     const socket = makeWASocket({
       auth: state,
@@ -108,7 +109,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       if (this._stopped) return
 
       if (update.connection) {
-        console.log(`WhatsApp: connection=${update.connection}`)
+        logger.info(`WhatsApp: connection=${update.connection}`)
       }
 
       const { connection, lastDisconnect, qr } = update
@@ -119,9 +120,9 @@ export class WhatsAppAdapter implements ChannelAdapter {
           this._qrDataUrl = await QRCode.toDataURL(qr, { width: 300, margin: 2 })
           this._connectionState = 'connecting'
           this._error = null
-          console.log('WhatsApp: QR code ready for scanning')
+          logger.info('WhatsApp: QR code ready for scanning')
         } catch (err) {
-          console.error('WhatsApp: failed to generate QR data URL:', err)
+          logger.error({ err }, 'WhatsApp: failed to generate QR data URL')
           this._qrDataUrl = null
         }
       }
@@ -134,7 +135,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
         const isLoggedOut = statusCode === DisconnectReason.loggedOut
         const isTimedOut = statusCode === DisconnectReason.timedOut
 
-        console.log(`WhatsApp: connection closed — status=${statusCode}, msg=${errorMsg}`)
+        logger.info({ statusCode, errorMsg }, 'WhatsApp: connection closed')
 
         if (isLoggedOut) {
           this._connectionState = 'disconnected'
@@ -148,7 +149,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
           // QR code expired without being scanned
           this._connectionState = 'disconnected'
           this._error = 'QR code expired. Click Connect to generate a new one.'
-          console.log('WhatsApp: QR timed out, not retrying')
+          logger.info('WhatsApp: QR timed out, not retrying')
           return
         }
 
@@ -157,7 +158,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
         if (isRestartRequired) {
           this._connectionState = 'connecting'
           this._error = null
-          console.log('WhatsApp: restart required (expected after pairing), reconnecting...')
+          logger.info('WhatsApp: restart required (expected after pairing), reconnecting...')
           setTimeout(() => {
             if (!this._stopped) this.start()
           }, 1_000)
@@ -169,7 +170,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
           this._connectionState = 'connecting'
           this._reconnectAttempts++
           this._error = `Reconnecting (${this._reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`
-          console.log(`WhatsApp: reconnecting in ${RECONNECT_DELAY_MS}ms (attempt ${this._reconnectAttempts})`)
+          logger.info({ attempt: this._reconnectAttempts, delayMs: RECONNECT_DELAY_MS }, 'WhatsApp: reconnecting')
           setTimeout(() => {
             if (!this._stopped) this.start()
           }, RECONNECT_DELAY_MS)
@@ -182,7 +183,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
           } else {
             this._error = 'Disconnected after max reconnect attempts'
           }
-          console.log(`WhatsApp: giving up — ${this._error}`)
+          logger.info({ error: this._error }, 'WhatsApp: giving up')
         }
       } else if (connection === 'open') {
         this._connectionState = 'connected'
@@ -190,7 +191,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
         this._reconnectAttempts = 0
         this._qrDataUrl = null
         this._error = null
-        console.log('WhatsApp: connected successfully!')
+        logger.info('WhatsApp: connected successfully!')
       }
     })
 
@@ -270,7 +271,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       }
     })
 
-    console.log('WhatsApp adapter started, waiting for connection...')
+    logger.info('WhatsApp adapter started, waiting for connection...')
   }
 
   async stop(): Promise<void> {
@@ -314,7 +315,7 @@ export class WhatsAppAdapter implements ChannelAdapter {
       try {
         await handler(msg)
       } catch (err) {
-        console.error('Error in WhatsApp message handler:', err)
+        logger.error({ err }, 'Error in WhatsApp message handler')
       }
     }
   }

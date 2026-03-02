@@ -2,6 +2,7 @@ import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'http'
 import type { IncomingMessage } from 'http'
 import { URL } from 'url'
+import { logger } from '../lib/logger.js'
 
 interface CanvasUpdate {
   type: 'render' | 'update' | 'clear'
@@ -52,7 +53,7 @@ export function initCanvasWebSocket(server: Server): void {
     }
 
     clients.add(ws)
-    console.log('Canvas client connected')
+    logger.info('Canvas client connected')
 
     ws.on('close', () => {
       clients.delete(ws)
@@ -61,12 +62,12 @@ export function initCanvasWebSocket(server: Server): void {
     ws.on('message', (data) => {
       try {
         const msg = JSON.parse(data.toString())
-        console.log('Canvas interaction:', msg)
+        logger.info({ msg }, 'Canvas interaction')
       } catch {}
     })
   })
 
-  console.log('Canvas WebSocket server initialized on /ws/canvas')
+  logger.info('Canvas WebSocket server initialized on /ws/canvas')
 }
 
 export function broadcastCanvas(update: CanvasUpdate): void {

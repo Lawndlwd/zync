@@ -1,8 +1,11 @@
 #!/usr/bin/env node
+import pino from 'pino'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { config } from 'dotenv'
 import { resolve } from 'path'
+
+const mcpLogger = pino({ level: 'info' }, pino.destination(2))
 
 // Load .env from project root (server/.env)
 config({ path: resolve(import.meta.dirname, '../../.env') })
@@ -351,10 +354,10 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport()
   await server.connect(transport)
-  console.error('zync MCP server running on stdio')
+  mcpLogger.info('zync MCP server running on stdio')
 }
 
 main().catch((err) => {
-  console.error('MCP server error:', err)
+  mcpLogger.error({ err }, 'MCP server error')
   process.exit(1)
 })

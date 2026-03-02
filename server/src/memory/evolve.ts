@@ -2,6 +2,7 @@
 
 import { getDb } from '../bot/memory/db.js'
 import { bufferToEmbedding, cosineSimilarity } from './embeddings.js'
+import { logger } from '../lib/logger.js'
 
 const DECAY_DAYS = 90
 const DECAY_FACTOR = 0.9
@@ -62,10 +63,10 @@ export async function mergeDuplicates(): Promise<number> {
 }
 
 export async function runEvolution(): Promise<{ decayed: number; merged: number; cleaned: number }> {
-  console.log('Memory evolution: starting...')
+  logger.info('Memory evolution: starting...')
   const decayed = decayUnusedMemories()
   const merged = await mergeDuplicates()
   const cleaned = cleanupLowRelevance()
-  console.log(`Memory evolution: decayed=${decayed}, merged=${merged}, cleaned=${cleaned}`)
+  logger.info({ decayed, merged, cleaned }, 'Memory evolution complete')
   return { decayed, merged, cleaned }
 }

@@ -1,6 +1,7 @@
 import { google, type gmail_v1 } from 'googleapis'
 import { readFileSync, existsSync } from 'fs'
 import type { ChannelAdapter, InboundMessage, OutboundMessage, MessageHandler } from './types.js'
+import { logger } from '../lib/logger.js'
 
 export interface GmailConfig {
   credentialsPath: string
@@ -22,11 +23,11 @@ export class GmailAdapter implements ChannelAdapter {
 
   async start(): Promise<void> {
     if (!existsSync(this.config.credentialsPath)) {
-      console.warn('Gmail: credentials file not found, skipping')
+      logger.warn('Gmail: credentials file not found, skipping')
       return
     }
     if (!existsSync(this.config.tokenPath)) {
-      console.warn('Gmail: token file not found. Run OAuth flow first.')
+      logger.warn('Gmail: token file not found. Run OAuth flow first.')
       return
     }
 
@@ -43,7 +44,7 @@ export class GmailAdapter implements ChannelAdapter {
     this.lastHistoryId = profile.data.historyId || null
 
     this.pollTimer = setInterval(() => this.poll(), this.config.pollIntervalMs)
-    console.log(`Gmail channel started (polling every ${this.config.pollIntervalMs / 1000}s)`)
+    logger.info({ pollIntervalSec: this.config.pollIntervalMs / 1000 }, 'Gmail channel started')
   }
 
   private async poll(): Promise<void> {
@@ -73,7 +74,7 @@ export class GmailAdapter implements ChannelAdapter {
         const profile = await this.gmail!.users.getProfile({ userId: 'me' })
         this.lastHistoryId = profile.data.historyId || null
       } else {
-        console.error('Gmail poll error:', err.message)
+        logger.error({ err }, 'Gmail poll error')
       }
     }
   }

@@ -3,6 +3,7 @@ import { promisify } from 'util'
 import { writeFileSync, unlinkSync, readFileSync, existsSync } from 'fs'
 import { resolve, basename, dirname } from 'path'
 import { randomUUID } from 'crypto'
+import { logger } from '../lib/logger.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -40,10 +41,10 @@ async function detectBackend(): Promise<'faster-whisper' | 'whisper-cpp'> {
   try {
     await execFileAsync(FASTER_WHISPER_PATH, ['--help'], { timeout: 5_000 })
     resolvedBackend = 'faster-whisper'
-    console.log('[transcribe] Using faster-whisper backend')
+    logger.info('[transcribe] Using faster-whisper backend')
   } catch {
     resolvedBackend = 'whisper-cpp'
-    console.log('[transcribe] Using whisper-cpp backend (faster-whisper not found)')
+    logger.info('[transcribe] Using whisper-cpp backend (faster-whisper not found)')
   }
 
   return resolvedBackend

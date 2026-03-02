@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 import { transcribeAudio } from '../voice/transcribe.js'
+import { logger } from '../lib/logger.js'
 
 const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } })
 
@@ -15,7 +16,7 @@ voiceRouter.post('/transcribe', upload.single('audio'), async (req, res) => {
     const text = await transcribeAudio(req.file.buffer, req.body?.format || 'ogg')
     res.json({ text })
   } catch (err) {
-    console.error('Transcription error:', err)
+    logger.error({ err }, 'Transcription error')
     res.status(500).json({ error: 'Transcription failed' })
   }
 })

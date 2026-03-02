@@ -4,6 +4,7 @@ import { assembleContext, buildSystemPrompt } from './context.js'
 import type { InboundMessage } from '../channels/types.js'
 import { getChannelManager } from '../channels/manager.js'
 import { loadChannelConfig } from '../routes/bot.js'
+import { logger } from '../lib/logger.js'
 
 async function waitForReply(sessionId: string, msgCountBefore: number, timeoutMs = 120_000): Promise<string> {
   const deadline = Date.now() + timeoutMs
@@ -37,7 +38,7 @@ export async function handleMessage(msg: InboundMessage): Promise<void> {
   if (msg.channelType === 'whatsapp') {
     const cfg = loadChannelConfig()
     if (!cfg.whatsapp?.autoReply) {
-      console.log(`WhatsApp: message from ${msg.senderId} (auto-reply OFF, ignoring)`)
+      logger.info({ senderId: msg.senderId }, 'WhatsApp: message received (auto-reply OFF, ignoring)')
       return
     }
   }
@@ -50,7 +51,7 @@ export async function handleMessage(msg: InboundMessage): Promise<void> {
       const { transcribeFromUrl } = await import('../voice/transcribe.js')
       processedText = await transcribeFromUrl(msg.mediaUrl)
     } catch (err) {
-      console.error('Transcription failed:', err)
+      logger.error({ err }, 'Transcription failed')
       await manager.send(msg.channelType, msg.chatId, { text: 'Could not transcribe audio.' })
       return
     }
@@ -98,7 +99,7 @@ export async function handleMessage(msg: InboundMessage): Promise<void> {
 
     await manager.send(msg.channelType, msg.chatId, { text: reply || 'No response generated.' })
   } catch (err) {
-    console.error('Agent loop error:', err)
+    logger.error({ err }, 'Agent loop error')
     await manager.send(msg.channelType, msg.chatId, { text: 'Something went wrong.' }).catch(() => {})
   } finally {
     clearInterval(typingInterval)

@@ -2,6 +2,7 @@ import cron, { type ScheduledTask } from 'node-cron'
 import { getOrCreateSession, sendPromptAsync, getSessionMessages } from '../../opencode/client.js'
 import { insertLLMCall } from '../memory/activity.js'
 import { getBotInstance } from '../bot.js'
+import { logger } from '../../lib/logger.js'
 import {
   addSchedule as dbAddSchedule,
   removeSchedule as dbRemoveSchedule,
@@ -67,7 +68,7 @@ async function executeBriefing(schedule: Schedule): Promise<void> {
       await bot.api.sendMessage(schedule.chat_id, chunk)
     }
   } catch (err) {
-    console.error(`Heartbeat: failed to execute schedule #${schedule.id}:`, err)
+    logger.error({ err, scheduleId: schedule.id }, 'Heartbeat: failed to execute schedule')
   }
 }
 
@@ -89,10 +90,10 @@ export function loadSchedules(): void {
     try {
       startCronTask(schedule)
     } catch (err) {
-      console.error(`Heartbeat: failed to start schedule #${schedule.id}:`, err)
+      logger.error({ err, scheduleId: schedule.id }, 'Heartbeat: failed to start schedule')
     }
   }
-  console.log(`Heartbeat: loaded ${schedules.length} schedule(s)`)
+  logger.info({ count: schedules.length }, 'Heartbeat: schedules loaded')
 }
 
 export function addSchedule(chatId: number, cronExpression: string, prompt: string): Schedule {
@@ -156,5 +157,5 @@ export function stopAllSchedules(): void {
     task.stop()
     activeTasks.delete(id)
   }
-  console.log('Heartbeat: all schedules stopped')
+  logger.info('Heartbeat: all schedules stopped')
 }

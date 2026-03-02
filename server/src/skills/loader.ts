@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, existsSync, mkdirSync } from 'fs'
 import { resolve, join } from 'path'
+import { logger } from '../lib/logger.js'
 
 const SKILLS_DIR = resolve(import.meta.dirname, '../../skills')
 
@@ -59,7 +60,7 @@ export function loadSkills(): Skill[] {
   }
 
   skillsCache = skills
-  console.log(`Loaded ${skills.length} skill(s)`)
+  logger.info({ count: skills.length }, 'Skills loaded')
   return skills
 }
 

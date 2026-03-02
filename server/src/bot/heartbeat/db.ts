@@ -1,4 +1,5 @@
 import { getDb } from '../memory/db.js'
+import { logger } from '../../lib/logger.js'
 
 export interface Schedule {
   id: number
@@ -21,7 +22,7 @@ export function initSchedulesTable(): void {
       created_at TEXT DEFAULT (datetime('now'))
     )
   `)
-  console.log('Schedules table initialized')
+  logger.info('Schedules table initialized')
 }
 
 export function addSchedule(chatId: number, cronExpression: string, prompt: string): Schedule {

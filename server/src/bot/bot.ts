@@ -2,6 +2,7 @@ import { Bot } from 'grammy'
 import { getBotConfig } from './config.js'
 import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
 import { insertLLMCall } from './memory/activity.js'
+import { logger } from '../lib/logger.js'
 
 const TELEGRAM_MAX_LENGTH = 4096
 
@@ -89,7 +90,7 @@ export async function startBot() {
         await ctx.reply(chunk)
       }
     } catch (err) {
-      console.error('Agent error:', err)
+      logger.error({ err }, 'Agent error')
       await ctx.reply('Something went wrong.').catch(() => {})
     } finally {
       clearInterval(typingInterval)
@@ -97,9 +98,9 @@ export async function startBot() {
   })
 
   bot.catch((err) => {
-    console.error('Bot error:', err)
+    logger.error({ err }, 'Bot error')
   })
 
   await bot.start()
-  console.log('Telegram bot started')
+  logger.info('Telegram bot started')
 }

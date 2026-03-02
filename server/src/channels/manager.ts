@@ -4,6 +4,7 @@ import type {
   MessageHandler,
   OutboundMessage,
 } from './types.js'
+import { logger } from '../lib/logger.js'
 
 const MAX_LENGTHS: Record<ChannelType, number> = {
   telegram: 4096,
@@ -46,7 +47,7 @@ class ChannelManager {
     )
     for (const result of results) {
       if (result.status === 'rejected') {
-        console.error('Failed to start channel adapter:', result.reason)
+        logger.error({ err: result.reason }, 'Failed to start channel adapter')
       }
     }
   }
@@ -57,7 +58,7 @@ class ChannelManager {
     )
     for (const result of results) {
       if (result.status === 'rejected') {
-        console.error('Failed to stop channel adapter:', result.reason)
+        logger.error({ err: result.reason }, 'Failed to stop channel adapter')
       }
     }
   }

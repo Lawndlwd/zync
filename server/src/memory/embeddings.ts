@@ -1,4 +1,5 @@
 // server/src/memory/embeddings.ts
+import { logger } from '../lib/logger.js'
 
 let embeddingModel: any = null
 
@@ -11,7 +12,7 @@ async function getEmbeddingPipeline(): Promise<any> {
   embeddingModel = await pipeline('feature-extraction', MODEL_NAME, {
     dtype: 'q8' as any,
   })
-  console.log('Embedding model loaded:', MODEL_NAME)
+  logger.info({ model: MODEL_NAME }, 'Embedding model loaded')
   return embeddingModel
 }
 

@@ -13,6 +13,7 @@ import { getRecommendations } from '../proactive/recommendations.js'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { resolve } from 'path'
 import type { ChannelType } from '../channels/types.js'
+import { logger } from '../lib/logger.js'
 
 const DATA_DIR = resolve(import.meta.dirname, '../../data')
 const CHANNEL_CONFIG_PATH = resolve(DATA_DIR, 'channel-config.json')
@@ -258,7 +259,7 @@ botRouter.get('/channels/gmail/callback', async (req, res) => {
     saveChannelConfig(cfg)
 
     // Gmail is accessed on-demand via MCP tools — no polling adapter needed
-    console.log('Gmail: OAuth tokens saved, available for on-demand access')
+    logger.info('Gmail: OAuth tokens saved, available for on-demand access')
 
     // Redirect back to settings page with success
     res.redirect(`${FRONTEND_BASE_URL}/settings?gmail=authorized`)
@@ -357,7 +358,7 @@ botRouter.post('/channels/gmail/reply', async (req, res) => {
 
     res.json({ success: true })
   } catch (err: any) {
-    console.error('Gmail reply error:', err.message)
+    logger.error({ err }, 'Gmail reply error')
     res.status(500).json({ error: err.message })
   }
 })

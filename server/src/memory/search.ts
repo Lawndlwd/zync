@@ -2,6 +2,7 @@
 
 import { getDb } from '../bot/memory/db.js'
 import { generateEmbedding, embeddingToBuffer, bufferToEmbedding, cosineSimilarity, getModelName } from './embeddings.js'
+import { logger } from '../lib/logger.js'
 
 export interface MemorySearchResult {
   id: number
@@ -50,7 +51,7 @@ export async function hybridSearch(query: string, limit = 10): Promise<MemorySea
     scored.sort((a, b) => b.score - a.score)
     vectorResults = scored.slice(0, limit * 2)
   } catch (err) {
-    console.error('Vector search error:', err)
+    logger.error({ err }, 'Vector search error')
   }
 
   // Combine results with hybrid scoring
@@ -121,7 +122,7 @@ export async function reembedAllMemories(): Promise<number> {
         .run(buf, getModelName(), row.id)
       count++
     } catch (err) {
-      console.error(`Failed to embed memory #${row.id}:`, err)
+      logger.error({ err, memoryId: row.id }, 'Failed to embed memory')
     }
   }
   return count

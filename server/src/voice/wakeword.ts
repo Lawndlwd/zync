@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { resolve } from 'path'
 import { existsSync } from 'fs'
+import { logger } from '../lib/logger.js'
 
 let wakewordProcess: ChildProcess | null = null
 
@@ -14,7 +15,7 @@ export function startWakeWordServer(): void {
 
   const serverScript = resolve(wakewordDir, 'server.py')
   if (!existsSync(serverScript)) {
-    console.log('[wakeword] server.py not found at', serverScript, '— skipping')
+    logger.info({ path: serverScript }, '[wakeword] server.py not found, skipping')
     return
   }
 
@@ -22,11 +23,11 @@ export function startWakeWordServer(): void {
   const check = spawn(python, ['-c', 'import openwakeword'], { stdio: 'pipe' })
   check.on('close', (code) => {
     if (code !== 0) {
-      console.log('[wakeword] openwakeword not installed. Run: cd server/wakeword && .venv/bin/pip install -r requirements.txt')
+      logger.info('[wakeword] openwakeword not installed. Run: cd server/wakeword && .venv/bin/pip install -r requirements.txt')
       return
     }
 
-    console.log(`[wakeword] Starting Python sidecar (${python})...`)
+    logger.info(`[wakeword] Starting Python sidecar (${python})...`)
     wakewordProcess = spawn(python, [serverScript], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
@@ -38,20 +39,20 @@ export function startWakeWordServer(): void {
     })
 
     wakewordProcess.stdout?.on('data', (data: Buffer) => {
-      console.log(`[wakeword] ${data.toString().trim()}`)
+      logger.info(`[wakeword] ${data.toString().trim()}`)
     })
 
     wakewordProcess.stderr?.on('data', (data: Buffer) => {
-      console.error(`[wakeword] ${data.toString().trim()}`)
+      logger.error(`[wakeword] ${data.toString().trim()}`)
     })
 
     wakewordProcess.on('close', (code) => {
-      console.log(`[wakeword] Process exited with code ${code}`)
+      logger.info(`[wakeword] Process exited with code ${code}`)
       wakewordProcess = null
     })
 
     wakewordProcess.on('error', (err) => {
-      console.error('[wakeword] Failed to start:', err.message)
+      logger.error({ err }, '[wakeword] Failed to start')
       wakewordProcess = null
     })
   })

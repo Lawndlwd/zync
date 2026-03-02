@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { logger } from '../lib/logger.js'
 
 const CODE_ASSIST_BASE = 'https://cloudcode-pa.googleapis.com/v1internal'
 
@@ -147,7 +148,7 @@ googleProxyRouter.post('/v1/chat/completions', async (req, res) => {
 
     if (!upstreamRes.ok) {
       const errorText = await upstreamRes.text()
-      console.error('[google-proxy] upstream error:', upstreamRes.status, errorText)
+      logger.error({ status: upstreamRes.status, errorText }, '[google-proxy] upstream error')
       return res.status(upstreamRes.status).json({
         error: { message: `Code Assist error: ${errorText}`, status: upstreamRes.status },
       })
@@ -215,7 +216,7 @@ googleProxyRouter.post('/v1/chat/completions', async (req, res) => {
           }
         }
       } catch (err) {
-        console.error('[google-proxy] stream error:', err)
+        logger.error({ err }, '[google-proxy] stream error')
       } finally {
         res.end()
       }
@@ -226,7 +227,7 @@ googleProxyRouter.post('/v1/chat/completions', async (req, res) => {
       res.json(unwrapped)
     }
   } catch (err: any) {
-    console.error('[google-proxy] error:', err)
+    logger.error({ err }, '[google-proxy] error')
     res.status(500).json({ error: { message: err.message } })
   }
 })
