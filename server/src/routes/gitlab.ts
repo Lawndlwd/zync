@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { validate } from '../lib/validate.js'
 import { GitlabConfigSchema, GitlabNoteSchema, GitlabDiscussionSchema, GitlabCreateMrSchema } from '../lib/schemas.js'
+import { getSecret } from '../secrets/index.js'
 
 export const gitlabRouter = Router()
 
@@ -31,8 +32,8 @@ export function saveGitlabConfig(config: GitLabConfig) {
 function getGitlabConfig() {
   // Env vars take priority, then fall back to saved config file
   const saved = loadGitlabConfig()
-  const baseUrl = process.env.GITLAB_BASE_URL || saved.baseUrl
-  const pat = process.env.GITLAB_PAT || saved.pat
+  const baseUrl = getSecret('GITLAB_BASE_URL') || saved.baseUrl
+  const pat = getSecret('GITLAB_PAT') || saved.pat
   if (!baseUrl || !pat) {
     throw new Error('GitLab not configured. Add your GitLab URL and PAT in Settings.')
   }
@@ -196,9 +197,9 @@ gitlabRouter.get('/proxy/image', async (req, res) => {
 gitlabRouter.get('/config', (_req, res) => {
   const saved = loadGitlabConfig()
   res.json({
-    baseUrl: process.env.GITLAB_BASE_URL || saved.baseUrl,
-    pat: (process.env.GITLAB_PAT || saved.pat) ? '••••••••' : '',
-    fromEnv: !!(process.env.GITLAB_BASE_URL && process.env.GITLAB_PAT),
+    baseUrl: getSecret('GITLAB_BASE_URL') || saved.baseUrl,
+    pat: (getSecret('GITLAB_PAT') || saved.pat) ? '••••••••' : '',
+    fromEnv: !!(getSecret('GITLAB_BASE_URL') && getSecret('GITLAB_PAT')),
   })
 })
 

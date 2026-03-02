@@ -12,6 +12,7 @@ import {
   WhatsAppConfigSchema,
   GmailConfigSchema,
 } from '../lib/schemas.js'
+import { getSecret } from '../secrets/index.js'
 import { searchMemory, saveMemory, deleteMemory, listAllMemories, getMemoryCount } from '../bot/memory/index.js'
 import { getAllSchedules } from '../bot/heartbeat/db.js'
 import { addSchedule, adminRemoveSchedule, adminToggleSchedule } from '../bot/heartbeat/scheduler.js'
@@ -298,9 +299,9 @@ botRouter.post('/channels/:channel/connect', async (req, res) => {
     await manager.unregister(channel)
 
     if (channel === 'telegram') {
-      const botToken = cfg.telegram?.botToken || process.env.TELEGRAM_BOT_TOKEN
+      const botToken = cfg.telegram?.botToken || getSecret('TELEGRAM_BOT_TOKEN')
       if (!botToken) return res.status(400).json({ error: 'No bot token configured. Save a token first.' })
-      const allowedUsers = (cfg.telegram?.allowedUsers || process.env.TELEGRAM_ALLOWED_USERS || '')
+      const allowedUsers = (cfg.telegram?.allowedUsers || getSecret('TELEGRAM_ALLOWED_USERS') || '')
         .split(',').map(s => s.trim()).filter(Boolean).map(Number)
       const adapter = new TelegramAdapter({ botToken, allowedUsers })
       manager.register(adapter)

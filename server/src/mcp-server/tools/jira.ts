@@ -1,9 +1,10 @@
 import { z } from 'zod'
+import { getSecret } from '../../secrets/index.js'
 
 function getJiraConfig() {
-  const baseUrl = process.env.JIRA_BASE_URL
-  const apiToken = process.env.JIRA_API_TOKEN
-  const email = process.env.JIRA_EMAIL
+  const baseUrl = getSecret('JIRA_BASE_URL')
+  const apiToken = getSecret('JIRA_API_TOKEN')
+  const email = getSecret('JIRA_EMAIL')
   if (!baseUrl || !apiToken) {
     throw new Error('Jira not configured. Set JIRA_BASE_URL and JIRA_API_TOKEN in .env')
   }

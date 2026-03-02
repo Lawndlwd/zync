@@ -5,6 +5,7 @@ import { loadGitlabConfig } from './gitlab.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { AgentModelConfigSchema } from '../lib/schemas.js'
+import { getSecret } from '../secrets/index.js'
 
 export const settingsRouter = Router()
 
@@ -36,20 +37,20 @@ function saveAgentModels(config: AgentModelConfig): void {
 settingsRouter.get('/', (_req, res) => {
   res.json({
     jira: {
-      baseUrl: process.env.JIRA_BASE_URL || '',
-      email: process.env.JIRA_EMAIL || '',
-      apiToken: process.env.JIRA_API_TOKEN ? '••••••••' : '',
-      projectKey: process.env.JIRA_PROJECT_KEY || '',
+      baseUrl: getSecret('JIRA_BASE_URL') || '',
+      email: getSecret('JIRA_EMAIL') || '',
+      apiToken: getSecret('JIRA_API_TOKEN') ? '••••••••' : '',
+      projectKey: getSecret('JIRA_PROJECT_KEY') || '',
     },
     gitlab: (() => {
       const saved = loadGitlabConfig()
       return {
-        baseUrl: process.env.GITLAB_BASE_URL || saved.baseUrl || '',
-        pat: (process.env.GITLAB_PAT || saved.pat) ? '••••••••' : '',
+        baseUrl: getSecret('GITLAB_BASE_URL') || saved.baseUrl || '',
+        pat: (getSecret('GITLAB_PAT') || saved.pat) ? '••••••••' : '',
       }
     })(),
     messages: {
-      customEndpoint: process.env.MESSAGES_ENDPOINT || '',
+      customEndpoint: getSecret('MESSAGES_ENDPOINT') || '',
     },
   })
 })

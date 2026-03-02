@@ -30,6 +30,7 @@ import { loadChannelConfig } from './routes/bot.js'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 import { logger } from './lib/logger.js'
+import { getSecret } from './secrets/index.js'
 
 config()
 
@@ -120,10 +121,10 @@ channelManager.onMessage(handleMessage)
   }
 
   // Telegram: reconnect if bot token exists
-  const telegramToken = cfg.telegram?.botToken || process.env.TELEGRAM_BOT_TOKEN
+  const telegramToken = cfg.telegram?.botToken || getSecret('TELEGRAM_BOT_TOKEN')
   if (telegramToken) {
     logger.info('Telegram: found saved token, auto-reconnecting...')
-    const allowedUsers = (cfg.telegram?.allowedUsers || process.env.TELEGRAM_ALLOWED_USERS || '')
+    const allowedUsers = (cfg.telegram?.allowedUsers || getSecret('TELEGRAM_ALLOWED_USERS') || '')
       .split(',').map(s => s.trim()).filter(Boolean).map(Number)
     const adapter = new TelegramAdapter({ botToken: telegramToken, allowedUsers })
     channelManager.register(adapter)

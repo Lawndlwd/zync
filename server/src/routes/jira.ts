@@ -3,15 +3,16 @@ import multer from 'multer'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { JiraTransitionSchema, JiraCommentSchema, JiraCreateIssueSchema } from '../lib/schemas.js'
+import { getSecret } from '../secrets/index.js'
 
 export const jiraRouter = Router()
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } })
 
 function getJiraConfig() {
-  const baseUrl = process.env.JIRA_BASE_URL
-  const email = process.env.JIRA_EMAIL
-  const apiToken = process.env.JIRA_API_TOKEN
+  const baseUrl = getSecret('JIRA_BASE_URL')
+  const email = getSecret('JIRA_EMAIL')
+  const apiToken = getSecret('JIRA_API_TOKEN')
   if (!baseUrl || !apiToken) {
     throw new Error('Jira not configured. Set JIRA_BASE_URL and JIRA_API_TOKEN in .env')
   }
