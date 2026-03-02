@@ -33,3 +33,8 @@ server/wakeword/.venv/
 # Environment files
 .env
 server/.env
+
+# Secrets vault
+server/data/secrets.db
+server/data/secrets.db-shm
+server/data/secrets.db-wal
