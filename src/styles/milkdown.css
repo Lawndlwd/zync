@@ -9,21 +9,21 @@
 .milkdown-editor-wrapper .milkdown {
   --crepe-color-background: transparent;
   --crepe-color-on-background: #e4e4e7;       /* zinc-200 */
-  --crepe-color-surface: rgba(255, 255, 255, 0.04);
-  --crepe-color-surface-low: rgba(255, 255, 255, 0.03);
+  --crepe-color-surface: rgba(255, 255, 255, 0.08);
+  --crepe-color-surface-low: rgba(255, 255, 255, 0.06);
   --crepe-color-on-surface: #e4e4e7;           /* zinc-200 */
-  --crepe-color-on-surface-variant: #a1a1aa;   /* zinc-400 */
-  --crepe-color-outline: rgba(255, 255, 255, 0.1);
-  --crepe-color-primary: #818cf8;              /* indigo-400 */
-  --crepe-color-secondary: rgba(255, 255, 255, 0.08);
+  --crepe-color-on-surface-variant: #d4d4d8;   /* zinc-300 — bumped from 400 */
+  --crepe-color-outline: rgba(255, 255, 255, 0.15);
+  --crepe-color-primary: #a5b4fc;              /* indigo-300 — brighter */
+  --crepe-color-secondary: rgba(255, 255, 255, 0.12);
   --crepe-color-on-secondary: #e4e4e7;         /* zinc-200 */
   --crepe-color-inverse: #f4f4f5;              /* zinc-100 */
   --crepe-color-on-inverse: #18181b;           /* zinc-900 */
-  --crepe-color-inline-code: #818cf8;          /* indigo-400 */
+  --crepe-color-inline-code: #a5b4fc;          /* indigo-300 — brighter */
   --crepe-color-error: #f87171;                /* red-400 */
-  --crepe-color-hover: rgba(255, 255, 255, 0.06);
-  --crepe-color-selected: rgba(129, 140, 248, 0.15); /* indigo tint */
-  --crepe-color-inline-area: rgba(255, 255, 255, 0.06);
+  --crepe-color-hover: rgba(255, 255, 255, 0.1);
+  --crepe-color-selected: rgba(129, 140, 248, 0.25); /* indigo tint — stronger */
+  --crepe-color-inline-area: rgba(255, 255, 255, 0.1);
 
   --crepe-font-title: inherit;
   --crepe-font-default: inherit;
@@ -98,8 +98,8 @@
 /* Inline code */
 .milkdown-editor-wrapper .ProseMirror code {
   font-family: var(--crepe-font-code);
-  background: rgba(255, 255, 255, 0.06);
-  color: #d4d4d8;               /* zinc-300 */
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e4e7;               /* zinc-200 */
   padding: 0.15em 0.35em;
   border-radius: 4px;
   font-size: 0.9em;
@@ -107,8 +107,8 @@
 
 /* Code blocks (CodeMirror) */
 .milkdown-editor-wrapper .ProseMirror pre {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   overflow-x: auto;
@@ -164,7 +164,7 @@
   appearance: none;
   width: 14px;
   height: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.04);
   vertical-align: middle;
@@ -230,7 +230,7 @@
 
 /* Placeholder */
 .milkdown-editor-wrapper .ProseMirror .crepe-placeholder::before {
-  color: #52525b;               /* zinc-600 */
+  color: #71717a;               /* zinc-500 — more visible */
 }
 
 /* ------------------------------------------------------------------ */
@@ -240,74 +240,80 @@
 /* Slash menu */
 .milkdown-editor-wrapper .crepe-slash-menu,
 .milkdown-editor-wrapper [data-crepe-slash] {
-  background: #1c1c1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #27272a;           /* zinc-800 */
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   color: #e4e4e7;
 }
 
 .milkdown-editor-wrapper .crepe-slash-menu [data-active],
 .milkdown-editor-wrapper [data-crepe-slash] [data-active] {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* Floating toolbar */
 .milkdown-editor-wrapper .crepe-toolbar,
 .milkdown-editor-wrapper [data-crepe-toolbar] {
-  background: #1c1c1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #27272a;           /* zinc-800 */
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   color: #e4e4e7;
+}
+
+.milkdown-editor-wrapper .crepe-toolbar button,
+.milkdown-editor-wrapper [data-crepe-toolbar] button {
+  color: #d4d4d8;               /* zinc-300 */
 }
 
 .milkdown-editor-wrapper .crepe-toolbar button:hover,
 .milkdown-editor-wrapper [data-crepe-toolbar] button:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
+  color: #f4f4f5;               /* zinc-100 */
 }
 
 .milkdown-editor-wrapper .crepe-toolbar button[data-active],
 .milkdown-editor-wrapper [data-crepe-toolbar] button[data-active] {
-  color: #818cf8;               /* indigo-400 */
-  background: rgba(129, 140, 248, 0.12);
+  color: #a5b4fc;               /* indigo-300 */
+  background: rgba(129, 140, 248, 0.18);
 }
 
 /* Link preview tooltip */
 .milkdown-editor-wrapper .crepe-link-preview,
 .milkdown-editor-wrapper [data-crepe-link-tooltip] {
-  background: #1c1c1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #27272a;           /* zinc-800 */
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   color: #e4e4e7;
 }
 
 .milkdown-editor-wrapper .crepe-link-preview a,
 .milkdown-editor-wrapper [data-crepe-link-tooltip] a {
-  color: #818cf8;
+  color: #a5b4fc;               /* indigo-300 */
 }
 
 /* Block handle (drag handle) */
 .milkdown-editor-wrapper .crepe-block-handle,
 .milkdown-editor-wrapper [data-crepe-block-handle] {
-  color: #52525b;               /* zinc-600 */
+  color: #71717a;               /* zinc-500 — bumped from 600 */
 }
 
 .milkdown-editor-wrapper .crepe-block-handle:hover,
 .milkdown-editor-wrapper [data-crepe-block-handle]:hover {
-  color: #a1a1aa;               /* zinc-400 */
-  background: rgba(255, 255, 255, 0.06);
+  color: #d4d4d8;               /* zinc-300 — bumped from 400 */
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
 }
 
 /* Block edit menu (add block dropdown) */
 .milkdown-editor-wrapper .crepe-block-menu,
 .milkdown-editor-wrapper [data-crepe-block-edit] {
-  background: #1c1c1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #27272a;           /* zinc-800 */
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   color: #e4e4e7;
 }
 
