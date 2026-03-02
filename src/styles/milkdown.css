@@ -237,22 +237,7 @@
 /* 3. Crepe interactive elements (slash menu, toolbar, etc.)           */
 /* ------------------------------------------------------------------ */
 
-/* Slash menu */
-.milkdown-editor-wrapper .crepe-slash-menu,
-.milkdown-editor-wrapper [data-crepe-slash] {
-  background: #27272a;           /* zinc-800 */
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  color: #e4e4e7;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.milkdown-editor-wrapper .crepe-slash-menu [data-active],
-.milkdown-editor-wrapper [data-crepe-slash] [data-active] {
-  background: rgba(255, 255, 255, 0.12);
-}
+/* Slash menu — only color overrides, let Crepe handle layout/scroll */
 
 /* Floating toolbar */
 .milkdown-editor-wrapper .crepe-toolbar,
