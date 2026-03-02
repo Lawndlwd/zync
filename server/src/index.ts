@@ -32,6 +32,10 @@ import { logger } from './lib/logger.js'
 
 config()
 
+if (!process.env.SECRET_KEY) {
+  logger.warn('SECRET_KEY not set — secrets vault disabled. Generate with: openssl rand -hex 32')
+}
+
 const app = express()
 const PORT = process.env.PORT || 3001
 
