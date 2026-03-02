@@ -145,10 +145,10 @@ documentsRouter.get('/', (req, res) => {
 })
 
 /** GET a single document by path (folder/file.md) */
-documentsRouter.get('/file/*', (req, res) => {
+documentsRouter.get('/file/:path(*)', (req, res) => {
   try {
     const root = getDocsRoot()
-    const docPath = (req.params as any)[0] as string
+    const docPath = (req.params as Record<string, string>).path
     const filePath = safePath(root, docPath)
     if (!existsSync(filePath)) {
       res.status(404).json({ error: 'Document not found' })
@@ -201,10 +201,10 @@ documentsRouter.post('/', (req, res) => {
 })
 
 /** Update a document — path is the current path */
-documentsRouter.put('/file/*', (req, res) => {
+documentsRouter.put('/file/:path(*)', (req, res) => {
   try {
     const root = getDocsRoot()
-    const docPath = (req.params as any)[0] as string
+    const docPath = (req.params as Record<string, string>).path
     const filePath = safePath(root, docPath)
     const { title, content, folder: newFolder, metadata } = req.body
 
@@ -253,10 +253,10 @@ documentsRouter.put('/file/*', (req, res) => {
 })
 
 /** Delete a document */
-documentsRouter.delete('/file/*', (req, res) => {
+documentsRouter.delete('/file/:path(*)', (req, res) => {
   try {
     const root = getDocsRoot()
-    const docPath = (req.params as any)[0] as string
+    const docPath = (req.params as Record<string, string>).path
     const filePath = safePath(root, docPath)
     rmSync(filePath, { force: true })
     res.json({ success: true })

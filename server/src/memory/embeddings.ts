@@ -7,9 +7,9 @@ const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2'
 async function getEmbeddingPipeline(): Promise<any> {
   if (embeddingModel) return embeddingModel
 
-  const { pipeline } = await import('@xenova/transformers')
+  const { pipeline } = await import('@huggingface/transformers')
   embeddingModel = await pipeline('feature-extraction', MODEL_NAME, {
-    quantized: true,
+    dtype: 'q8' as any,
   })
   console.log('Embedding model loaded:', MODEL_NAME)
   return embeddingModel

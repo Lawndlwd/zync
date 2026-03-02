@@ -629,7 +629,7 @@ jiraRouter.post('/issue/:key/attachments', upload.array('files', 20), async (req
 
     const formData = new FormData()
     for (const file of files) {
-      formData.append('file', new Blob([file.buffer], { type: file.mimetype }), file.originalname)
+      formData.append('file', new Blob([new Uint8Array(file.buffer)], { type: file.mimetype }), file.originalname)
     }
 
     const jiraRes = await fetch(url, {
