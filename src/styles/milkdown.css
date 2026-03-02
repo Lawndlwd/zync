@@ -46,6 +46,7 @@
   font-size: 14px;
   line-height: 1.75;
   padding: 1rem 1.25rem;
+  padding-bottom: 7rem;          /* ~5 blank lines of space below content */
   outline: none;
 }
 
