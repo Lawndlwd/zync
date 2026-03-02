@@ -46,7 +46,7 @@
   font-size: 14px;
   line-height: 1.75;
   padding: 1rem 1.25rem;
-  padding-bottom: 1rem;
+  padding-bottom: 40vh;          /* large click target — click below content to focus last line */
   outline: none;
 }
 
@@ -245,6 +245,8 @@
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   color: #e4e4e7;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .milkdown-editor-wrapper .crepe-slash-menu [data-active],
