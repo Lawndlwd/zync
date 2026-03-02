@@ -12,6 +12,8 @@ interface MilkdownEditorProps {
   placeholder?: string
   className?: string
   minHeight?: string
+  /** Use 'borderless' to remove the card-like wrapper (useful inside panels) */
+  variant?: 'default' | 'borderless'
 }
 
 export function MilkdownEditor({
@@ -20,6 +22,7 @@ export function MilkdownEditor({
   placeholder = 'Start writing...',
   className,
   minHeight = '400px',
+  variant = 'default',
 }: MilkdownEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const crepeRef = useRef<Crepe | null>(null)
@@ -129,7 +132,8 @@ export function MilkdownEditor({
     <div
       ref={containerRef}
       className={cn(
-        'milkdown-editor-wrapper rounded-lg border border-white/[0.1] bg-white/[0.04] overflow-hidden',
+        'milkdown-editor-wrapper overflow-hidden',
+        variant === 'default' && 'rounded-lg border border-white/[0.1] bg-white/[0.04]',
         className,
       )}
       style={{ minHeight }}
