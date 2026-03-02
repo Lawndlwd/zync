@@ -1,10 +1,12 @@
 // server/src/memory/embeddings.ts
 import { logger } from '../lib/logger.js'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let embeddingModel: any = null
 
 const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getEmbeddingPipeline(): Promise<any> {
   if (embeddingModel) return embeddingModel
 

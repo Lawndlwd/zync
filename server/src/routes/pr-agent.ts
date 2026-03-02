@@ -125,8 +125,9 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
         send('status', { message: `Using model: ${prAgentModel}` })
       }
     }
-  } catch (err: any) {
-    send('debug', { modelConfigError: err.message })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    send('debug', { modelConfigError: message })
   }
 
   const env = await buildPRAgentEnv(tool as PRAgentTool, question, extraInstructions)

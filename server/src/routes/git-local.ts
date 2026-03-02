@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { errorResponse } from '../lib/errors.js'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { existsSync } from 'fs'
@@ -44,8 +45,8 @@ gitLocalRouter.get('/:projectId/branches', async (req, res) => {
       return { name, current: head === '*' }
     })
     res.json(branches)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -62,8 +63,8 @@ gitLocalRouter.get('/:projectId/diff', async (req, res) => {
     }
     const stdout = await gitExec(repoPath, args)
     res.json({ diff: stdout })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -82,8 +83,8 @@ gitLocalRouter.get('/:projectId/log', async (req, res) => {
       return { hash, author, email, message, date }
     })
     res.json(commits)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -93,8 +94,8 @@ gitLocalRouter.post('/:projectId/fetch', async (req, res) => {
     const repoPath = getRepoPath(req.params.projectId)
     await gitExec(repoPath, ['fetch', '--all'])
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -104,7 +105,7 @@ gitLocalRouter.get('/:projectId/status', async (req, res) => {
     const repoPath = getRepoPath(req.params.projectId)
     const stdout = await gitExec(repoPath, ['status', '--porcelain'])
     res.json({ status: stdout })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })

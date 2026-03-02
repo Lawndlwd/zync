@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getRecentCalls, getActivityStats, isSessionSynced, insertOpenCodeSession } from '../bot/memory/activity.js'
+import { errorResponse } from '../lib/errors.js'
 import * as opencode from '../opencode/client.js'
 
 export const activityRouter = Router()
@@ -65,7 +66,7 @@ activityRouter.post('/sync-opencode', async (_req, res) => {
     }
 
     res.json({ synced })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })

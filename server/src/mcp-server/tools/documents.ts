@@ -26,7 +26,7 @@ export const listDocumentsSchema = z.object({
 
 export async function listDocuments(input: z.infer<typeof listDocumentsSchema>) {
   const root = getDocsRoot()
-  const results: any[] = []
+  const results: Array<Record<string, unknown>> = []
 
   const scanFolder = (folderName: string) => {
     const dirPath = safePath(root, folderName)
@@ -53,7 +53,7 @@ export async function listDocuments(input: z.infer<typeof listDocumentsSchema>) 
     }
   }
 
-  results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  results.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
   return JSON.stringify(results)
 }
 

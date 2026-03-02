@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { errorResponse } from '../lib/errors.js'
 import { getOrCreateSession, sendPromptAsync, getSessionMessages, getOpenCodeUrl } from '../opencode/client.js'
 import { insertLLMCall } from '../bot/memory/activity.js'
 import { assembleContext, buildSystemPrompt } from '../agent/context.js'
@@ -40,8 +41,8 @@ llmRouter.post('/chat', validate(LlmChatSchema), async (req, res) => {
     })
 
     res.json({ content: text, usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 } })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -290,12 +291,13 @@ llmRouter.post('/chat/stream', validate(LlmChatSchema), async (req, res) => {
     sentPromptSnippet = 'User message:\n' + lastUserMsg.content
 
     await sendPromptAsync(sessionId, fullPrompt)
-  } catch (err: any) {
+  } catch (err) {
     if (eventSource) eventSource.close()
+    const message = err instanceof Error ? err.message : 'Internal server error'
     if (!res.headersSent) {
-      res.status(500).json({ error: err.message })
+      res.status(500).json({ error: message })
     } else {
-      res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`)
+      res.write(`data: ${JSON.stringify({ type: 'error', message })}\n\n`)
       res.write('data: [DONE]\n\n')
       res.end()
     }

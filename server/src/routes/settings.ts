@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { loadGitlabConfig } from './gitlab.js'
 import { validate } from '../lib/validate.js'
+import { errorResponse } from '../lib/errors.js'
 import { AgentModelConfigSchema } from '../lib/schemas.js'
 
 export const settingsRouter = Router()
@@ -64,7 +65,7 @@ settingsRouter.put('/agent-models', validate(AgentModelConfigSchema), (req, res)
     const config = req.body as AgentModelConfig
     saveAgentModels(config)
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })

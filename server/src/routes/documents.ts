@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmSync
 import { join, basename, extname, relative } from 'path'
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
 import { validate } from '../lib/validate.js'
+import { errorResponse } from '../lib/errors.js'
 import { FolderCreateSchema, FolderRenameSchema, DocumentCreateSchema, DocumentUpdateSchema, DocumentBulkSchema } from '../lib/schemas.js'
 
 export const documentsRouter = Router()
@@ -52,8 +53,8 @@ documentsRouter.get('/folders', (_req, res) => {
       })
       .sort((a, b) => a.name.localeCompare(b.name))
     res.json(folders)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -64,8 +65,8 @@ documentsRouter.post('/folders', validate(FolderCreateSchema), (req, res) => {
     const dirPath = safePath(root, name.trim())
     mkdirSync(dirPath, { recursive: true })
     res.json({ name: name.trim(), docCount: 0, createdAt: new Date().toISOString() })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -78,8 +79,8 @@ documentsRouter.put('/folders/:name', validate(FolderRenameSchema), (req, res) =
     renameSync(oldPath, newPath)
     const files = readdirSync(newPath).filter(f => f.endsWith('.md'))
     res.json({ name: newName.trim(), docCount: files.length, createdAt: statSync(newPath).birthtime.toISOString() })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -89,8 +90,8 @@ documentsRouter.delete('/folders/:name', (req, res) => {
     const dirPath = safePath(root, req.params.name)
     rmSync(dirPath, { recursive: true, force: true })
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -100,7 +101,7 @@ documentsRouter.get('/', (req, res) => {
   try {
     const root = getDocsRoot()
     const folder = req.query.folder as string | undefined
-    const results: any[] = []
+    const results: Array<Record<string, unknown>> = []
 
     const scanFolder = (folderName: string) => {
       const dirPath = safePath(root, folderName)
@@ -131,10 +132,10 @@ documentsRouter.get('/', (req, res) => {
       }
     }
 
-    results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    results.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
     res.json(results)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -160,8 +161,8 @@ documentsRouter.get('/file/:path(*)', (req, res) => {
       metadata,
       ...stat,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -185,8 +186,8 @@ documentsRouter.post('/', validate(DocumentCreateSchema), (req, res) => {
       metadata: metadata || {},
       ...stat,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -237,8 +238,8 @@ documentsRouter.put('/file/:path(*)', validate(DocumentUpdateSchema), (req, res)
       metadata: finalParsed.metadata,
       ...stat,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -250,8 +251,8 @@ documentsRouter.delete('/file/:path(*)', (req, res) => {
     const filePath = safePath(root, docPath)
     rmSync(filePath, { force: true })
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -273,7 +274,7 @@ documentsRouter.post('/bulk', validate(DocumentBulkSchema), (req, res) => {
       }
     })
     res.json(docs)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })

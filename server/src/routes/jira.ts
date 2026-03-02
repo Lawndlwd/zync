@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 import { validate } from '../lib/validate.js'
+import { errorResponse } from '../lib/errors.js'
 import { JiraTransitionSchema, JiraCommentSchema, JiraCreateIssueSchema } from '../lib/schemas.js'
 
 export const jiraRouter = Router()
@@ -162,8 +163,8 @@ jiraRouter.get('/search', async (req, res) => {
       startAt: data.startAt || 0,
       maxResults: data.maxResults || 50,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -172,8 +173,8 @@ jiraRouter.get('/issue/:key', async (req, res) => {
   try {
     const data = await jiraFetch(`/issue/${req.params.key}?fields=summary,status,priority,labels,assignee,reporter,sprint,created,updated,description,comment,attachment`)
     res.json(mapIssue(data))
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -191,8 +192,8 @@ jiraRouter.get('/issue/:key/transitions', async (req, res) => {
         },
       })),
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -204,8 +205,8 @@ jiraRouter.post('/issue/:key/transition', validate(JiraTransitionSchema), async 
       body: JSON.stringify({ transition: { id: req.body.transitionId } }),
     })
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -242,8 +243,8 @@ jiraRouter.post('/issue/:key/comment', validate(JiraCommentSchema), async (req, 
       created: data.created,
       updated: data.updated,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -277,8 +278,8 @@ jiraRouter.get('/boards', async (req, res) => {
       maxResults: data.maxResults || maxResults,
       isLast: data.isLast ?? true,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -296,8 +297,8 @@ jiraRouter.get('/board/:boardId/config', async (req, res) => {
       // The board's own filter — this is the JQL Jira uses to populate the board
       filter: data.filter || null,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -371,8 +372,8 @@ jiraRouter.get('/board/:boardId/issues', async (req, res) => {
         sprint: null,
       })
     }
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -392,8 +393,8 @@ jiraRouter.get('/board/:boardId/sprint', async (req, res) => {
           }
         : null
     )
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -436,8 +437,8 @@ jiraRouter.get('/project/:key/meta', async (req, res) => {
       })),
       labels,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -465,8 +466,8 @@ jiraRouter.get('/users/search', async (req, res) => {
         emailAddress: u.emailAddress || '',
       }))
     )
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -493,7 +494,7 @@ jiraRouter.get('/project/:key/issuetype/:typeId/fields', async (req, res) => {
       for (const f of data.values || []) {
         fieldsMap[f.fieldId] = f
       }
-    } catch (newErr: any) {
+    } catch {
       // Fallback to old createmeta endpoint
       const data = await jiraFetch(
         `/issue/createmeta?projectKeys=${key}&issuetypeIds=${typeId}&expand=projects.issuetypes.fields`
@@ -520,8 +521,8 @@ jiraRouter.get('/project/:key/issuetype/:typeId/fields', async (req, res) => {
       }))
 
     res.json(fields)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -594,8 +595,8 @@ jiraRouter.post('/issue', validate(JiraCreateIssueSchema), async (req, res) => {
     })
 
     res.json({ id: data.id, key: data.key, self: data.self })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -610,8 +611,8 @@ jiraRouter.get('/projects', async (req, res) => {
         avatarUrl: p.avatarUrls?.['32x32'] || '',
       }))
     )
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -650,8 +651,8 @@ jiraRouter.post('/issue/:key/attachments', upload.array('files', 20), async (req
 
     const result = await jiraRes.json()
     res.json(result)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -689,7 +690,7 @@ jiraRouter.get('/attachment/:id', async (req, res) => {
       res.write(value)
     }
     res.end()
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })

@@ -3,6 +3,7 @@ import { renderCanvas, clearCanvas } from '../canvas/renderer.js'
 import { getDb } from '../bot/memory/db.js'
 import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
 import { validate } from '../lib/validate.js'
+import { errorResponse } from '../lib/errors.js'
 import { CanvasRenderSchema, CanvasPromptSchema } from '../lib/schemas.js'
 
 export const canvasRouter = Router()
@@ -68,8 +69,8 @@ canvasRouter.post('/render', validate(CanvasRenderSchema), (req, res) => {
     renderTimer = setTimeout(flushRender, 500)
 
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -78,8 +79,8 @@ canvasRouter.post('/clear', (_req, res) => {
   try {
     clearCanvas()
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -91,8 +92,8 @@ canvasRouter.get('/history', (req, res) => {
     const db = getDb()
     const rows = db.prepare('SELECT id, title, created_at FROM canvas_history ORDER BY id DESC LIMIT ?').all(limit)
     res.json(rows)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -104,8 +105,8 @@ canvasRouter.get('/history/:id', (req, res) => {
     const row = db.prepare('SELECT id, title, html, css, js, created_at FROM canvas_history WHERE id = ?').get(req.params.id)
     if (!row) return res.status(404).json({ error: 'Not found' })
     res.json(row)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -116,8 +117,8 @@ canvasRouter.delete('/history/:id', (req, res) => {
     const db = getDb()
     db.prepare('DELETE FROM canvas_history WHERE id = ?').run(req.params.id)
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -196,7 +197,7 @@ ${prompt}`
     }
 
     res.json({ success: true, reply: 'Timed out waiting for canvas render.' })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })

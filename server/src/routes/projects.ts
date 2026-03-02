@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmSync
 import { join, relative } from 'path'
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
 import { validate } from '../lib/validate.js'
+import { errorResponse } from '../lib/errors.js'
 import { ProjectCreateSchema, ProjectUpdateSchema, TaskCreateSchema, TaskUpdateSchema } from '../lib/schemas.js'
 
 export const projectsRouter = Router()
@@ -81,8 +82,8 @@ projectsRouter.get('/', (_req, res) => {
         }
       })
     res.json(projects)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -117,8 +118,8 @@ projectsRouter.post('/', validate(ProjectCreateSchema), (req, res) => {
       taskCount: 0,
       createdAt: new Date().toISOString(),
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -126,7 +127,7 @@ projectsRouter.post('/', validate(ProjectCreateSchema), (req, res) => {
 projectsRouter.get('/all-tasks', (_req, res) => {
   try {
     const root = getProjectsRoot()
-    const tasks: any[] = []
+    const tasks: Array<Record<string, unknown>> = []
     const entries = readdirSync(root, { withFileTypes: true })
     for (const entry of entries) {
       if (!entry.isDirectory()) continue
@@ -140,10 +141,10 @@ projectsRouter.get('/all-tasks', (_req, res) => {
         }
       }
     }
-    tasks.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    tasks.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
     res.json(tasks)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -174,8 +175,8 @@ projectsRouter.get('/:name', (req, res) => {
       taskCount: files.length,
       createdAt: stat.birthtime.toISOString(),
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -225,8 +226,8 @@ projectsRouter.put('/:name', validate(ProjectUpdateSchema), (req, res) => {
       taskCount: files.length,
       createdAt: stat.birthtime.toISOString(),
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -241,8 +242,8 @@ projectsRouter.delete('/:name', (req, res) => {
     }
     rmSync(dirPath, { recursive: true, force: true })
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -257,10 +258,10 @@ projectsRouter.get('/:name/tasks', (req, res) => {
     }
     const files = readdirSync(dirPath).filter(f => f.endsWith('.md') && f !== 'README.md')
     const tasks = files.map(f => readTask(req.params.name, f, root))
-    tasks.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    tasks.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
     res.json(tasks)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -305,8 +306,8 @@ projectsRouter.post('/:name/tasks', validate(TaskCreateSchema), (req, res) => {
       createdAt: stat.birthtime.toISOString(),
       updatedAt: stat.mtime.toISOString(),
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -345,8 +346,8 @@ projectsRouter.put('/:name/tasks/:taskFile', validate(TaskUpdateSchema), (req, r
       createdAt: stat.birthtime.toISOString(),
       updatedAt: stat.mtime.toISOString(),
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -383,8 +384,8 @@ projectsRouter.patch('/:name/tasks/:taskFile/status', (req, res) => {
       createdAt: stat.birthtime.toISOString(),
       updatedAt: stat.mtime.toISOString(),
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -400,7 +401,7 @@ projectsRouter.delete('/:name/tasks/:taskFile', (req, res) => {
     }
     rmSync(filePath, { force: true })
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })

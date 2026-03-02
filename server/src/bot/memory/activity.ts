@@ -63,10 +63,13 @@ export function getRecentCalls(limit = 50, offset = 0) {
   return db
     .prepare('SELECT * FROM llm_calls ORDER BY created_at DESC LIMIT ? OFFSET ?')
     .all(limit, offset)
-    .map((row: any) => ({
-      ...row,
-      tool_names: JSON.parse(row.tool_names || '[]'),
-    }))
+    .map((row) => {
+      const r = row as Record<string, unknown>
+      return {
+        ...r,
+        tool_names: JSON.parse((r.tool_names as string) || '[]'),
+      }
+    })
 }
 
 export function getActivityStats(days = 30) {

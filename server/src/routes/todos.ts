@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getDb } from '../bot/memory/db.js'
 import { validate } from '../lib/validate.js'
+import { errorResponse } from '../lib/errors.js'
 import { TodoCreateSchema, TodoUpdateSchema } from '../lib/schemas.js'
 
 export const todosRouter = Router()
@@ -12,8 +13,8 @@ todosRouter.get('/', (_req, res) => {
       .prepare('SELECT * FROM todos ORDER BY "order" ASC, created_at DESC')
       .all()
     res.json(todos)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -27,8 +28,8 @@ todosRouter.post('/', validate(TodoCreateSchema), (req, res) => {
     ).run(id, title, description || '', linkedIssue || null, priority || 'P3', dueDate || null)
     const todo = db.prepare('SELECT * FROM todos WHERE id = ?').get(id)
     res.json(todo)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -37,7 +38,7 @@ todosRouter.put('/:id', validate(TodoUpdateSchema), (req, res) => {
     const db = getDb()
     const { title, description, linkedIssue, priority, dueDate, status, order } = req.body
     const sets: string[] = []
-    const values: any[] = []
+    const values: unknown[] = []
 
     if (title !== undefined) { sets.push('title = ?'); values.push(title) }
     if (description !== undefined) { sets.push('description = ?'); values.push(description) }
@@ -58,8 +59,8 @@ todosRouter.put('/:id', validate(TodoUpdateSchema), (req, res) => {
     db.prepare(`UPDATE todos SET ${sets.join(', ')} WHERE id = ?`).run(...values)
     const todo = db.prepare('SELECT * FROM todos WHERE id = ?').get(req.params.id)
     res.json(todo)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -68,7 +69,7 @@ todosRouter.delete('/:id', (req, res) => {
     const db = getDb()
     db.prepare('DELETE FROM todos WHERE id = ?').run(req.params.id)
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })

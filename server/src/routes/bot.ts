@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { validate } from '../lib/validate.js'
+import { errorResponse } from '../lib/errors.js'
 import {
   GmailReplySchema,
   BriefingTriggerSchema,
@@ -85,8 +86,8 @@ botRouter.get('/status', async (_req, res) => {
       skillsCount,
       briefingEnabled,
     })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -125,8 +126,8 @@ botRouter.get('/channels', (_req, res) => {
     })
 
     res.json(result)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -159,8 +160,8 @@ botRouter.get('/channels/config', (_req, res) => {
       }
     }
     res.json(masked)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -199,8 +200,8 @@ botRouter.put('/channels/config/:channel', (req, res) => {
 
     saveChannelConfig(cfg)
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -222,8 +223,8 @@ botRouter.get('/channels/gmail/auth-url', (_req, res) => {
       prompt: 'consent',
     })
     res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -280,8 +281,9 @@ botRouter.get('/channels/gmail/callback', async (req, res) => {
 
     // Redirect back to settings page with success
     res.redirect(`${FRONTEND_BASE_URL}/settings?gmail=authorized`)
-  } catch (err: any) {
-    res.status(500).send(`OAuth error: ${err.message}`)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Internal server error'
+    res.status(500).send(`OAuth error: ${message}`)
   }
 })
 
@@ -321,8 +323,8 @@ botRouter.post('/channels/:channel/connect', async (req, res) => {
     }
 
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -332,8 +334,8 @@ botRouter.post('/channels/:channel/disconnect', async (req, res) => {
     const channel = req.params.channel as ChannelType
     await getChannelManager().unregister(channel)
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -371,9 +373,9 @@ botRouter.post('/channels/gmail/reply', validate(GmailReplySchema), async (req, 
     })
 
     res.json({ success: true })
-  } catch (err: any) {
+  } catch (err) {
     logger.error({ err }, 'Gmail reply error')
-    res.status(500).json({ error: err.message })
+    errorResponse(res, err)
   }
 })
 
@@ -386,8 +388,8 @@ botRouter.get('/channels/whatsapp/qr', (_req, res) => {
     }
     const wa = adapter as WhatsAppAdapter
     res.json({ qr: wa.qrDataUrl, state: wa.connectionState, error: wa.lastError })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -401,8 +403,8 @@ botRouter.post('/channels/whatsapp/reset', async (_req, res) => {
     })
     adapter.clearAuth()
     res.json({ success: true, message: 'WhatsApp auth cleared. Click Connect to pair again.' })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -415,8 +417,8 @@ botRouter.get('/skills', (_req, res) => {
       description: s.description,
       triggers: s.triggers,
     })))
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -425,8 +427,8 @@ botRouter.post('/skills/reload', (_req, res) => {
   try {
     const skills = reloadSkills()
     res.json({ count: skills.length })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -445,8 +447,8 @@ botRouter.get('/briefing/config', (_req, res) => {
         enabled: !!(process.env.MORNING_CRON || process.env.EVENING_CRON),
       })
     }
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -468,8 +470,8 @@ botRouter.put('/briefing/config', (req, res) => {
     const cfgPath = resolve(DATA_DIR, 'briefing-config.json')
     writeFileSync(cfgPath, JSON.stringify(result.data, null, 2))
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -483,8 +485,8 @@ botRouter.post('/briefing/trigger', validate(BriefingTriggerSchema), async (req,
       await sendEveningRecap()
     }
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -500,8 +502,8 @@ botRouter.get('/tool-config', (_req, res) => {
         files: { allowed_paths: ['./data'], max_file_size_bytes: 10485760 },
       })
     }
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -527,8 +529,8 @@ botRouter.put('/tool-config', (req, res) => {
     const cfgPath = resolve(DATA_DIR, 'tool-config.json')
     writeFileSync(cfgPath, JSON.stringify(result.data, null, 2))
     res.json({ success: true })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -537,8 +539,8 @@ botRouter.get('/recommendations', (_req, res) => {
   try {
     const recs = getRecommendations()
     res.json(recs)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -555,8 +557,8 @@ botRouter.get('/memories', (req, res) => {
       const results = listAllMemories(limit)
       res.json(results)
     }
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -566,8 +568,8 @@ botRouter.post('/memories', validate(MemoryCreateSchema), (req, res) => {
     const { content, category } = req.body
     const result = saveMemory(content, category || 'general')
     res.json(result)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -577,8 +579,8 @@ botRouter.delete('/memories/:id', (req, res) => {
     const id = parseInt(req.params.id)
     const success = deleteMemory(id)
     res.json({ success })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -587,8 +589,8 @@ botRouter.get('/schedules', (_req, res) => {
   try {
     const schedules = getAllSchedules()
     res.json(schedules)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -598,8 +600,8 @@ botRouter.post('/schedules', validate(ScheduleCreateSchema), (req, res) => {
     const { cron_expression, prompt, chat_id } = req.body
     const schedule = addSchedule(Number(chat_id), cron_expression, prompt)
     res.json(schedule)
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -609,8 +611,8 @@ botRouter.delete('/schedules/:id', (req, res) => {
     const id = parseInt(req.params.id)
     const success = adminRemoveSchedule(id)
     res.json({ success })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -624,8 +626,8 @@ botRouter.patch('/schedules/:id', (req, res) => {
     }
     const success = adminToggleSchedule(id, enabled)
     res.json({ success })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
 
@@ -689,7 +691,7 @@ botRouter.post('/chat', validate(BotChatSchema), async (req, res) => {
       }
     }
     res.status(504).json({ error: 'Timeout waiting for response' })
-  } catch (err: any) {
-    res.status(500).json({ error: err.message })
+  } catch (err) {
+    errorResponse(res, err)
   }
 })
