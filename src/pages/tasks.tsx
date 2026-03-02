@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { KanbanBoard } from '@/components/projects/kanban-board'
 import { ProjectGrid } from '@/components/projects/project-grid'
@@ -32,6 +32,7 @@ const priorityFilters: { label: string; value: PriorityFilter }[] = [
 export function TasksPage() {
   const { projectName } = useParams<{ projectName?: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Filters
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>('all')
@@ -53,6 +54,27 @@ export function TasksPage() {
   const { data: projects = [] } = useProjects()
   const updateTaskStatus = useUpdateTaskStatus()
   const deleteProject = useDeleteProject()
+
+  // Restore task from URL search params on load
+  useEffect(() => {
+    const taskParam = searchParams.get('task')
+    if (!taskParam || allTasks.length === 0) return
+
+    // taskParam is "projectName/fileName"
+    const slashIdx = taskParam.indexOf('/')
+    if (slashIdx === -1) return
+
+    const paramProject = taskParam.slice(0, slashIdx)
+    const paramFile = taskParam.slice(slashIdx + 1)
+
+    const match = allTasks.find(
+      (t) => t.project === paramProject && t.fileName === paramFile
+    )
+    if (match) {
+      setSelectedTask(match)
+      setDrawerOpen(true)
+    }
+  }, [allTasks, searchParams])
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
@@ -80,11 +102,27 @@ export function TasksPage() {
   const handleSelectTask = useCallback((task: Task) => {
     setSelectedTask(task)
     setDrawerOpen(true)
-  }, [])
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('task', `${task.project}/${task.fileName}`)
+        return next
+      },
+      { replace: true }
+    )
+  }, [setSearchParams])
 
   const handleCloseDrawer = useCallback(() => {
     setDrawerOpen(false)
-  }, [])
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('task')
+        return next
+      },
+      { replace: true }
+    )
+  }, [setSearchParams])
 
   const handleDeleteProject = useCallback(
     (name: string) => {
