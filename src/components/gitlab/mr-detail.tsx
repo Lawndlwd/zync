@@ -60,7 +60,7 @@ export function MRDetail({ mr, projectId, onClose, isFullPage, onToggleFullPage 
 
   // Fetch cached PR-Agent review results
   useEffect(() => {
-    fetch(`/api/pr-agent/result/${projectId}/${mr.iid}?tool=review`)
+    fetch(`/api/pr-agent/results/${projectId}/${mr.iid}?tool=review`)
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data?.result?.items) setReviewItems(data.result.items)
