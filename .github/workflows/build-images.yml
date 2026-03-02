@@ -14,8 +14,30 @@ permissions:
   packages: write
 
 jobs:
-  build-frontend:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        image:
+          - name: frontend
+            context: .
+            file: Dockerfile.frontend
+          - name: backend
+            context: .
+            file: Dockerfile.backend
+          - name: whisper
+            context: ./server/whisper
+            file: ./server/whisper/Dockerfile
+          - name: wakeword
+            context: ./server/wakeword
+            file: ./server/wakeword/Dockerfile
+        runner:
+          - os: ubuntu-24.04
+            platform: linux/amd64
+            suffix: amd64
+          - os: ubuntu-24.04-arm
+            platform: linux/arm64
+            suffix: arm64
+    runs-on: ${{ matrix.runner.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,99 +47,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/setup-qemu-action@v3
-
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/build-push-action@v6
+        id: build
         with:
-          context: .
-          file: Dockerfile.frontend
-          platforms: linux/amd64,linux/arm64
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.file }}
+          platforms: ${{ matrix.runner.platform }}
           push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}-frontend:latest
-            ${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.image.name }}:${{ github.sha }}-${{ matrix.runner.suffix }}
+          cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.runner.suffix }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}-${{ matrix.runner.suffix }}
 
-  build-backend:
-    runs-on: ubuntu-latest
+  merge:
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [frontend, backend, whisper, wakeword]
     steps:
-      - uses: actions/checkout@v4
-
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/setup-qemu-action@v3
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.backend
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}-backend:latest
-            ${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-whisper:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/setup-qemu-action@v3
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: ./server/whisper
-          file: ./server/whisper/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}-whisper:latest
-            ${{ env.IMAGE_PREFIX }}-whisper:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-wakeword:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/setup-qemu-action@v3
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: ./server/wakeword
-          file: ./server/wakeword/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.IMAGE_PREFIX }}-wakeword:latest
-            ${{ env.IMAGE_PREFIX }}-wakeword:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create multi-arch manifest
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}:latest \
+            -t ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}:${{ github.sha }} \
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}:${{ github.sha }}-amd64 \
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.image }}:${{ github.sha }}-arm64
