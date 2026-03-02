@@ -24,7 +24,11 @@ dist-ssr
 *.sw?
 
 # Data files
+data/
 server/data/
+
+# Internal docs and plans
+docs/
 
 # Python venv
 server/.venv/
