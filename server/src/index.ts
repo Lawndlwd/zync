@@ -32,6 +32,7 @@ import { existsSync } from 'fs'
 import { resolve } from 'path'
 import { logger } from './lib/logger.js'
 import { getSecret } from './secrets/index.js'
+import { migrateJsonConfigs } from './config/migrate.js'
 
 config()
 
@@ -101,6 +102,7 @@ process.on('SIGINT', () => stopWakeWordServer())
 initDb()
 initTodosTable()
 initHeartbeat()
+migrateJsonConfigs()
 
 // Initialize channel manager
 const channelManager = getChannelManager()
