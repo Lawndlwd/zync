@@ -51,21 +51,7 @@ cd ~/.zync
 
 ## Configuration
 
-After install, add your API keys and integration config to `~/.zync/.env`:
-
-```env
-ZYNC_PORT=8080
-
-# Integrations (configured via the Settings page)
-JIRA_URL=https://your-instance.atlassian.net
-JIRA_EMAIL=you@example.com
-JIRA_API_TOKEN=...
-
-GITLAB_URL=https://gitlab.com
-GITLAB_TOKEN=...
-
-TELEGRAM_BOT_TOKEN=...
-```
+All integrations (Jira, GitLab, Telegram, etc.) are configured through the **Settings** page in the UI. Secrets are stored in an encrypted local vault — no `.env` editing needed.
 
 ## Tech Stack
 
