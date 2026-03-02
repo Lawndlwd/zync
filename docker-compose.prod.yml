@@ -1,8 +1,6 @@
 services:
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
+    image: ghcr.io/levende/zync-frontend:latest
     ports:
       - "${ZYNC_PORT:-8080}:80"
     depends_on:
@@ -11,19 +9,14 @@ services:
     restart: unless-stopped
 
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
+    image: ghcr.io/levende/zync-backend:latest
     ports:
       - "3001:3001"
     env_file:
       - path: .env
         required: false
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - OPENCODE_URL=http://host.docker.internal:4096
       - WHISPER_SERVICE_URL=http://whisper:9100
     volumes:
       - zync-data:/app/data
@@ -37,9 +30,7 @@ services:
     restart: unless-stopped
 
   whisper:
-    build:
-      context: ./server/whisper
-      dockerfile: Dockerfile
+    image: ghcr.io/levende/zync-whisper:latest
     expose:
       - "9100"
     environment:
@@ -57,9 +48,7 @@ services:
     restart: unless-stopped
 
   wakeword:
-    build:
-      context: ./server/wakeword
-      dockerfile: Dockerfile
+    image: ghcr.io/levende/zync-wakeword:latest
     ports:
       - "9000:9000"
     environment:

@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useSettingsStore } from '@/store/settings'
 import { fetchServerSettings } from '@/services/jira'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { RotateCcw, Download } from 'lucide-react'
+import { RotateCcw, Download, Wand2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+import { useNavigate } from 'react-router-dom'
 import { SettingsSidebar, type SettingsSection } from '@/components/settings/settings-sidebar'
 import { JiraSettingsCard } from '@/components/settings/jira-settings'
 import { GitLabSettingsCard } from '@/components/settings/gitlab-settings'
@@ -53,6 +52,7 @@ function getInitialSection(): SettingsSection {
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate()
   const { settings, updateJira, resetSettings } = useSettingsStore()
   const [envConfig, setEnvConfig] = useState<Awaited<ReturnType<typeof fetchServerSettings>> | null>(null)
   const [activeSection, setActiveSection] = useState<SettingsSection>(getInitialSection)
@@ -103,6 +103,10 @@ export function SettingsPage() {
           <p className="text-sm text-zinc-500">Configure your integrations</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate('/setup')}>
+            <Wand2 size={14} />
+            Re-run Setup
+          </Button>
           {envConfig && (
             <Button variant="default" size="sm" onClick={handleSyncFromEnv}>
               <Download size={14} />
@@ -116,18 +120,7 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {envConfig && (
-        <Card className="mb-6 border-indigo-500/30 bg-indigo-950/10">
-          <CardContent className="py-3">
-            <p className="text-sm text-indigo-300">
-              Server .env detected. Fields marked <Badge variant="primary" className="text-[10px]">from .env</Badge> show values configured on the server.
-              The backend always uses .env for API calls. These UI settings are for display and client-side features.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="flex gap-6 h-[calc(100vh-12rem)]">
+      <div className="flex gap-6 h-[calc(100vh-7rem)]">
         <SettingsSidebar activeSection={activeSection} onNavigate={handleNavigate} />
 
         <div className="flex-1 min-w-0 space-y-6 overflow-y-auto pr-1">

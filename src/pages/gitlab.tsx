@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useGitlabMRs } from '@/hooks/useGitlab'
+import { useGitlabMRs, useGitlabUser } from '@/hooks/useGitlab'
 import { useSettingsStore } from '@/store/settings'
 import { MRCard } from '@/components/gitlab/mr-card'
 import { ProjectPicker } from '@/components/gitlab/project-picker'
@@ -47,13 +47,13 @@ export function GitLabPage() {
   const [search, setSearch] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
 
-  const username = gitlabSettings.username
+  const { data: currentUser } = useGitlabUser()
+  const username = gitlabSettings.username || currentUser?.username
 
   const mrFilter = useMemo(() => {
-    if (!username) return { scope: 'all' }
-    if (scope === 'to_review') return { reviewer_username: username, scope: 'all' }
-    if (scope === 'mine') return { author_username: username, scope: 'all' }
-    return { scope: 'all' }
+    if (scope === 'to_review') return { scope: 'assigned_to_me', reviewer_username: username, perPage: 100 }
+    if (scope === 'mine') return { scope: 'created_by_me', author_username: username, perPage: 100 }
+    return { scope: 'all', perPage: 100 }
   }, [scope, username])
 
   const { data: mrs, isLoading, isError, error, refetch } = useGitlabMRs(projectId, mrFilter)

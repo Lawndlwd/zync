@@ -1,12 +1,21 @@
+# Build stage
 FROM node:20-alpine AS build
 WORKDIR /app
 RUN corepack enable pnpm
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
-COPY . .
+COPY tsconfig.json vite.config.ts index.html components.json ./
+COPY public/ public/
+COPY src/ src/
 RUN pnpm build
 
+# Production stage — serve with nginx
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Enable gzip for all static assets
+RUN echo 'gzip on; gzip_vary on; gzip_min_length 1024; gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;' \
+    > /etc/nginx/conf.d/gzip.conf
+
 EXPOSE 80

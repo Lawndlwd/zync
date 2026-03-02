@@ -206,6 +206,12 @@ export const SecretSetSchema = z.object({
   category: z.string().max(64).default('general'),
 })
 
+// --- Setup ---
+export const SetupVerifySchema = z.object({
+  service: z.enum(['jira', 'gitlab', 'telegram', 'llm']),
+  config: z.record(z.unknown()),
+})
+
 // --- Config ---
 export const ConfigSetSchema = z.object({
   value: z.string(),

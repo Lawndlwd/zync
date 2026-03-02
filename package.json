@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "cd server && tsx watch src/index.ts",
-    "dev:all": "concurrently \"pnpm dev\" \"pnpm dev:server\"",
+    "dev:opencode": "opencode serve --port 4096 --cors http://localhost:5173",
+    "dev:all": "concurrently \"pnpm dev\" \"pnpm dev:server\" \"pnpm dev:opencode\"",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "echo 'No tests configured'"

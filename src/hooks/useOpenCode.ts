@@ -10,7 +10,6 @@ import {
   deleteSession,
   abortSession,
   sendPrompt,
-  DASHBOARD_SESSION_PREFIX,
 } from '@/services/opencode'
 import { useOpenCodeStore } from '@/store/opencode'
 

@@ -28,7 +28,7 @@ configRouter.put('/:key', validate(ConfigSetSchema), (req, res) => {
   try {
     const svc = requireConfig()
     const { value, category } = req.body
-    svc.set(req.params.key, value, category)
+    svc.set(req.params.key as string, value, category)
     res.json({ success: true })
   } catch (err) {
     errorResponse(res, err)
@@ -39,7 +39,7 @@ configRouter.put('/:key', validate(ConfigSetSchema), (req, res) => {
 configRouter.delete('/:key', (req, res) => {
   try {
     const svc = requireConfig()
-    const deleted = svc.delete(req.params.key)
+    const deleted = svc.delete(req.params.key as string)
     res.json({ success: true, deleted })
   } catch (err) {
     errorResponse(res, err)

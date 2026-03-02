@@ -1,8 +1,10 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './sidebar'
 import { useOpenCodeSSE } from '@/hooks/useOpenCodeSSE'
-import { ChatPanel } from '@/components/ai-agent/chat-panel'
-import { DynamicIsland } from '@/components/voice/DynamicIsland'
+import { lazy, Suspense } from 'react'
+
+const ChatPanel = lazy(() => import('@/components/ai-agent/chat-panel').then(m => ({ default: m.ChatPanel })))
+const DynamicIsland = lazy(() => import('@/components/voice/DynamicIsland').then(m => ({ default: m.DynamicIsland })))
 
 export function AppLayout() {
   useOpenCodeSSE()
@@ -21,8 +23,10 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
-      <ChatPanel />
-      <DynamicIsland />
+      <Suspense>
+        <ChatPanel />
+        <DynamicIsland />
+      </Suspense>
     </div>
   )
 }

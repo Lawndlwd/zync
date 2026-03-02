@@ -10,6 +10,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['radix-ui', 'lucide-react', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+          'vendor-query': ['@tanstack/react-query', 'zustand'],
+          'vendor-charts': ['recharts'],
+          'vendor-editor': ['@milkdown/crepe', '@milkdown/kit'],
+          'vendor-shiki': ['shiki'],
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'vendor-dates': ['date-fns', 'cronstrue'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

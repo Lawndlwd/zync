@@ -1,5 +1,5 @@
-import { createOpencodeClient } from '@opencode-ai/sdk'
-import type { OpencodeClient } from '@opencode-ai/sdk'
+import { createOpencodeClient } from '@opencode-ai/sdk/client'
+import type { OpencodeClient } from '@opencode-ai/sdk/client'
 import type {
   OpenCodeSession,
   OpenCodeMessage,

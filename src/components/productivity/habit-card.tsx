@@ -30,7 +30,6 @@ export function HabitCard({ habit, variant = 'active' }: HabitCardProps) {
     getStreak,
     getCompletionRate,
     getCycleProgress,
-    archiveHabit,
     restartHabit,
     removeHabit,
   } = useHabitsStore()

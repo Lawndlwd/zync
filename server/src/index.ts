@@ -29,8 +29,10 @@ import { startWakeWordServer, stopWakeWordServer } from './voice/wakeword.js'
 import { WhatsAppAdapter } from './channels/whatsapp.js'
 import { TelegramAdapter } from './channels/telegram.js'
 // Channel config now read from vault/config services (no JSON file)
-import { existsSync } from 'fs'
-import { resolve } from 'path'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { resolve, dirname } from 'path'
+import { randomBytes } from 'crypto'
+import { createRequire } from 'module'
 import { logger } from './lib/logger.js'
 import { getSecret } from './secrets/index.js'
 import { getConfig } from './config/index.js'
@@ -38,8 +40,24 @@ import { migrateJsonConfigs } from './config/migrate.js'
 
 config()
 
+// Read version from package.json
+const require = createRequire(import.meta.url)
+const pkg = require('../package.json')
+const APP_VERSION: string = pkg.version || '0.0.0'
+
+// Auto-generate SECRET_KEY if not set
 if (!process.env.SECRET_KEY) {
-  logger.warn('SECRET_KEY not set — secrets vault disabled. Generate with: openssl rand -hex 32')
+  const secretKeyPath = resolve('data/.secret-key')
+  if (existsSync(secretKeyPath)) {
+    process.env.SECRET_KEY = readFileSync(secretKeyPath, 'utf-8').trim()
+    logger.info('SECRET_KEY loaded from data/.secret-key')
+  } else {
+    const generated = randomBytes(32).toString('hex')
+    process.env.SECRET_KEY = generated
+    mkdirSync(dirname(secretKeyPath), { recursive: true })
+    writeFileSync(secretKeyPath, generated, { mode: 0o600 })
+    logger.info('SECRET_KEY auto-generated and saved to data/.secret-key')
+  }
 }
 
 const app = express()
@@ -60,7 +78,7 @@ app.use((req, res, next) => {
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.json({ status: 'ok', version: APP_VERSION, timestamp: new Date().toISOString() })
 })
 
 // Routes

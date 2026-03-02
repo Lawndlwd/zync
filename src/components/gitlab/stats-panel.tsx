@@ -64,11 +64,10 @@ export function GitLabStatsPanel({ projectId }: StatsPanelProps) {
                   <button
                     key={opt.days}
                     onClick={() => setDays(opt.days)}
-                    className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                      days === opt.days
-                        ? 'bg-zinc-800 text-zinc-100'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
+                    className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${days === opt.days
+                      ? 'bg-zinc-800 text-zinc-100'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
                   >
                     {opt.label}
                   </button>

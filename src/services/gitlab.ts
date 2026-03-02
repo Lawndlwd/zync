@@ -55,7 +55,7 @@ export async function fetchProjectMembers(projectId: number, search?: string): P
 
 export async function fetchMergeRequests(
   projectId: number,
-  params?: { state?: string; scope?: string; reviewer_username?: string; author_username?: string; search?: string }
+  params?: { state?: string; scope?: string; reviewer_username?: string; author_username?: string; search?: string; perPage?: number }
 ): Promise<GitLabMergeRequest[]> {
   const searchParams = new URLSearchParams()
   if (params?.state) searchParams.set('state', params.state)
@@ -63,6 +63,8 @@ export async function fetchMergeRequests(
   if (params?.reviewer_username) searchParams.set('reviewer_username', params.reviewer_username)
   if (params?.author_username) searchParams.set('author_username', params.author_username)
   if (params?.search) searchParams.set('search', params.search)
+  const perPage = params?.perPage ?? 100
+  searchParams.set('per_page', String(perPage))
   return fetchJSON(`${API_BASE}/projects/${projectId}/merge_requests?${searchParams}`)
 }
 
