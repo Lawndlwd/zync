@@ -131,13 +131,13 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
       <ResizablePanelGroup orientation="horizontal">
         {/* Invisible spacer — clicking it closes the panel */}
         <ResizablePanel
-          defaultSize={60}
-          minSize={15}
+          defaultSize="60%"
+          minSize="15%"
           onClick={onClose}
           className="cursor-pointer bg-black/40 backdrop-blur-sm"
         />
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={40} minSize={25} maxSize={85}>
+        <ResizablePanel defaultSize="40%" minSize="320px" maxSize="85%">
           <div className="flex h-full flex-col bg-zinc-950">
             {/* Close button + save status */}
             <div className="flex items-center justify-end gap-3 px-5 py-4 border-b border-white/[0.06]">
