@@ -18,6 +18,7 @@ import { voiceRouter } from './routes/voice.js'
 import { canvasRouter } from './routes/canvas.js'
 import { secretsRouter } from './routes/secrets.js'
 import configRouter from './routes/config.js'
+import { setupRouter } from './routes/setup.js'
 import { initDb, initHeartbeat } from './bot/index.js'
 import { getChannelManager } from './channels/manager.js'
 import { handleMessage } from './agent/loop.js'
@@ -79,6 +80,7 @@ app.use('/api/voice', voiceRouter)
 app.use('/api/canvas', canvasRouter)
 app.use('/api/secrets', secretsRouter)
 app.use('/api/config', configRouter)
+app.use('/api/setup', setupRouter)
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -141,11 +143,11 @@ channelManager.onMessage(handleMessage)
 if (getConfig('DEFAULT_CHAT_ID')) {
   cron.schedule(getConfig('MORNING_BRIEFING_CRON', '0 8 * * 1-5') || '0 8 * * 1-5', () => {
     sendMorningBriefing().catch(err => logger.error({ err }, 'Morning briefing failed'))
-  }, { timezone: 'Europe/Paris' })
+  }, { timezone: getConfig('SCHEDULE_TIMEZONE', 'Europe/Paris') || 'Europe/Paris' })
 
   cron.schedule(getConfig('EVENING_RECAP_CRON', '0 18 * * 1-5') || '0 18 * * 1-5', () => {
     sendEveningRecap().catch(err => logger.error({ err }, 'Evening recap failed'))
-  }, { timezone: 'Europe/Paris' })
+  }, { timezone: getConfig('SCHEDULE_TIMEZONE', 'Europe/Paris') || 'Europe/Paris' })
 
   logger.info('Proactive briefings scheduled')
 }

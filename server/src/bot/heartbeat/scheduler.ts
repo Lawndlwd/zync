@@ -3,6 +3,7 @@ import { getOrCreateSession, sendPromptAsync, getSessionMessages } from '../../o
 import { insertLLMCall } from '../memory/activity.js'
 import { getBotInstance } from '../bot.js'
 import { logger } from '../../lib/logger.js'
+import { getConfig } from '../../config/index.js'
 import {
   addSchedule as dbAddSchedule,
   removeSchedule as dbRemoveSchedule,
@@ -79,7 +80,7 @@ function startCronTask(schedule: Schedule): void {
 
   const task = cron.schedule(schedule.cron_expression, () => {
     executeBriefing(schedule)
-  }, { timezone: 'Europe/Paris' })
+  }, { timezone: getConfig('SCHEDULE_TIMEZONE', 'Europe/Paris') || 'Europe/Paris' })
 
   activeTasks.set(schedule.id, task)
 }
