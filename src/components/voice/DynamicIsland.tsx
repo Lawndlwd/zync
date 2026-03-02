@@ -123,8 +123,6 @@ interface ConversationContentProps {
   onDismiss: () => void
   onFollowUp: () => void
   onDragStart: (e: React.PointerEvent) => void
-  onDragMove: (e: React.PointerEvent) => void
-  onDragEnd: (e: React.PointerEvent) => void
 }
 
 function ConversationContent({
@@ -138,8 +136,6 @@ function ConversationContent({
   onDismiss,
   onFollowUp,
   onDragStart,
-  onDragMove,
-  onDragEnd,
 }: ConversationContentProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -170,8 +166,6 @@ function ConversationContent({
         <div className="flex items-center gap-1">
           <div
             onPointerDown={onDragStart}
-            onPointerMove={onDragMove}
-            onPointerUp={onDragEnd}
             className="text-zinc-600 hover:text-zinc-400 cursor-grab active:cursor-grabbing p-0.5 rounded-md hover:bg-white/[0.06] transition-colors touch-none"
           >
             <GripHorizontal size={16} />
@@ -299,9 +293,9 @@ export function DynamicIsland() {
 
   // Detached card position
   const [detachedPos, setDetachedPos] = useState({ x: 0, y: 12 })
+  const [isDragging, setIsDragging] = useState(false)
   const draggingRef = useRef(false)
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, posX: 0, posY: 0 })
-  const dragDistanceRef = useRef(0)
 
   // Track content fade-in for expansion
   const [contentVisible, setContentVisible] = useState(false)
@@ -310,7 +304,6 @@ export function DynamicIsland() {
   useEffect(() => {
     if (voice.isActive && mode === 'idle') {
       setMode('expanded')
-      // Brief delay so width transition starts first, then fade content in
       requestAnimationFrame(() => requestAnimationFrame(() => setContentVisible(true)))
     }
     if (!voice.isActive && mode !== 'idle') {
@@ -321,66 +314,57 @@ export function DynamicIsland() {
   }, [voice.isActive, mode])
 
   // ---------------------------------------------------------------------------
-  // Drag handlers — used in expanded mode to detach
+  // Drag system — uses a full-viewport overlay so pointer capture survives
+  // the DOM restructure when expanded → detached
   // ---------------------------------------------------------------------------
+  const clampPos = useCallback((rawX: number, rawY: number) => ({
+    x: Math.max(-window.innerWidth / 2 + 220, Math.min(window.innerWidth / 2 - 220, rawX)),
+    y: Math.max(12, Math.min(window.innerHeight - 100, rawY)),
+  }), [])
+
   const onDragStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     draggingRef.current = true
-    dragDistanceRef.current = 0
+    setIsDragging(true)
     const currentMode = modeRef.current
 
-    if (currentMode === 'expanded') {
-      // The expanded island is at top:12, centered. When detaching,
-      // the card's top-left starts at (x=0 meaning center, y=12).
-      dragStartRef.current = {
-        mouseX: e.clientX,
-        mouseY: e.clientY,
-        posX: 0,
-        posY: 12,
-      }
-    } else if (currentMode === 'detached') {
-      dragStartRef.current = {
-        mouseX: e.clientX,
-        mouseY: e.clientY,
-        posX: detachedPos.x,
-        posY: detachedPos.y,
-      }
+    dragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      posX: currentMode === 'detached' ? detachedPos.x : 0,
+      posY: currentMode === 'detached' ? detachedPos.y : 12,
     }
-
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    e.preventDefault()
   }, [detachedPos])
 
-  const onDragMove = useCallback((e: React.PointerEvent) => {
+  // These run on the overlay, so they never lose the element
+  const onOverlayMove = useCallback((e: React.PointerEvent) => {
     if (!draggingRef.current) return
     const dx = e.clientX - dragStartRef.current.mouseX
     const dy = e.clientY - dragStartRef.current.mouseY
-    const distance = Math.sqrt(dx * dx + dy * dy)
-    dragDistanceRef.current = distance
     const currentMode = modeRef.current
 
-    const clampPos = (rawX: number, rawY: number) => ({
-      x: Math.max(-window.innerWidth / 2 + 220, Math.min(window.innerWidth / 2 - 220, rawX)),
-      y: Math.max(60, Math.min(window.innerHeight - 100, rawY)),
-    })
-
-    if (currentMode === 'expanded' && distance > DRAG_DETACH_THRESHOLD) {
-      modeRef.current = 'detached'
-      setMode('detached')
-      setDetachedPos(clampPos(
-        dragStartRef.current.posX + dx,
-        dragStartRef.current.posY + dy,
-      ))
-    } else if (currentMode === 'detached') {
+    if (currentMode === 'expanded') {
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist > DRAG_DETACH_THRESHOLD) {
+        modeRef.current = 'detached'
+        setMode('detached')
+        setDetachedPos(clampPos(
+          dragStartRef.current.posX + dx,
+          dragStartRef.current.posY + dy,
+        ))
+      }
+    } else {
       setDetachedPos(clampPos(
         dragStartRef.current.posX + dx,
         dragStartRef.current.posY + dy,
       ))
     }
-  }, [])
+  }, [clampPos])
 
-  const onDragEnd = useCallback((e: React.PointerEvent) => {
+  const onOverlayUp = useCallback(() => {
     draggingRef.current = false
-    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+    setIsDragging(false)
   }, [])
 
   // ---------------------------------------------------------------------------
@@ -505,8 +489,6 @@ export function DynamicIsland() {
               onDismiss={onDismiss}
               onFollowUp={voice.startCapture}
               onDragStart={onDragStart}
-              onDragMove={onDragMove}
-              onDragEnd={onDragEnd}
             />
           </div>
         )}
@@ -536,10 +518,18 @@ export function DynamicIsland() {
             onDismiss={onDismiss}
             onFollowUp={voice.startCapture}
             onDragStart={onDragStart}
-            onDragMove={onDragMove}
-            onDragEnd={onDragEnd}
           />
         </div>
+      )}
+
+      {/* Drag overlay — captures pointer events during drag so we never lose them */}
+      {isDragging && (
+        <div
+          onPointerMove={onOverlayMove}
+          onPointerUp={onOverlayUp}
+          className="fixed inset-0 z-[200] cursor-grabbing"
+          style={{ touchAction: 'none' }}
+        />
       )}
     </>,
     document.body
