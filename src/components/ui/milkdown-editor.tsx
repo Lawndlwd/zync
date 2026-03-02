@@ -53,6 +53,7 @@ export function MilkdownEditor({
       defaultValue: withTrailingLines(value),
       features: {
         [CrepeFeature.Placeholder]: true,
+        [CrepeFeature.BlockEdit]: false,
       },
       featureConfigs: {
         [CrepeFeature.Placeholder]: {
