@@ -5,7 +5,7 @@ LOG_FILE="/tmp/zync-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 INSTALL_DIR="${ZYNC_DIR:-$HOME/.zync}"
-RAW_BASE="https://raw.githubusercontent.com/levende/ai-dashboard/main"
+RAW_BASE="https://raw.githubusercontent.com/Lawndlwd/zync/main"
 COMPOSE_URL="$RAW_BASE/docker-compose.prod.yml"
 SCRIPT_URL="$RAW_BASE/install.sh"
 OPENCODE_INSTALL_URL="https://opencode.ai/install"

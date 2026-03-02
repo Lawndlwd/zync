@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ghcr.io/levende/zync-frontend:latest
+    image: ghcr.io/lawndlwd/zync-frontend:latest
     ports:
       - "${ZYNC_PORT:-8080}:80"
     depends_on:
@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghcr.io/levende/zync-backend:latest
+    image: ghcr.io/lawndlwd/zync-backend:latest
     ports:
       - "3001:3001"
     env_file:
@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
 
   whisper:
-    image: ghcr.io/levende/zync-whisper:latest
+    image: ghcr.io/lawndlwd/zync-whisper:latest
     expose:
       - "9100"
     environment:
@@ -48,7 +48,7 @@ services:
     restart: unless-stopped
 
   wakeword:
-    image: ghcr.io/levende/zync-wakeword:latest
+    image: ghcr.io/lawndlwd/zync-wakeword:latest
     ports:
       - "9000:9000"
     environment:

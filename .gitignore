@@ -34,6 +34,9 @@ server/wakeword/.venv/
 .env
 server/.env
 
+# Local MCP config (contains tokens)
+.mcp.json
+
 # Secrets vault
 server/data/secrets.db
 server/data/secrets.db-shm

@@ -1,108 +1,121 @@
 # Zync
 
-A personal AI agent dashboard for frontend developers. Connects to Jira, messaging, and LLMs to help manage, prioritize, and act on your work — all in one place.
-
-## Quick Start
-
-### Prerequisites
-- Node.js 20+
-- pnpm (`corepack enable pnpm`)
-- A Jira Cloud account (for Jira integration)
-- Ollama running locally (for AI features) or an OpenAI API key
-
-### Setup
-
-```bash
-# Install dependencies
-pnpm install
-cd server && pnpm install && cd ..
-
-# Configure environment
-cp .env.example server/.env
-# Edit server/.env with your credentials
-
-# Start both frontend and backend
-pnpm dev:all
-```
-
-The frontend runs on `http://localhost:5173` and the backend on `http://localhost:3001`.
-
-### Connecting Jira
-
-1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
-2. Create an API token
-3. Set in `server/.env`:
-   ```
-   JIRA_BASE_URL=https://your-domain.atlassian.net
-   JIRA_EMAIL=your-email@company.com
-   JIRA_API_TOKEN=your-token
-   ```
-
-### Configuring the LLM
-
-**Ollama (local, default):**
-```
-LLM_BASE_URL=http://localhost:11434
-LLM_MODEL=llama3.2
-```
-
-**OpenAI:**
-```
-LLM_BASE_URL=https://api.openai.com
-LLM_MODEL=gpt-4
-LLM_API_KEY=sk-...
-```
+A self-hosted personal productivity dashboard for developers.
+Connects your tools — Jira, GitLab, Telegram — and uses AI to help
+you manage, prioritize, and act on your work from a single interface.
 
 ## Features
 
-- **Dashboard** — Daily overview with stats, sprint progress, AI briefing
-- **Jira Panel** — View/search issues, transition statuses, add comments, AI-generated TODO checklists
-- **To-Do List** — Local persistent todos linked to Jira issues, priority-based
-- **Inbox** — Messages from Slack/custom source with AI summaries and reply drafts
-- **Journal** — Daily rich-text journal with TipTap editor, AI fill focus, standup generator
-- **AI Agent** — Side panel chat with tool calling (Jira, todos, messages, sprint)
-- **Settings** — Configure all integrations from the UI
+- **AI Chat** — Conversational agent powered by [OpenCode](https://opencode.ai) with
+  tool calling (create tasks, transition Jira issues, draft replies, summarize sprints)
+- **Jira Integration** — View assigned issues, transition statuses, add comments, detect blockers
+- **GitLab** — MR review queue, pipeline stats, project overview
+- **Daily Journal** — Rich text editor with AI-assisted standup generation, weekly recaps, and focus suggestions
+- **Productivity Tracking** — Habits, activity log, token usage stats
+- **Canvas** — AI-powered workspace for brainstorming and structured tasks
+- **Todos** — Personal task list linked to Jira issues with AI-generated sub-tasks
+- **Telegram Bot** — Chat with your agent, get daily briefings, proactive notifications
+- **WhatsApp Channel** — Message your agent via WhatsApp
+- **Documents** — Project knowledge base with search
+- **Daily Digest** — AI-generated briefing of open issues, unread messages, and sprint status
+- **Dark mode** by default
 
-## Keyboard Shortcuts
+## Quick Start
 
-- `Cmd/Ctrl + J` — Open today's journal
-- `Cmd/Ctrl + K` — Toggle AI Agent chat
-- `Cmd/Ctrl + Shift + F` — Fullscreen journal mode
+```bash
+curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bash
+```
+
+This will:
+1. Install [OpenCode](https://opencode.ai) if not already installed
+2. Pull pre-built Docker images
+3. Start all services
+4. Launch `opencode serve` with CORS configured
+
+### Options
+
+```bash
+# Custom port
+curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bash -s -- --port=3000
+
+# Enable voice services (whisper transcription + wakeword detection)
+curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bash -s -- --voice
+
+# Skip OpenCode install
+curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bash -s -- --skip-opencode
+```
+
+### Update
+
+```bash
+cd ~/.zync
+./install.sh --update
+```
+
+## Services
+
+| Service    | URL                    | Description                      |
+|------------|------------------------|----------------------------------|
+| Frontend   | http://localhost:8080   | Dashboard UI                     |
+| Backend    | http://localhost:3001   | API server                       |
+| OpenCode   | http://localhost:4096   | AI agent (runs on host)          |
+| Whisper    | internal               | Voice transcription (optional)   |
+| Wakeword   | http://localhost:9000   | Voice activation (optional)      |
+
+## Configuration
+
+After install, add your API keys and integration config to `~/.zync/.env`:
+
+```env
+ZYNC_PORT=8080
+
+# Integrations (configured via the Settings page)
+JIRA_URL=https://your-instance.atlassian.net
+JIRA_EMAIL=you@example.com
+JIRA_API_TOKEN=...
+
+GITLAB_URL=https://gitlab.com
+GITLAB_TOKEN=...
+
+TELEGRAM_BOT_TOKEN=...
+```
 
 ## Tech Stack
 
-- React 18 + TypeScript + Vite
-- Tailwind CSS v4
-- Zustand (state management)
-- TanStack Query (data fetching)
-- React Router v6
-- TipTap (rich text editor)
-- Express (backend proxy)
-- Ollama / OpenAI (AI)
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
+- **Backend**: Node.js + Express
+- **AI**: OpenCode (supports any provider — Anthropic, OpenAI, local models via Ollama)
+- **State**: Zustand + TanStack Query
+- **Storage**: SQLite
+- **Deploy**: Docker Compose (frontend via nginx, backend via Node)
 
-## Docker
+## Development
 
 ```bash
-cp .env.example .env
-docker compose up --build
+# Clone the repo
+git clone https://github.com/Lawndlwd/zync.git
+cd zync
+
+# Frontend
+pnpm install
+pnpm dev
+
+# Backend
+cd server
+pnpm install
+pnpm dev
+
+# Or build and run everything locally with Docker
+docker compose up -d --build
 ```
 
-Frontend: `http://localhost:8080` | Backend: `http://localhost:3001`
+## Useful Commands
 
-## Project Structure
-
-```
-src/
-├── components/
-│   ├── ai-agent/    # Chat panel
-│   ├── jira/        # Issue cards, detail view
-│   ├── layout/      # Sidebar, app layout
-│   └── ui/          # Button, Card, Badge, Input, Skeleton, ErrorBoundary
-├── hooks/           # useJiraIssues, useMessages, useAIAgent
-├── store/           # Zustand stores (settings, todos, journal, chat)
-├── services/        # API service layer (jira, llm, messages)
-├── types/           # TypeScript interfaces
-└── pages/           # Route pages
-server/
-└── src/routes/      # Express proxy routes (jira, llm, messages)
+```bash
+cd ~/.zync
+docker compose logs -f           # View logs
+docker compose down              # Stop Zync
+docker compose up -d             # Start Zync
+./install.sh --update            # Update to latest
+./install.sh --update --voice    # Update with voice services
 ```

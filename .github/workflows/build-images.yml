@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/zync
+  IMAGE_PREFIX: ghcr.io/lawndlwd/zync
 
 permissions:
   contents: read
