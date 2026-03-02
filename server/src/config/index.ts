@@ -4,10 +4,16 @@ let instance: ConfigService | null = null
 
 export function getConfigService(): ConfigService | null {
   if (!instance) {
-    instance = new ConfigService()
+    try {
+      instance = new ConfigService()
+    } catch {
+      return null
+    }
   }
   return instance
 }
+
+export { ConfigService }
 
 export function getConfig(name: string, defaultValue: string | null = null): string | null {
   const svc = getConfigService()
