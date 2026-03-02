@@ -92,6 +92,7 @@ export function useVoiceConversation() {
   const analyser = useAudioAnalyser()
   const { addMessage, appendToMessage, updateMessage } = useChatStore()
   const assistantMsgIdRef = useRef<string | null>(null)
+  const assistantContentRef = useRef('')
 
   const { wakeWordEnabled, toggleWakeWord } = useVoiceSettings()
 
@@ -227,11 +228,12 @@ export function useVoiceConversation() {
         assistantMsgIdRef.current = assistantMsg.id
 
         conversationRef.current.push({ role: 'user', content: actualMessage })
+        assistantContentRef.current = ''
 
         await streamChat([...conversationRef.current], {
           onToken: (token) => {
             if (closedRef.current) return
-            // Append token to last assistant message
+            assistantContentRef.current += token
             setMessages((prev) => {
               const updated = [...prev]
               const last = updated[updated.length - 1]
@@ -250,14 +252,9 @@ export function useVoiceConversation() {
             if (assistantMsgIdRef.current) {
               updateMessage(assistantMsgIdRef.current, { isStreaming: false })
             }
-            // Save final assistant content to conversation ref
-            setMessages((prev) => {
-              const last = prev[prev.length - 1]
-              if (last?.role === 'assistant') {
-                conversationRef.current.push({ role: 'assistant', content: last.content })
-              }
-              return prev
-            })
+            if (assistantContentRef.current) {
+              conversationRef.current.push({ role: 'assistant', content: assistantContentRef.current })
+            }
             isProcessingRef.current = false
             if (audioQueueRef.current.length > 0) {
               processAudio(audioQueueRef.current.shift()!)

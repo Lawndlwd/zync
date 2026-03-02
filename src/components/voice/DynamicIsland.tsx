@@ -124,7 +124,7 @@ interface ConversationContentProps {
   onFollowUp: () => void
   onDragStart: (e: React.PointerEvent) => void
   onDragMove: (e: React.PointerEvent) => void
-  onDragEnd: () => void
+  onDragEnd: (e: React.PointerEvent) => void
 }
 
 function ConversationContent({
@@ -294,6 +294,8 @@ export function DynamicIsland() {
 
   // UI modes: 'idle' | 'expanded' | 'detached'
   const [mode, setMode] = useState<'idle' | 'expanded' | 'detached'>('idle')
+  const modeRef = useRef(mode)
+  modeRef.current = mode
 
   // Detached card position
   const [detachedPos, setDetachedPos] = useState({ x: 0, y: 200 })
@@ -325,16 +327,16 @@ export function DynamicIsland() {
   const onDragStart = useCallback((e: React.PointerEvent) => {
     draggingRef.current = true
     dragDistanceRef.current = 0
+    const currentMode = modeRef.current
 
-    if (mode === 'expanded') {
-      // When expanded, track from current position to detect detach threshold
+    if (currentMode === 'expanded') {
       dragStartRef.current = {
         mouseX: e.clientX,
         mouseY: e.clientY,
         posX: 0,
-        posY: 200, // initial detached position
+        posY: Math.min(200, window.innerHeight * 0.3),
       }
-    } else if (mode === 'detached') {
+    } else if (currentMode === 'detached') {
       dragStartRef.current = {
         mouseX: e.clientX,
         mouseY: e.clientY,
@@ -345,7 +347,7 @@ export function DynamicIsland() {
 
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     e.preventDefault()
-  }, [mode, detachedPos])
+  }, [detachedPos])
 
   const onDragMove = useCallback((e: React.PointerEvent) => {
     if (!draggingRef.current) return
@@ -353,24 +355,31 @@ export function DynamicIsland() {
     const dy = e.clientY - dragStartRef.current.mouseY
     const distance = Math.sqrt(dx * dx + dy * dy)
     dragDistanceRef.current = distance
+    const currentMode = modeRef.current
 
-    if (mode === 'expanded' && distance > DRAG_DETACH_THRESHOLD) {
-      // Detach: switch to detached mode
+    const clampPos = (rawX: number, rawY: number) => ({
+      x: Math.max(-window.innerWidth / 2 + 220, Math.min(window.innerWidth / 2 - 220, rawX)),
+      y: Math.max(60, Math.min(window.innerHeight - 100, rawY)),
+    })
+
+    if (currentMode === 'expanded' && distance > DRAG_DETACH_THRESHOLD) {
+      modeRef.current = 'detached'
       setMode('detached')
-      setDetachedPos({
-        x: dragStartRef.current.posX + dx,
-        y: dragStartRef.current.posY + dy,
-      })
-    } else if (mode === 'detached') {
-      setDetachedPos({
-        x: dragStartRef.current.posX + dx,
-        y: dragStartRef.current.posY + dy,
-      })
+      setDetachedPos(clampPos(
+        dragStartRef.current.posX + dx,
+        dragStartRef.current.posY + dy,
+      ))
+    } else if (currentMode === 'detached') {
+      setDetachedPos(clampPos(
+        dragStartRef.current.posX + dx,
+        dragStartRef.current.posY + dy,
+      ))
     }
-  }, [mode])
+  }, [])
 
-  const onDragEnd = useCallback(() => {
+  const onDragEnd = useCallback((e: React.PointerEvent) => {
     draggingRef.current = false
+    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
   }, [])
 
   // ---------------------------------------------------------------------------
@@ -477,6 +486,7 @@ export function DynamicIsland() {
         {/* Expanded content (conversation card morphed into pill) */}
         {isExpanded && (
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               opacity: contentVisible ? 1 : 0,
               transition: `opacity 200ms ease-out`,
