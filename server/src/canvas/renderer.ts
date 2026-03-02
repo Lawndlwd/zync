@@ -3,6 +3,7 @@ import type { Server } from 'http'
 import type { IncomingMessage } from 'http'
 import { URL } from 'url'
 import { logger } from '../lib/logger.js'
+import { getConfig } from '../config/index.js'
 
 interface CanvasUpdate {
   type: 'render' | 'update' | 'clear'
@@ -16,7 +17,7 @@ let wss: WebSocketServer | null = null
 const clients = new Set<WebSocket>()
 
 const ALLOWED_ORIGINS = new Set([
-  ...(process.env.CANVAS_ALLOWED_ORIGINS?.split(',').map(s => s.trim()).filter(Boolean) || []),
+  ...(getConfig('CANVAS_ALLOWED_ORIGINS')?.split(',').map(s => s.trim()).filter(Boolean) || []),
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
@@ -33,7 +34,7 @@ function isConnectionAllowed(req: IncomingMessage): boolean {
   try {
     const url = new URL(req.url || '', `http://${req.headers.host}`)
     const token = url.searchParams.get('token')
-    const expectedToken = process.env.CANVAS_WS_TOKEN
+    const expectedToken = getConfig('CANVAS_WS_TOKEN')
     // If a token is configured, require it
     if (expectedToken && token !== expectedToken) return false
   } catch {

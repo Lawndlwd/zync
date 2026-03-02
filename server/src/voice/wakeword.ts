@@ -2,12 +2,13 @@ import { spawn, type ChildProcess } from 'child_process'
 import { resolve } from 'path'
 import { existsSync } from 'fs'
 import { logger } from '../lib/logger.js'
+import { getConfig } from '../config/index.js'
 
 let wakewordProcess: ChildProcess | null = null
 
 export function startWakeWordServer(): void {
-  // Read env at call time (after dotenv has loaded)
-  if (process.env.WAKEWORD_ENABLED !== 'true') return
+  // Read config at call time (after dotenv has loaded)
+  if (getConfig('WAKEWORD_ENABLED') !== 'true') return
 
   const wakewordDir = resolve(import.meta.dirname, '../../wakeword')
   const venvPython = resolve(wakewordDir, '.venv/bin/python3')
@@ -32,9 +33,9 @@ export function startWakeWordServer(): void {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
         ...process.env,
-        WAKEWORD_PORT: process.env.WAKEWORD_PORT || '9000',
-        WAKEWORD_MODEL: process.env.WAKEWORD_MODEL || 'hey_jarvis',
-        WAKEWORD_THRESHOLD: process.env.WAKEWORD_THRESHOLD || '0.5',
+        WAKEWORD_PORT: getConfig('WAKEWORD_PORT', '9000') || '9000',
+        WAKEWORD_MODEL: getConfig('WAKEWORD_MODEL', 'hey_jarvis') || 'hey_jarvis',
+        WAKEWORD_THRESHOLD: getConfig('WAKEWORD_THRESHOLD', '0.5') || '0.5',
       },
     })
 

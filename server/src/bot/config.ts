@@ -1,3 +1,5 @@
+import { getConfig } from '../config/index.js'
+
 export interface BotConfig {
   telegramBotToken: string
   allowedUsers: number[]
@@ -10,7 +12,7 @@ export function getBotConfig(): BotConfig {
   const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN
   if (!telegramBotToken) throw new Error('TELEGRAM_BOT_TOKEN is required')
 
-  const allowedUsersRaw = process.env.TELEGRAM_ALLOWED_USERS
+  const allowedUsersRaw = getConfig('TELEGRAM_ALLOWED_USERS')
   if (!allowedUsersRaw) throw new Error('TELEGRAM_ALLOWED_USERS is required')
 
   const allowedUsers = allowedUsersRaw
@@ -23,9 +25,9 @@ export function getBotConfig(): BotConfig {
       return num
     })
 
-  const llmBaseUrl = process.env.LLM_BASE_URL || 'http://localhost:11434'
-  const llmModel = process.env.LLM_MODEL || 'llama3.2'
-  const llmApiKey = process.env.LLM_API_KEY || ''
+  const llmBaseUrl = getConfig('LLM_BASE_URL', 'http://localhost:11434') || 'http://localhost:11434'
+  const llmModel = getConfig('LLM_MODEL', 'llama3.2') || 'llama3.2'
+  const llmApiKey = getConfig('LLM_API_KEY', '') || ''
 
   return { telegramBotToken, allowedUsers, llmBaseUrl, llmModel, llmApiKey }
 }

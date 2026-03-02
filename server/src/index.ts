@@ -32,6 +32,7 @@ import { existsSync } from 'fs'
 import { resolve } from 'path'
 import { logger } from './lib/logger.js'
 import { getSecret } from './secrets/index.js'
+import { getConfig } from './config/index.js'
 import { migrateJsonConfigs } from './config/migrate.js'
 
 config()
@@ -113,7 +114,7 @@ channelManager.onMessage(handleMessage)
   const cfg = loadChannelConfig()
 
   // WhatsApp: reconnect if auth state exists
-  const waAuthDir = process.env.WHATSAPP_AUTH_DIR || './data/whatsapp-auth'
+  const waAuthDir = getConfig('WHATSAPP_AUTH_DIR', './data/whatsapp-auth') || './data/whatsapp-auth'
   if (existsSync(resolve(waAuthDir, 'creds.json'))) {
     logger.info('WhatsApp: found saved auth, auto-reconnecting...')
     const allowedNumbers = (cfg.whatsapp?.allowedNumbers || '')
@@ -139,12 +140,12 @@ channelManager.onMessage(handleMessage)
 })()
 
 // Schedule briefings
-if (process.env.DEFAULT_CHAT_ID) {
-  cron.schedule(process.env.MORNING_BRIEFING_CRON || '0 8 * * 1-5', () => {
+if (getConfig('DEFAULT_CHAT_ID')) {
+  cron.schedule(getConfig('MORNING_BRIEFING_CRON', '0 8 * * 1-5') || '0 8 * * 1-5', () => {
     sendMorningBriefing().catch(err => logger.error({ err }, 'Morning briefing failed'))
   }, { timezone: 'Europe/Paris' })
 
-  cron.schedule(process.env.EVENING_RECAP_CRON || '0 18 * * 1-5', () => {
+  cron.schedule(getConfig('EVENING_RECAP_CRON', '0 18 * * 1-5') || '0 18 * * 1-5', () => {
     sendEveningRecap().catch(err => logger.error({ err }, 'Evening recap failed'))
   }, { timezone: 'Europe/Paris' })
 

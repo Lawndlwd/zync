@@ -5,14 +5,15 @@ import { promisify } from 'util'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 import { homedir } from 'os'
+import { getConfig } from '../config/index.js'
 
 const execFileAsync = promisify(execFile)
 
 export const gitLocalRouter = Router()
 
 function getRepoPath(projectId: string): string {
-  const reposJson = process.env.GITLAB_LOCAL_REPOS
-  if (!reposJson) throw new Error('GITLAB_LOCAL_REPOS not configured in .env')
+  const reposJson = getConfig('GITLAB_LOCAL_REPOS')
+  if (!reposJson) throw new Error('GITLAB_LOCAL_REPOS not configured (set in Settings or .env)')
   const repos: Record<string, string> = JSON.parse(reposJson)
   const repoPath = repos[projectId]
   if (!repoPath) throw new Error(`No local repo configured for project ${projectId}`)

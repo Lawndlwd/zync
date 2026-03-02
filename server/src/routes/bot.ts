@@ -13,6 +13,7 @@ import {
   GmailConfigSchema,
 } from '../lib/schemas.js'
 import { getSecret } from '../secrets/index.js'
+import { getConfig } from '../config/index.js'
 import { searchMemory, saveMemory, deleteMemory, listAllMemories, getMemoryCount } from '../bot/memory/index.js'
 import { getAllSchedules } from '../bot/heartbeat/db.js'
 import { addSchedule, adminRemoveSchedule, adminToggleSchedule } from '../bot/heartbeat/scheduler.js'
@@ -49,8 +50,8 @@ function saveChannelConfig(cfg: ChannelConfigData): void {
   writeFileSync(CHANNEL_CONFIG_PATH, JSON.stringify(cfg, null, 2))
 }
 
-const OAUTH_BASE_URL = process.env.OAUTH_BASE_URL || `http://localhost:${process.env.PORT || 3001}`
-const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || `http://localhost:${process.env.FRONTEND_PORT || 5173}`
+const OAUTH_BASE_URL = getConfig('OAUTH_BASE_URL') || `http://localhost:${process.env.PORT || 3001}`
+const FRONTEND_BASE_URL = getConfig('FRONTEND_BASE_URL') || `http://localhost:${getConfig('FRONTEND_PORT', '5173') || '5173'}`
 
 export const botRouter = Router()
 
@@ -71,7 +72,7 @@ botRouter.get('/status', async (_req, res) => {
       if (existsSync(cfgPath)) {
         briefingEnabled = JSON.parse(readFileSync(cfgPath, 'utf-8')).enabled ?? false
       } else {
-        briefingEnabled = !!(process.env.MORNING_CRON || process.env.EVENING_CRON)
+        briefingEnabled = !!(getConfig('MORNING_CRON') || getConfig('EVENING_CRON'))
       }
     } catch {}
 
@@ -308,7 +309,7 @@ botRouter.post('/channels/:channel/connect', async (req, res) => {
 
       await adapter.start()
     } else if (channel === 'whatsapp') {
-      const authDir = process.env.WHATSAPP_AUTH_DIR || './data/whatsapp-auth'
+      const authDir = getConfig('WHATSAPP_AUTH_DIR', './data/whatsapp-auth') || './data/whatsapp-auth'
       const allowedNumbers = (cfg.whatsapp?.allowedNumbers || '')
         .split(',').map(s => s.trim()).filter(Boolean)
         .map(n => n.includes('@') ? n : `${n}@s.whatsapp.net`)
@@ -400,7 +401,7 @@ botRouter.post('/channels/whatsapp/reset', async (_req, res) => {
     const manager = getChannelManager()
     await manager.unregister('whatsapp')
     const adapter = new WhatsAppAdapter({
-      authDir: process.env.WHATSAPP_AUTH_DIR || './data/whatsapp-auth',
+      authDir: getConfig('WHATSAPP_AUTH_DIR', './data/whatsapp-auth') || './data/whatsapp-auth',
     })
     adapter.clearAuth()
     res.json({ success: true, message: 'WhatsApp auth cleared. Click Connect to pair again.' })
@@ -441,11 +442,11 @@ botRouter.get('/briefing/config', (_req, res) => {
       res.json(JSON.parse(readFileSync(cfgPath, 'utf-8')))
     } else {
       res.json({
-        morningCron: process.env.MORNING_CRON || '0 8 * * 1-5',
-        eveningCron: process.env.EVENING_CRON || '0 18 * * 1-5',
-        channel: process.env.DEFAULT_CHANNEL || 'telegram',
-        chatId: process.env.DEFAULT_CHAT_ID || '',
-        enabled: !!(process.env.MORNING_CRON || process.env.EVENING_CRON),
+        morningCron: getConfig('MORNING_CRON', '0 8 * * 1-5') || '0 8 * * 1-5',
+        eveningCron: getConfig('EVENING_CRON', '0 18 * * 1-5') || '0 18 * * 1-5',
+        channel: getConfig('DEFAULT_CHANNEL', 'telegram') || 'telegram',
+        chatId: getConfig('DEFAULT_CHAT_ID') || '',
+        enabled: !!(getConfig('MORNING_CRON') || getConfig('EVENING_CRON')),
       })
     }
   } catch (err) {

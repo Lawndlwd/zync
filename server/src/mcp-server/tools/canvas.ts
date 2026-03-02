@@ -1,6 +1,7 @@
 import { z } from 'zod'
+import { getConfig } from '../../config/index.js'
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3001'
+const API_BASE = getConfig('API_BASE_URL', 'http://localhost:3001') || 'http://localhost:3001'
 
 // Rate limit: one render per 5 seconds
 let lastRenderTime = 0

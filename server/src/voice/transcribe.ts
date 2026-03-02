@@ -4,19 +4,20 @@ import { writeFileSync, unlinkSync, readFileSync, existsSync } from 'fs'
 import { resolve, basename, dirname } from 'path'
 import { randomUUID } from 'crypto'
 import { logger } from '../lib/logger.js'
+import { getConfig } from '../config/index.js'
 
 const execFileAsync = promisify(execFile)
 
 // Whisper-cpp settings
-const WHISPER_PATH = process.env.WHISPER_PATH || '/opt/homebrew/opt/whisper-cpp/bin/whisper-cli'
-const WHISPER_MODEL = process.env.WHISPER_MODEL || resolve(import.meta.dirname, '../../data/ggml-base.en.bin')
+const WHISPER_PATH = getConfig('WHISPER_PATH', '/opt/homebrew/opt/whisper-cpp/bin/whisper-cli') || '/opt/homebrew/opt/whisper-cpp/bin/whisper-cli'
+const WHISPER_MODEL = getConfig('WHISPER_MODEL') || resolve(import.meta.dirname, '../../data/ggml-base.en.bin')
 
 // faster-whisper (whisper-ctranslate2) settings
-const WHISPER_BACKEND = process.env.WHISPER_BACKEND || 'auto'
-const FASTER_WHISPER_PATH = process.env.FASTER_WHISPER_PATH || 'whisper-ctranslate2'
-const FASTER_WHISPER_MODEL = process.env.FASTER_WHISPER_MODEL || 'base.en'
+const WHISPER_BACKEND = getConfig('WHISPER_BACKEND', 'auto') || 'auto'
+const FASTER_WHISPER_PATH = getConfig('FASTER_WHISPER_PATH', 'whisper-ctranslate2') || 'whisper-ctranslate2'
+const FASTER_WHISPER_MODEL = getConfig('FASTER_WHISPER_MODEL', 'base.en') || 'base.en'
 
-const TEMP_DIR = process.env.TEMP_DIR || '/tmp'
+const TEMP_DIR = getConfig('TEMP_DIR', '/tmp') || '/tmp'
 
 // Formats whisper-cpp supports natively
 const NATIVE_FORMATS = new Set(['flac', 'mp3', 'ogg', 'wav'])

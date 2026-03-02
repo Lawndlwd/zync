@@ -5,12 +5,13 @@ import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { FolderCreateSchema, FolderRenameSchema, DocumentCreateSchema, DocumentUpdateSchema, DocumentBulkSchema } from '../lib/schemas.js'
+import { getConfig } from '../config/index.js'
 
 export const documentsRouter = Router()
 
 function getDocsRoot(): string {
-  const root = process.env.DOCUMENTS_PATH
-  if (!root) throw new Error('DOCUMENTS_PATH env var is not set')
+  const root = getConfig('DOCUMENTS_PATH')
+  if (!root) throw new Error('DOCUMENTS_PATH is not configured (set in Settings or .env)')
   mkdirSync(root, { recursive: true })
   return root
 }
@@ -140,7 +141,7 @@ documentsRouter.get('/', (req, res) => {
 })
 
 /** GET a single document by path (folder/file.md) */
-documentsRouter.get('/file/:path(*)', (req, res) => {
+documentsRouter.get('/file/{*path}', (req, res) => {
   try {
     const root = getDocsRoot()
     const docPath = (req.params as Record<string, string>).path
@@ -192,7 +193,7 @@ documentsRouter.post('/', validate(DocumentCreateSchema), (req, res) => {
 })
 
 /** Update a document — path is the current path */
-documentsRouter.put('/file/:path(*)', validate(DocumentUpdateSchema), (req, res) => {
+documentsRouter.put('/file/{*path}', validate(DocumentUpdateSchema), (req, res) => {
   try {
     const root = getDocsRoot()
     const docPath = (req.params as Record<string, string>).path
@@ -244,7 +245,7 @@ documentsRouter.put('/file/:path(*)', validate(DocumentUpdateSchema), (req, res)
 })
 
 /** Delete a document */
-documentsRouter.delete('/file/:path(*)', (req, res) => {
+documentsRouter.delete('/file/{*path}', (req, res) => {
   try {
     const root = getDocsRoot()
     const docPath = (req.params as Record<string, string>).path

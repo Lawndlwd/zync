@@ -1,4 +1,6 @@
-const OPENCODE_URL = process.env.OPENCODE_URL || 'http://localhost:4096'
+import { getConfig } from '../config/index.js'
+
+const OPENCODE_URL = getConfig('OPENCODE_URL', 'http://localhost:4096') || 'http://localhost:4096'
 
 // Raw HTTP client for OpenCode — the SDK has issues with session.prompt returning empty data
 // and model config inheritance bugs. Direct HTTP is more reliable.

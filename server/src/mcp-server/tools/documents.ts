@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'fs'
 import { join, basename, relative } from 'path'
+import { getConfig } from '../../config/index.js'
 
 function getDocsRoot(): string {
-  const root = process.env.DOCUMENTS_PATH
-  if (!root) throw new Error('DOCUMENTS_PATH env var is not set')
+  const root = getConfig('DOCUMENTS_PATH')
+  if (!root) throw new Error('DOCUMENTS_PATH is not configured (set in Settings or .env)')
   mkdirSync(root, { recursive: true })
   return root
 }
