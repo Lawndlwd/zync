@@ -15,6 +15,7 @@ let wss: WebSocketServer | null = null
 const clients = new Set<WebSocket>()
 
 const ALLOWED_ORIGINS = new Set([
+  ...(process.env.CANVAS_ALLOWED_ORIGINS?.split(',').map(s => s.trim()).filter(Boolean) || []),
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',

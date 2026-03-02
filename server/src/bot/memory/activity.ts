@@ -71,7 +71,7 @@ export function getRecentCalls(limit = 50, offset = 0) {
 
 export function getActivityStats(days = 30) {
   const db = getDb()
-  const since = `datetime('now', '-${days} days')`
+  const since = new Date(Date.now() - days * 86400000).toISOString()
 
   const totals = db.prepare(`
     SELECT
@@ -81,8 +81,8 @@ export function getActivityStats(days = 30) {
       COALESCE(SUM(total_tokens), 0) as total_tokens,
       COALESCE(AVG(duration_ms), 0) as avg_duration_ms,
       COALESCE(SUM(cost), 0) as total_cost
-    FROM llm_calls WHERE created_at >= ${since}
-  `).get() as Record<string, number>
+    FROM llm_calls WHERE created_at >= ?
+  `).get(since) as Record<string, number>
 
   const byModel = db.prepare(`
     SELECT
@@ -91,9 +91,9 @@ export function getActivityStats(days = 30) {
       COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
       COALESCE(SUM(completion_tokens), 0) as completion_tokens,
       COALESCE(SUM(total_tokens), 0) as total_tokens
-    FROM llm_calls WHERE created_at >= ${since}
+    FROM llm_calls WHERE created_at >= ?
     GROUP BY model ORDER BY total_tokens DESC
-  `).all()
+  `).all(since)
 
   const byDay = db.prepare(`
     SELECT
@@ -101,9 +101,9 @@ export function getActivityStats(days = 30) {
       COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
       COALESCE(SUM(completion_tokens), 0) as completion_tokens,
       COUNT(*) as calls
-    FROM llm_calls WHERE created_at >= ${since}
+    FROM llm_calls WHERE created_at >= ?
     GROUP BY date(created_at) ORDER BY day ASC
-  `).all()
+  `).all(since)
 
   const byDaySource = db.prepare(`
     SELECT
@@ -114,9 +114,9 @@ export function getActivityStats(days = 30) {
       COALESCE(SUM(total_tokens), 0) as total_tokens,
       COALESCE(SUM(cost), 0) as cost,
       COUNT(*) as calls
-    FROM llm_calls WHERE created_at >= ${since}
+    FROM llm_calls WHERE created_at >= ?
     GROUP BY date(created_at), source ORDER BY day ASC
-  `).all()
+  `).all(since)
 
   const bySource = db.prepare(`
     SELECT
@@ -124,9 +124,9 @@ export function getActivityStats(days = 30) {
       COUNT(*) as calls,
       COALESCE(SUM(total_tokens), 0) as total_tokens,
       COALESCE(SUM(cost), 0) as cost
-    FROM llm_calls WHERE created_at >= ${since}
+    FROM llm_calls WHERE created_at >= ?
     GROUP BY source
-  `).all()
+  `).all(since)
 
   const callsToday = (db.prepare(`
     SELECT COUNT(*) as count FROM llm_calls WHERE date(created_at) = date('now')

@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { z } from 'zod'
 import { searchMemory, saveMemory, deleteMemory, listAllMemories, getMemoryCount } from '../bot/memory/index.js'
 import { getAllSchedules } from '../bot/heartbeat/db.js'
 import { addSchedule, adminRemoveSchedule, adminToggleSchedule } from '../bot/heartbeat/scheduler.js'
@@ -33,6 +34,9 @@ function saveChannelConfig(cfg: ChannelConfigData): void {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
   writeFileSync(CHANNEL_CONFIG_PATH, JSON.stringify(cfg, null, 2))
 }
+
+const OAUTH_BASE_URL = process.env.OAUTH_BASE_URL || `http://localhost:${process.env.PORT || 3001}`
+const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || `http://localhost:${process.env.FRONTEND_PORT || 5173}`
 
 export const botRouter = Router()
 
@@ -190,8 +194,7 @@ botRouter.get('/channels/gmail/auth-url', (_req, res) => {
     if (!clientId) {
       return res.status(400).json({ error: 'Save Client ID and Client Secret first.' })
     }
-    const port = process.env.PORT || 3001
-    const redirectUri = `http://localhost:${port}/api/bot/channels/gmail/callback`
+    const redirectUri = `${OAUTH_BASE_URL}/api/bot/channels/gmail/callback`
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -210,12 +213,11 @@ botRouter.get('/channels/gmail/auth-url', (_req, res) => {
 botRouter.get('/channels/gmail/callback', async (req, res) => {
   try {
     const error = req.query.error as string | undefined
-    const frontendPort = process.env.FRONTEND_PORT || 5173
     if (error) {
-      return res.redirect(`http://localhost:${frontendPort}/settings?gmail_error=${encodeURIComponent(error)}`)
+      return res.redirect(`${FRONTEND_BASE_URL}/settings?gmail_error=${encodeURIComponent(error)}`)
     }
     const code = req.query.code as string
-    if (!code) return res.redirect(`http://localhost:${frontendPort}/settings?gmail_error=no_code`)
+    if (!code) return res.redirect(`${FRONTEND_BASE_URL}/settings?gmail_error=no_code`)
 
     const cfg = loadChannelConfig()
     const clientId = cfg.gmail?.clientId
@@ -224,8 +226,7 @@ botRouter.get('/channels/gmail/callback', async (req, res) => {
       return res.status(400).send('Gmail Client ID/Secret not configured')
     }
 
-    const port = process.env.PORT || 3001
-    const redirectUri = `http://localhost:${port}/api/bot/channels/gmail/callback`
+    const redirectUri = `${OAUTH_BASE_URL}/api/bot/channels/gmail/callback`
 
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -260,7 +261,7 @@ botRouter.get('/channels/gmail/callback', async (req, res) => {
     console.log('Gmail: OAuth tokens saved, available for on-demand access')
 
     // Redirect back to settings page with success
-    res.redirect(`http://localhost:${frontendPort}/settings?gmail=authorized`)
+    res.redirect(`${FRONTEND_BASE_URL}/settings?gmail=authorized`)
   } catch (err: any) {
     res.status(500).send(`OAuth error: ${err.message}`)
   }
@@ -435,10 +436,22 @@ botRouter.get('/briefing/config', (_req, res) => {
 })
 
 // PUT /api/bot/briefing/config
+const BriefingConfigSchema = z.object({
+  morningCron: z.string(),
+  eveningCron: z.string(),
+  channel: z.string(),
+  chatId: z.string(),
+  enabled: z.boolean(),
+})
+
 botRouter.put('/briefing/config', (req, res) => {
   try {
+    const result = BriefingConfigSchema.safeParse(req.body)
+    if (!result.success) {
+      return res.status(400).json({ error: 'Invalid config', details: result.error.flatten() })
+    }
     const cfgPath = resolve(DATA_DIR, 'briefing-config.json')
-    writeFileSync(cfgPath, JSON.stringify(req.body, null, 2))
+    writeFileSync(cfgPath, JSON.stringify(result.data, null, 2))
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
@@ -480,10 +493,26 @@ botRouter.get('/tool-config', (_req, res) => {
 })
 
 // PUT /api/bot/tool-config
+const ToolConfigSchema = z.object({
+  shell: z.object({
+    allowlist: z.array(z.string()),
+    timeout_ms: z.number().optional(),
+    max_output_bytes: z.number().optional(),
+  }).optional(),
+  files: z.object({
+    allowed_paths: z.array(z.string()),
+    max_file_size_bytes: z.number().optional(),
+  }).optional(),
+})
+
 botRouter.put('/tool-config', (req, res) => {
   try {
+    const result = ToolConfigSchema.safeParse(req.body)
+    if (!result.success) {
+      return res.status(400).json({ error: 'Invalid config', details: result.error.flatten() })
+    }
     const cfgPath = resolve(DATA_DIR, 'tool-config.json')
-    writeFileSync(cfgPath, JSON.stringify(req.body, null, 2))
+    writeFileSync(cfgPath, JSON.stringify(result.data, null, 2))
     res.json({ success: true })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
