@@ -198,3 +198,10 @@ export const GmailConfigSchema = z.object({
   clientSecret: z.string().optional(),
   refreshToken: z.string().optional(),
 })
+
+// --- Secrets ---
+export const SecretSetSchema = z.object({
+  name: z.string().min(1).max(255),
+  value: z.string().min(1),
+  category: z.string().max(64).default('general'),
+})
