@@ -24,7 +24,8 @@ llmRouter.post('/chat', async (req, res) => {
 
     await sendPromptAsync(sessionId, fullPrompt)
 
-    const text = await pollForReply(sessionId, 60_000)
+    const promptSnippet = 'User message:\n' + lastUserMsg.content
+    const text = await pollForReply(sessionId, 60_000, promptSnippet)
 
     insertLLMCall({
       source: 'chat',
@@ -42,17 +43,22 @@ llmRouter.post('/chat', async (req, res) => {
   }
 })
 
-async function pollForReply(sessionId: string, timeoutMs: number): Promise<string> {
+async function pollForReply(sessionId: string, timeoutMs: number, promptSnippet?: string): Promise<string> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 1500))
     const msgs = await getSessionMessages(sessionId)
     const assistantMsgs = msgs.filter((m: any) => m.info?.role === 'assistant')
-    // First 2 are tools + prompt echo, real answer is 3rd+
-    if (assistantMsgs.length < 3) continue
-    const last = assistantMsgs[assistantMsgs.length - 1]
-    if (last?.parts) {
-      const texts = last.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text)
+    if (assistantMsgs.length < 2) continue
+    // Find the last non-echo assistant message
+    for (let i = assistantMsgs.length - 1; i >= 0; i--) {
+      const msg = assistantMsgs[i]
+      if (!msg?.parts) continue
+      const isEcho = promptSnippet && msg.parts.some((p: any) =>
+        p.type === 'text' && p.text && p.text.includes(promptSnippet)
+      )
+      if (isEcho) continue
+      const texts = msg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text)
       if (texts.length > 0 && texts.some((t: string) => t.length > 0)) {
         return texts.join('')
       }
@@ -63,10 +69,13 @@ async function pollForReply(sessionId: string, timeoutMs: number): Promise<strin
 
 // Streaming chat — send prompt async, listen to SSE for updates
 //
-// OpenCode flow:
-//   1. First assistant message  = tool calls (forward tool_call events, text → thinking)
-//   2. Second assistant message = system prompt echo (text → thinking)
-//   3. Third+ assistant messages = actual response (text → token)
+// OpenCode flow (variable number of assistant messages):
+//   - System prompt echo: text contains the injected prompt → thinking
+//   - Tool call messages: tool parts → forward as tool_call events
+//   - Actual response: text that is NOT the echo → token
+//
+// Detection: instead of counting messages (fragile), we check if text
+// content matches the sent prompt to identify the echo.
 //
 // Stream closing:
 //   - Primary: session.updated with idle/completed
@@ -98,11 +107,13 @@ llmRouter.post('/chat/stream', async (req, res) => {
 
     const sentParts = new Set<string>()
     let done = false
-    // Track first 2 assistant message IDs — both are "thinking" (tools + echo)
+    // Track message IDs that are echo/thinking (detected by content matching)
     const thinkingMsgIds = new Set<string>()
-    let assistantMsgCount = 0
     let hasSentContent = false
+    let hasSeenEcho = false
     let idleTimer: ReturnType<typeof setTimeout> | null = null
+    // Will be set after prompt is sent, used to detect echo messages
+    let sentPromptSnippet = ''
 
     const cleanup = () => {
       if (idleTimer) { clearTimeout(idleTimer); idleTimer = null }
@@ -116,10 +127,16 @@ llmRouter.post('/chat/stream', async (req, res) => {
       if (!hasSentContent) {
         getSessionMessages(sessionId).then((msgs) => {
           const assistantMsgs = msgs.filter((m: any) => m.info?.role === 'assistant')
-          // Skip first 2 (tools + echo), take the rest
-          for (let i = 2; i < assistantMsgs.length; i++) {
-            const msg = assistantMsgs[i]
+          // Send non-echo messages as tokens
+          for (const msg of assistantMsgs) {
             if (msg?.parts) {
+              const isEcho = msg.parts.some((p: any) =>
+                p.type === 'text' && p.text && sentPromptSnippet && p.text.includes(sentPromptSnippet)
+              )
+              if (isEcho) continue
+              // Skip tool-only messages
+              const hasText = msg.parts.some((p: any) => p.type === 'text' && p.text)
+              if (!hasText) continue
               for (const part of msg.parts) {
                 if (part.type === 'text' && part.text) {
                   res.write(`data: ${JSON.stringify({ type: 'token', content: part.text })}\n\n`)
@@ -146,7 +163,7 @@ llmRouter.post('/chat/stream', async (req, res) => {
       if (idleTimer) clearTimeout(idleTimer)
       idleTimer = setTimeout(() => {
         if (!done) finishStream()
-      }, 4000)
+      }, 1500)
     }
 
     const timeout = setTimeout(() => {
@@ -167,49 +184,38 @@ llmRouter.post('/chat/stream', async (req, res) => {
           const part = props.part
           if (!part || part.sessionID !== sessionId) return
 
-          // Track assistant message IDs — first 2 are thinking
+          // Detect echo messages by checking if text contains the sent prompt
           if (part.messageID && !thinkingMsgIds.has(part.messageID)) {
-            assistantMsgCount++
-            if (assistantMsgCount <= 2) {
+            if (part.type === 'text' && part.text && sentPromptSnippet &&
+                part.text.includes(sentPromptSnippet)) {
               thinkingMsgIds.add(part.messageID)
+              hasSeenEcho = true
             }
           }
 
-          const isThinkingMsg = thinkingMsgIds.has(part.messageID)
+          // Before we see the echo, all messages are thinking/context
+          const isThinkingMsg = thinkingMsgIds.has(part.messageID) || !hasSeenEcho
 
-          if (isThinkingMsg) {
-            // First 2 messages: text → thinking, tools → forward
-            if (part.type === 'text' && part.text) {
-              const partKey = part.id
-              if (!sentParts.has(partKey)) {
-                sentParts.add(partKey)
+          if (part.type === 'tool') {
+            // Tool calls: always forward, mark message as thinking
+            if (part.messageID) thinkingMsgIds.add(part.messageID)
+            const toolName = part.tool || 'unknown'
+            if (!toolNames.includes(toolName)) toolNames.push(toolName)
+            res.write(`data: ${JSON.stringify({
+              type: 'tool_call',
+              toolCall: { id: part.callID, name: toolName, arguments: part.state?.input },
+            })}\n\n`)
+          } else if (part.type === 'text' && part.text) {
+            const partKey = part.id
+            if (!sentParts.has(partKey)) {
+              sentParts.add(partKey)
+              if (isThinkingMsg) {
                 res.write(`data: ${JSON.stringify({ type: 'thinking', content: part.text })}\n\n`)
-              }
-            } else if (part.type === 'tool') {
-              const toolName = part.tool || 'unknown'
-              if (!toolNames.includes(toolName)) toolNames.push(toolName)
-              res.write(`data: ${JSON.stringify({
-                type: 'tool_call',
-                toolCall: { id: part.callID, name: toolName, arguments: part.state?.input },
-              })}\n\n`)
-            }
-          } else {
-            // 3rd+ messages: real content
-            if (part.type === 'text' && part.text) {
-              const partKey = part.id
-              if (!sentParts.has(partKey)) {
-                sentParts.add(partKey)
+              } else {
                 hasSentContent = true
                 if (idleTimer) { clearTimeout(idleTimer); idleTimer = null }
                 res.write(`data: ${JSON.stringify({ type: 'token', content: part.text })}\n\n`)
               }
-            } else if (part.type === 'tool') {
-              const toolName = part.tool || 'unknown'
-              if (!toolNames.includes(toolName)) toolNames.push(toolName)
-              res.write(`data: ${JSON.stringify({
-                type: 'tool_call',
-                toolCall: { id: part.callID, name: toolName, arguments: part.state?.input },
-              })}\n\n`)
             }
           }
         } else if (type === 'message.updated') {
@@ -217,8 +223,8 @@ llmRouter.post('/chat/stream', async (req, res) => {
           if (!info || info.sessionID !== sessionId || info.role !== 'assistant') return
 
           if (info.time?.completed) {
-            // If this is a thinking message completing, skip
-            if (thinkingMsgIds.has(info.id)) return
+            // Skip thinking/echo messages and pre-echo context messages
+            if (thinkingMsgIds.has(info.id) || !hasSeenEcho) return
 
             // A real message completed
             const msgs = await getSessionMessages(sessionId)
@@ -240,10 +246,13 @@ llmRouter.post('/chat/stream', async (req, res) => {
           if (info.status === 'idle' || info.status === 'completed') {
             const msgs = await getSessionMessages(sessionId)
             const assistantMsgs = msgs.filter((m: any) => m.info?.role === 'assistant')
-            // Skip first 2 (thinking), send rest
-            for (let i = 2; i < assistantMsgs.length; i++) {
-              const msg = assistantMsgs[i]
+            // Send non-echo messages as tokens
+            for (const msg of assistantMsgs) {
               if (msg?.parts) {
+                const isEcho = msg.parts.some((p: any) =>
+                  p.type === 'text' && p.text && sentPromptSnippet && p.text.includes(sentPromptSnippet)
+                )
+                if (isEcho) continue
                 for (const part of msg.parts) {
                   if (part.type === 'text' && part.text && !sentParts.has(part.id)) {
                     sentParts.add(part.id)
@@ -274,6 +283,9 @@ llmRouter.post('/chat/stream', async (req, res) => {
     const ctx = assembleContext(lastUserMsg.content, 'web', 'dashboard')
     const systemPrompt = buildSystemPrompt(ctx)
     const fullPrompt = `${systemPrompt}\n\n---\n\nUser message:\n${lastUserMsg.content}`
+
+    // Use a snippet from the prompt to detect echo messages
+    sentPromptSnippet = 'User message:\n' + lastUserMsg.content
 
     await sendPromptAsync(sessionId, fullPrompt)
   } catch (err: any) {

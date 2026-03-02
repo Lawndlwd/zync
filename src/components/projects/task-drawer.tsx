@@ -59,7 +59,7 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
   }, [task])
 
   // Keep a ref to the save function so the effect never depends on it
-  const saveRef = useRef<() => void>(() => {})
+  const saveRef = useRef<() => void>(() => { })
   saveRef.current = () => {
     if (!task) return
     setSaveStatus('saving')
@@ -138,7 +138,7 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
         />
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize="40%" minSize="320px" maxSize="85%">
-          <div className="flex h-full flex-col bg-zinc-950 pl-3">
+          <div className="flex h-full flex-col bg-zinc-950">
             {/* Close button + save status */}
             <div className="flex items-center justify-end gap-3 px-5 py-4 border-b border-white/[0.06]">
               <span className="text-xs text-zinc-500 flex items-center gap-1">
@@ -278,8 +278,8 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
               <div className="mx-8 my-5 border-t border-white/[0.08]" />
 
               {/* Description — borderless editor */}
-              <div className="flex-1 px-4 pb-8">
-                <p className="px-4 pb-2 text-[13px] text-zinc-500">Description</p>
+              <div className="flex-1 pb-8 px-5">
+                <p className="pb-2 text-[13px] text-zinc-500">Description</p>
                 <MilkdownEditor
                   value={content}
                   onChange={handleContentChange}

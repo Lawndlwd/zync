@@ -399,6 +399,7 @@ function DocumentsView({
                   onChange={setDocContent}
                   placeholder="Write your rules, guidelines, or coding standards in markdown..."
                   minHeight="calc(100vh - 250px)"
+                  className='pl-5'
                 />
               </div>
 

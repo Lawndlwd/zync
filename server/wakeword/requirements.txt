@@ -1,0 +1,2 @@
+openwakeword>=0.6.0
+aiohttp>=3.9.0

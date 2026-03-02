@@ -28,6 +28,7 @@ server/data/
 
 # Python venv
 server/.venv/
+server/wakeword/.venv/
 
 # Environment files
 .env

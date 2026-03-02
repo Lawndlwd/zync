@@ -1,5 +1,14 @@
-FROM node:20-alpine
+FROM node:20-slim
 WORKDIR /app
+
+# Install Python, pip, and ffmpeg for faster-whisper support
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 python3-pip python3-venv ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install whisper-ctranslate2 (faster-whisper CLI wrapper)
+RUN python3 -m pip install --break-system-packages whisper-ctranslate2
+
 RUN corepack enable pnpm
 COPY server/package.json server/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile

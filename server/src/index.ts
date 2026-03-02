@@ -24,6 +24,7 @@ import { handleMessage } from './agent/loop.js'
 import { initTodosTable } from './mcp-server/tools/todos.js'
 import { sendMorningBriefing, sendEveningRecap } from './proactive/briefing.js'
 import { initCanvasWebSocket } from './canvas/renderer.js'
+import { startWakeWordServer, stopWakeWordServer } from './voice/wakeword.js'
 import { WhatsAppAdapter } from './channels/whatsapp.js'
 import { TelegramAdapter } from './channels/telegram.js'
 import { loadChannelConfig } from './routes/bot.js'
@@ -86,6 +87,13 @@ const httpServer = app.listen(PORT, () => {
 })
 
 initCanvasWebSocket(httpServer)
+
+// Start wake word sidecar (if enabled)
+startWakeWordServer()
+
+// Graceful shutdown
+process.on('SIGTERM', () => stopWakeWordServer())
+process.on('SIGINT', () => stopWakeWordServer())
 
 // Initialize databases
 initDb()

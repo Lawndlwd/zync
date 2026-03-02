@@ -404,7 +404,11 @@ export function DynamicIsland() {
   const statusColor = getStatusColor(voice.state, voice.isStreaming)
 
   const pillWidth = isExpanded ? EXPANDED_WIDTH : PILL_WIDTH_IDLE
-  const pillGlow = isDetached ? GLOW_COLORS[statusColor] : 'none'
+  const pillGlow = isDetached
+    ? GLOW_COLORS[statusColor]
+    : !voice.isActive && voice.wakeWordEnabled
+      ? '0 0 12px 2px rgba(34, 197, 94, 0.15)'
+      : 'none'
 
   return createPortal(
     <>
@@ -413,6 +417,10 @@ export function DynamicIsland() {
         @keyframes diBounceDot {
           0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
           40% { transform: translateY(-6px); opacity: 1; }
+        }
+        @keyframes diEarPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
       `}</style>
 
@@ -453,7 +461,7 @@ export function DynamicIsland() {
             ) : voice.wakeWordEnabled ? (
               // Idle + wake word ON
               <>
-                <Ear size={16} className="text-zinc-400 shrink-0" />
+                <Ear size={16} className="text-emerald-400/80 shrink-0" style={{ animation: 'diEarPulse 2s ease-in-out infinite' }} />
                 <span className="text-xs text-zinc-500 truncate">Hey Jarvis...</span>
               </>
             ) : (

@@ -45,7 +45,7 @@
   color: #e4e4e7;               /* zinc-200 */
   font-size: 14px;
   line-height: 1.75;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.25rem 1rem 4.5rem;
   padding-bottom: 40vh;          /* large click target — click below content to focus last line */
   outline: none;
 }

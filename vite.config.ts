@@ -17,6 +17,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/ws/wakeword': {
+        target: 'ws://localhost:9000',
+        ws: true,
+        rewrite: (path) => path.replace('/ws/wakeword', '/ws'),
+      },
     },
     watch: {
       ignored: ['**/data/**'],
