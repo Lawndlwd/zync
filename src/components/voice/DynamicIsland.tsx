@@ -298,7 +298,7 @@ export function DynamicIsland() {
   modeRef.current = mode
 
   // Detached card position
-  const [detachedPos, setDetachedPos] = useState({ x: 0, y: 200 })
+  const [detachedPos, setDetachedPos] = useState({ x: 0, y: 12 })
   const draggingRef = useRef(false)
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, posX: 0, posY: 0 })
   const dragDistanceRef = useRef(0)
@@ -316,7 +316,7 @@ export function DynamicIsland() {
     if (!voice.isActive && mode !== 'idle') {
       setMode('idle')
       setContentVisible(false)
-      setDetachedPos({ x: 0, y: 200 })
+      setDetachedPos({ x: 0, y: 12 })
     }
   }, [voice.isActive, mode])
 
@@ -329,11 +329,13 @@ export function DynamicIsland() {
     const currentMode = modeRef.current
 
     if (currentMode === 'expanded') {
+      // The expanded island is at top:12, centered. When detaching,
+      // the card's top-left starts at (x=0 meaning center, y=12).
       dragStartRef.current = {
         mouseX: e.clientX,
         mouseY: e.clientY,
         posX: 0,
-        posY: Math.min(200, window.innerHeight * 0.3),
+        posY: 12,
       }
     } else if (currentMode === 'detached') {
       dragStartRef.current = {
