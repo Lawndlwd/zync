@@ -41,7 +41,7 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
   // Mention popover state
   const [mentionVisible, setMentionVisible] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
-  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 })
+  const [mentionPosition, _setMentionPosition] = useState({ top: 0, left: 0 })
   const [mentionMatchStart, setMentionMatchStart] = useState(-1)
   const editorWrapperRef = useRef<HTMLDivElement>(null)
 

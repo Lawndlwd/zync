@@ -93,6 +93,72 @@ export async function checkConnection(): Promise<boolean> {
   }
 }
 
+export async function listSessions(): Promise<any[]> {
+  const data = await oc('/session')
+  return Array.isArray(data) ? data : []
+}
+
+// Token stats cache — keyed by days param
+const CACHE_TTL = 60 * 60 * 1000 // 1 hour
+const statsCache = new Map<string, { data: TokenStatsResult; ts: number }>()
+
+interface TokenStatsResult {
+  input: number; output: number; reasoning: number
+  cacheRead: number; cacheWrite: number; cost: number
+  total: number; models: string[]; sessionCount: number
+}
+
+export async function getTokenStats(days?: number): Promise<TokenStatsResult> {
+  const cacheKey = String(days ?? 'all')
+  const cached = statsCache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    return cached.data
+  }
+
+  let sessions = await listSessions()
+
+  if (days) {
+    const cutoff = Date.now() - days * 86_400_000
+    sessions = sessions.filter((s: any) => {
+      const ts = s.time?.updated || s.time?.created || 0
+      return (ts < 1e12 ? ts * 1000 : ts) >= cutoff
+    })
+  }
+
+  let input = 0, output = 0, reasoning = 0, cacheRead = 0, cacheWrite = 0, cost = 0
+  const models = new Set<string>()
+
+  const results = await Promise.allSettled(
+    sessions.map((s: any) => getSessionMessages(s.id))
+  )
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const item of result.value) {
+      const info = item.info || item
+      if (info.tokens) {
+        input += info.tokens.input || 0
+        output += info.tokens.output || 0
+        reasoning += info.tokens.reasoning || 0
+        cacheRead += info.tokens.cache?.read || 0
+        cacheWrite += info.tokens.cache?.write || 0
+      }
+      if (info.cost) cost += info.cost
+      if (info.modelID) models.add(info.modelID)
+    }
+  }
+
+  const data: TokenStatsResult = {
+    input, output, reasoning, cacheRead, cacheWrite, cost,
+    total: input + output + reasoning,
+    models: Array.from(models),
+    sessionCount: sessions.length,
+  }
+
+  statsCache.set(cacheKey, { data, ts: Date.now() })
+  return data
+}
+
 export async function getProviderConfig(): Promise<
   Array<{ id: string; name: string; models: Array<{ id: string; name: string }> }>
 > {

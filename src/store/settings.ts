@@ -33,7 +33,7 @@ export const useSettingsStore = create<SettingsStore>()(
       resetSettings: () => set({ settings: defaultSettings }),
     }),
     {
-      name: 'ai-dashboard-settings',
+      name: 'zync-settings',
       merge: (persisted, current) => {
         const p = persisted as typeof current
         return {

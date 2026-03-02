@@ -3,11 +3,16 @@ import { insertLLMCall } from '../bot/memory/activity.js'
 import { assembleContext, buildSystemPrompt } from './context.js'
 import type { InboundMessage } from '../channels/types.js'
 import { getChannelManager } from '../channels/manager.js'
+import { loadChannelConfig } from '../routes/bot.js'
 
 async function waitForReply(sessionId: string, msgCountBefore: number, timeoutMs = 120_000): Promise<string> {
   const deadline = Date.now() + timeoutMs
+  let pollMs = 500 // Start fast, slow down after a few checks
+  let checks = 0
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 2000))
+    await new Promise((r) => setTimeout(r, pollMs))
+    checks++
+    if (checks > 5) pollMs = 1500 // Slow down after initial burst
 
     const idle = await isSessionIdle(sessionId)
     if (!idle) continue
@@ -28,6 +33,15 @@ async function waitForReply(sessionId: string, msgCountBefore: number, timeoutMs
 }
 
 export async function handleMessage(msg: InboundMessage): Promise<void> {
+  // Check if auto-reply is enabled for this channel
+  if (msg.channelType === 'whatsapp') {
+    const cfg = loadChannelConfig()
+    if (!cfg.whatsapp?.autoReply) {
+      console.log(`WhatsApp: message from ${msg.senderId} (auto-reply OFF, ignoring)`)
+      return
+    }
+  }
+
   const manager = getChannelManager()
   // Transcribe audio messages
   let processedText = msg.text
@@ -52,6 +66,15 @@ export async function handleMessage(msg: InboundMessage): Promise<void> {
     const startTime = Date.now()
 
     const ctx = assembleContext(processedText, msg.channelType, msg.chatId)
+
+    // Inject custom auto-reply instructions if configured
+    if (msg.channelType === 'whatsapp') {
+      const waCfg = loadChannelConfig().whatsapp
+      if (waCfg?.autoReplyInstructions) {
+        ctx.skills.unshift(`### Auto-Reply Instructions\n${waCfg.autoReplyInstructions}`)
+      }
+    }
+
     const systemPrompt = buildSystemPrompt(ctx)
 
     const sessionKey = `${msg.channelType}-${msg.chatId}`

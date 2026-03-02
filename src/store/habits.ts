@@ -267,6 +267,6 @@ export const useHabitsStore = create<HabitsState>()(
         return diff + 1
       },
     }),
-    { name: 'ai-dashboard-habits' }
+    { name: 'zync-habits' }
   )
 )

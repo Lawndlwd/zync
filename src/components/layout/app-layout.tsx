@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './sidebar'
 import { useOpenCodeSSE } from '@/hooks/useOpenCodeSSE'
+import { ChatPanel } from '@/components/ai-agent/chat-panel'
 
 export function AppLayout() {
   useOpenCodeSSE()
@@ -19,6 +20,7 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
+      <ChatPanel />
     </div>
   )
 }

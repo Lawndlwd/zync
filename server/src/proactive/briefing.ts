@@ -35,6 +35,11 @@ export async function sendMorningBriefing(): Promise<void> {
 - Summary of pending Jira issues (use your tools to check)
 - Open to-do items
 - Any scheduled events for today
+- Email digest: use the zync_gmail_get_unread tool to fetch unread emails from the last 2 days. Summarize as:
+  - Total unread count
+  - Action items requiring response (with sender and subject)
+  - Important senders: job/recruiter emails first, then financial, then personal contacts
+  - Group newsletters as "X newsletters" with one-line summaries
 - A motivational start to the day
 Keep it concise but useful.`
 
@@ -56,6 +61,10 @@ export async function sendEveningRecap(): Promise<void> {
 - Messages handled
 - Pending items carrying over to tomorrow
 - Any blockers that need attention
+- Email update: use the zync_gmail_get_unread tool to check for new emails since this morning. Flag:
+  - Unanswered threads older than 24 hours
+  - Anything needing attention before tomorrow
+  - Summary of emails you helped reply to today
 Keep it concise.`
 
   await sendPromptAsync(sessionId, prompt)

@@ -13,6 +13,7 @@ export interface TokenUsage {
 
 export interface StreamCallbacks {
   onToken: (token: string) => void
+  onThinking?: (content: string) => void
   onToolCall?: (toolCall: { id: string; name: string; arguments: Record<string, unknown> }) => void
   onToolResult?: (result: { toolCallId: string; toolName: string; result: string }) => void
   onUsage?: (usage: TokenUsage) => void
@@ -77,6 +78,8 @@ export async function streamChat(
         const parsed = JSON.parse(data)
         if (parsed.type === 'token') {
           callbacks.onToken(parsed.content)
+        } else if (parsed.type === 'thinking' && callbacks.onThinking) {
+          callbacks.onThinking(parsed.content)
         } else if (parsed.type === 'tool_call' && callbacks.onToolCall) {
           callbacks.onToolCall(parsed.toolCall)
         } else if (parsed.type === 'tool_result' && callbacks.onToolResult) {

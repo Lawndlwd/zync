@@ -14,17 +14,21 @@ import { gitlabRouter } from './routes/gitlab.js'
 import { gitLocalRouter } from './routes/git-local.js'
 import { prAgentRouter } from './routes/pr-agent.js'
 import { documentsRouter } from './routes/documents.js'
+import { projectsRouter } from './routes/projects.js'
 import opencodeRouter from './routes/opencode.js'
 import { voiceRouter } from './routes/voice.js'
+import { canvasRouter } from './routes/canvas.js'
 import { initDb, initHeartbeat } from './bot/index.js'
 import { getChannelManager } from './channels/manager.js'
-import { TelegramAdapter } from './channels/telegram.js'
-import { WhatsAppAdapter } from './channels/whatsapp.js'
-import { GmailAdapter } from './channels/gmail.js'
 import { handleMessage } from './agent/loop.js'
 import { initTodosTable } from './mcp-server/tools/todos.js'
 import { sendMorningBriefing, sendEveningRecap } from './proactive/briefing.js'
 import { initCanvasWebSocket } from './canvas/renderer.js'
+import { WhatsAppAdapter } from './channels/whatsapp.js'
+import { TelegramAdapter } from './channels/telegram.js'
+import { loadChannelConfig } from './routes/bot.js'
+import { existsSync } from 'fs'
+import { resolve } from 'path'
 
 config()
 
@@ -65,8 +69,10 @@ app.use('/api/gitlab', gitlabRouter)
 app.use('/api/git-local', gitLocalRouter)
 app.use('/api/pr-agent', prAgentRouter)
 app.use('/api/documents', documentsRouter)
+app.use('/api/projects', projectsRouter)
 app.use('/api/opencode', opencodeRouter)
 app.use('/api/voice', voiceRouter)
+app.use('/api/canvas', canvasRouter)
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -86,35 +92,39 @@ initDb()
 initTodosTable()
 initHeartbeat()
 
-// Start channels
+// Initialize channel manager
 const channelManager = getChannelManager()
 channelManager.onMessage(handleMessage)
 
-if (process.env.TELEGRAM_BOT_TOKEN) {
-  const allowedUsers = (process.env.TELEGRAM_ALLOWED_USERS || '')
-    .split(',').map(s => s.trim()).filter(Boolean).map(Number)
-  channelManager.register(new TelegramAdapter({
-    botToken: process.env.TELEGRAM_BOT_TOKEN,
-    allowedUsers,
-  }))
-}
+// Auto-reconnect channels that have saved auth state
+;(async () => {
+  const cfg = loadChannelConfig()
 
-// Register WhatsApp if configured
-if (process.env.WHATSAPP_ENABLED === 'true') {
-  channelManager.register(new WhatsAppAdapter({
-    authDir: process.env.WHATSAPP_AUTH_DIR || './data/whatsapp-auth',
-    allowedNumbers: process.env.WHATSAPP_ALLOWED_NUMBERS?.split(',').map(s => s.trim()).filter(Boolean),
-  }))
-}
+  // WhatsApp: reconnect if auth state exists
+  const waAuthDir = process.env.WHATSAPP_AUTH_DIR || './data/whatsapp-auth'
+  if (existsSync(resolve(waAuthDir, 'creds.json'))) {
+    console.log('WhatsApp: found saved auth, auto-reconnecting...')
+    const allowedNumbers = (cfg.whatsapp?.allowedNumbers || '')
+      .split(',').map(s => s.trim()).filter(Boolean)
+      .map(n => n.includes('@') ? n : `${n}@s.whatsapp.net`)
+    const adapter = new WhatsAppAdapter({ authDir: waAuthDir, allowedNumbers: allowedNumbers.length > 0 ? allowedNumbers : undefined })
+    channelManager.register(adapter)
+    adapter.start().catch(err => console.error('WhatsApp auto-reconnect failed:', err))
+  }
 
-// Register Gmail if configured
-if (process.env.GMAIL_ENABLED === 'true') {
-  channelManager.register(new GmailAdapter({
-    credentialsPath: process.env.GMAIL_CREDENTIALS_PATH || './data/gmail-credentials.json',
-    tokenPath: process.env.GMAIL_TOKEN_PATH || './data/gmail-token.json',
-    pollIntervalMs: Number(process.env.GMAIL_POLL_INTERVAL_MS) || 300_000,
-  }))
-}
+  // Telegram: reconnect if bot token exists
+  const telegramToken = cfg.telegram?.botToken || process.env.TELEGRAM_BOT_TOKEN
+  if (telegramToken) {
+    console.log('Telegram: found saved token, auto-reconnecting...')
+    const allowedUsers = (cfg.telegram?.allowedUsers || process.env.TELEGRAM_ALLOWED_USERS || '')
+      .split(',').map(s => s.trim()).filter(Boolean).map(Number)
+    const adapter = new TelegramAdapter({ botToken: telegramToken, allowedUsers })
+    channelManager.register(adapter)
+    adapter.start().catch(err => console.error('Telegram auto-reconnect failed:', err))
+  }
+
+  // Gmail: no auto-polling — accessed on-demand via MCP tools and briefings
+})()
 
 // Schedule briefings
 if (process.env.DEFAULT_CHAT_ID) {
@@ -129,4 +139,3 @@ if (process.env.DEFAULT_CHAT_ID) {
   console.log('Proactive briefings scheduled')
 }
 
-channelManager.startAll().catch(err => console.error('Channels failed to start:', err))

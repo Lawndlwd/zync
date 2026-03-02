@@ -1,7 +1,17 @@
 import { Router } from 'express'
-import { checkConnection, getProviderConfig, getOpenCodeUrl } from '../opencode/client.js'
+import { checkConnection, getProviderConfig, getOpenCodeUrl, getTokenStats } from '../opencode/client.js'
 
 const opencodeRouter = Router()
+
+opencodeRouter.get('/token-stats', async (req, res) => {
+  try {
+    const days = req.query.days ? Number(req.query.days) : undefined
+    const stats = await getTokenStats(days)
+    res.json(stats)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
 opencodeRouter.get('/providers', async (_req, res) => {
   try {

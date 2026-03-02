@@ -9,6 +9,7 @@ export interface Document {
   folder: string
   title: string
   content: string
+  metadata: Record<string, any>
   createdAt: string
   updatedAt: string
 }

@@ -1,4 +1,4 @@
-# AI Dashboard
+# Zync
 
 A personal AI agent dashboard for frontend developers. Connects to Jira, messaging, and LLMs to help manage, prioritize, and act on your work — all in one place.
 

@@ -48,8 +48,8 @@ export interface ChannelsConfig {
     authDir: string
   }
   gmail: ChannelConfig & {
-    credentialsPath: string
-    tokenPath: string
-    pollIntervalMs: number
+    clientId: string
+    clientSecret: string
+    refreshToken: string
   }
 }

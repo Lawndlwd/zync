@@ -1,4 +1,4 @@
-import type { BotStatus, BotMemory, BotSchedule, BotToolDefinition } from '@/types/bot'
+import type { BotStatus, BotMemory, BotSchedule, BotToolDefinition, ChannelStatus, SkillInfo, BriefingConfig, ToolConfig, ChannelConfigResponse, WhatsAppQRResponse } from '@/types/bot'
 
 const API_BASE = '/api/bot'
 
@@ -71,4 +71,76 @@ export async function sendBotChat(message: string): Promise<{ response: string }
     method: 'POST',
     body: JSON.stringify({ message }),
   })
+}
+
+export async function getBotChannels(): Promise<ChannelStatus[]> {
+  return fetchJSON<ChannelStatus[]>(`${API_BASE}/channels`)
+}
+
+export async function getBotSkills(): Promise<SkillInfo[]> {
+  return fetchJSON<SkillInfo[]>(`${API_BASE}/skills`)
+}
+
+export async function reloadBotSkills(): Promise<{ count: number }> {
+  return fetchJSON<{ count: number }>(`${API_BASE}/skills/reload`, { method: 'POST' })
+}
+
+export async function getBriefingConfig(): Promise<BriefingConfig> {
+  return fetchJSON<BriefingConfig>(`${API_BASE}/briefing/config`)
+}
+
+export async function updateBriefingConfig(config: BriefingConfig): Promise<{ success: boolean }> {
+  return fetchJSON<{ success: boolean }>(`${API_BASE}/briefing/config`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  })
+}
+
+export async function triggerBriefing(type: 'morning' | 'evening'): Promise<{ success: boolean }> {
+  return fetchJSON<{ success: boolean }>(`${API_BASE}/briefing/trigger`, {
+    method: 'POST',
+    body: JSON.stringify({ type }),
+  })
+}
+
+export async function getBotToolConfig(): Promise<ToolConfig> {
+  return fetchJSON<ToolConfig>(`${API_BASE}/tool-config`)
+}
+
+export async function updateBotToolConfig(config: ToolConfig): Promise<{ success: boolean }> {
+  return fetchJSON<{ success: boolean }>(`${API_BASE}/tool-config`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  })
+}
+
+export async function getBotRecommendations(): Promise<string[]> {
+  return fetchJSON<string[]>(`${API_BASE}/recommendations`)
+}
+
+export async function getChannelConfig(): Promise<ChannelConfigResponse> {
+  return fetchJSON<ChannelConfigResponse>(`${API_BASE}/channels/config`)
+}
+
+export async function saveChannelConfig(channel: string, config: Record<string, unknown>): Promise<{ success: boolean }> {
+  return fetchJSON<{ success: boolean }>(`${API_BASE}/channels/config/${channel}`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  })
+}
+
+export async function connectChannel(channel: string): Promise<{ success: boolean }> {
+  return fetchJSON<{ success: boolean }>(`${API_BASE}/channels/${channel}/connect`, { method: 'POST' })
+}
+
+export async function disconnectChannel(channel: string): Promise<{ success: boolean }> {
+  return fetchJSON<{ success: boolean }>(`${API_BASE}/channels/${channel}/disconnect`, { method: 'POST' })
+}
+
+export async function getWhatsAppQR(): Promise<WhatsAppQRResponse> {
+  return fetchJSON<WhatsAppQRResponse>(`${API_BASE}/channels/whatsapp/qr`)
+}
+
+export async function getGmailAuthUrl(): Promise<{ url: string }> {
+  return fetchJSON<{ url: string }>(`${API_BASE}/channels/gmail/auth-url`)
 }

@@ -16,8 +16,8 @@ export interface UseAudioAnalyserReturn {
 const EMPTY_DATA = new Uint8Array(0)
 
 export function useAudioAnalyser({
-  silenceThreshold = 10,
-  silenceDuration = 2500,
+  silenceThreshold = 35,
+  silenceDuration = 1800,
   fftSize = 64,
 }: UseAudioAnalyserOptions = {}): UseAudioAnalyserReturn {
   const [frequencyData, setFrequencyData] = useState<Uint8Array>(EMPTY_DATA)
@@ -46,7 +46,7 @@ export function useAudioAnalyser({
     }
 
     if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {})
+      audioContextRef.current.close().catch(() => { })
       audioContextRef.current = null
     }
 

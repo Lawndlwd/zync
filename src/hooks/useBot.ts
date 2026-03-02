@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as botService from '@/services/bot'
+import type { BriefingConfig, ToolConfig } from '@/types/bot'
 
 export function useBotStatus() {
   return useQuery({
@@ -97,5 +98,142 @@ export function useBotTools() {
 export function useBotChat() {
   return useMutation({
     mutationFn: (message: string) => botService.sendBotChat(message),
+  })
+}
+
+// --- New hooks ---
+
+export function useBotChannels() {
+  return useQuery({
+    queryKey: ['bot-channels'],
+    queryFn: botService.getBotChannels,
+    staleTime: 10_000,
+    retry: 1,
+  })
+}
+
+export function useChannelConfig() {
+  return useQuery({
+    queryKey: ['channel-config'],
+    queryFn: botService.getChannelConfig,
+    staleTime: 30_000,
+    retry: 1,
+  })
+}
+
+export function useSaveChannelConfig() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ channel, config }: { channel: string; config: Record<string, unknown> }) =>
+      botService.saveChannelConfig(channel, config),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['channel-config'] })
+    },
+  })
+}
+
+export function useConnectChannel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (channel: string) => botService.connectChannel(channel),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bot-channels'] })
+      queryClient.invalidateQueries({ queryKey: ['bot-status'] })
+    },
+  })
+}
+
+export function useDisconnectChannel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (channel: string) => botService.disconnectChannel(channel),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bot-channels'] })
+      queryClient.invalidateQueries({ queryKey: ['bot-status'] })
+    },
+  })
+}
+
+export function useWhatsAppQR(enabled: boolean) {
+  return useQuery({
+    queryKey: ['whatsapp-qr'],
+    queryFn: botService.getWhatsAppQR,
+    enabled,
+    refetchInterval: 3000,
+    retry: 1,
+  })
+}
+
+export function useBotSkills() {
+  return useQuery({
+    queryKey: ['bot-skills'],
+    queryFn: botService.getBotSkills,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  })
+}
+
+export function useReloadSkills() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: botService.reloadBotSkills,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bot-skills'] })
+      queryClient.invalidateQueries({ queryKey: ['bot-status'] })
+    },
+  })
+}
+
+export function useBriefingConfig() {
+  return useQuery({
+    queryKey: ['briefing-config'],
+    queryFn: botService.getBriefingConfig,
+    staleTime: 60_000,
+    retry: 1,
+  })
+}
+
+export function useUpdateBriefingConfig() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (config: BriefingConfig) => botService.updateBriefingConfig(config),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['briefing-config'] })
+      queryClient.invalidateQueries({ queryKey: ['bot-status'] })
+    },
+  })
+}
+
+export function useTriggerBriefing() {
+  return useMutation({
+    mutationFn: (type: 'morning' | 'evening') => botService.triggerBriefing(type),
+  })
+}
+
+export function useBotToolConfig() {
+  return useQuery({
+    queryKey: ['bot-tool-config'],
+    queryFn: botService.getBotToolConfig,
+    staleTime: 60_000,
+    retry: 1,
+  })
+}
+
+export function useUpdateToolConfig() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (config: ToolConfig) => botService.updateBotToolConfig(config),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bot-tool-config'] })
+    },
+  })
+}
+
+export function useBotRecommendations() {
+  return useQuery({
+    queryKey: ['bot-recommendations'],
+    queryFn: botService.getBotRecommendations,
+    staleTime: 5 * 60_000,
+    retry: 1,
   })
 }

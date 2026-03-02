@@ -1,8 +1,7 @@
 import { useJiraIssues, useActiveSprint } from '@/hooks/useJiraIssues'
 import { useGitlabMRs } from '@/hooks/useGitlab'
 import { useTodos } from '@/hooks/useTodos'
-import { useMessages } from '@/hooks/useMessages'
-import { useBotStatus } from '@/hooks/useBot'
+import { useBotStatus, useBotChannels } from '@/hooks/useBot'
 import { useOpenCodeSessions, useAllSessionsTokens } from '@/hooks/useOpenCode'
 import { useSettingsStore } from '@/store/settings'
 import { useHabitsStore } from '@/store/habits'
@@ -11,13 +10,12 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchActivityStats } from '@/services/activity'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
-import { cn, relativeTime } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import {
   Ticket,
   ListTodo,
-  Inbox,
   GitMerge,
   Activity,
   BookOpen,
@@ -293,53 +291,6 @@ function TodosSection() {
   )
 }
 
-// ── Inbox Section ─────────────────────────────────────────────────
-function InboxSection() {
-  const { data: messages, isLoading } = useMessages()
-
-  const unread = messages?.filter((m) => !m.isRead) ?? []
-  const highPriority = unread.filter((m) => m.priority === 'high')
-  const total = messages?.length ?? 0
-
-  return (
-    <Section icon={Inbox} iconColor="text-sky-400" title="Inbox" to="/inbox">
-      {isLoading ? (
-        <Skeleton className="h-8 w-full" />
-      ) : (
-        <>
-          {/* Big numbers */}
-          <div className="flex items-center gap-3 mb-5 rounded-lg bg-white/[0.04] py-4">
-            <StatBlock label="Unread" value={unread.length} color="text-sky-400" />
-            <div className="w-px h-8 bg-white/[0.06]" />
-            <StatBlock label="Urgent" value={highPriority.length} color="text-red-400" />
-            <div className="w-px h-8 bg-white/[0.06]" />
-            <StatBlock label="Total" value={total} color="text-zinc-400" />
-          </div>
-
-          {unread.length > 0 && (
-            <div className="space-y-3">
-              {unread.slice(0, 4).map((msg) => (
-                <div key={msg.id} className="flex items-center gap-3 rounded-lg px-4 py-2.5">
-                  <Circle size={10} className={cn(
-                    'shrink-0 fill-current',
-                    msg.priority === 'high' ? 'text-red-400' : 'text-sky-400'
-                  )} />
-                  <span className="text-base font-medium text-zinc-300 shrink-0">{msg.sender}</span>
-                  <span className="text-base text-zinc-400 truncate">{msg.content}</span>
-                  <span className="ml-auto shrink-0 text-sm text-zinc-600">
-                    {relativeTime(msg.timestamp)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {total === 0 && <p className="text-base text-zinc-600">No messages</p>}
-        </>
-      )}
-    </Section>
-  )
-}
-
 // ── Productivity Section ──────────────────────────────────────────
 function ProductivitySection() {
   const today = format(new Date(), 'yyyy-MM-dd')
@@ -533,6 +484,9 @@ function JournalSection() {
 // ── Agent Status Section ──────────────────────────────────────────
 function AgentSection() {
   const { data: botStatus, isSuccess: connected } = useBotStatus()
+  const { data: channels } = useBotChannels()
+
+  const onlineChannels = channels?.filter((ch) => ch.connected) ?? []
 
   return (
     <Section icon={Bot} iconColor="text-violet-400" title="AI Agent" to="/settings">
@@ -546,13 +500,36 @@ function AgentSection() {
             {connected ? 'Online' : 'Offline'}
           </span>
         </div>
+        {onlineChannels.length > 0 && (
+          <div className="flex items-center gap-2">
+            {onlineChannels.map((ch) => (
+              <span key={ch.channel} className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400 capitalize">
+                {ch.channel}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       {connected && botStatus && (
-        <div className="flex items-center gap-5 mt-4 text-base text-zinc-400">
-          <span><span className="font-semibold text-zinc-200">{botStatus.memoryCount}</span> memories</span>
-          <span><span className="font-semibold text-zinc-200">{botStatus.toolCount}</span> tools</span>
-          <span><span className="font-semibold text-zinc-200">{botStatus.activeSchedules}</span> schedules</span>
-        </div>
+        <>
+          <div className="flex items-center gap-5 mt-4 text-base text-zinc-400">
+            <span><span className="font-semibold text-zinc-200">{botStatus.memoryCount}</span> memories</span>
+            <span><span className="font-semibold text-zinc-200">{botStatus.toolCount}</span> tools</span>
+            <span><span className="font-semibold text-zinc-200">{botStatus.activeSchedules}</span> schedules</span>
+            {(botStatus.skillsCount ?? 0) > 0 && (
+              <span><span className="font-semibold text-zinc-200">{botStatus.skillsCount}</span> skills</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-3">
+            <Link to="/canvas" className="text-sm text-pink-400 hover:text-pink-300 transition-colors">
+              Canvas
+            </Link>
+            <span className="text-zinc-700">·</span>
+            <Link to="/settings" className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors">
+              Briefings
+            </Link>
+          </div>
+        </>
       )}
     </Section>
   )
@@ -624,7 +601,6 @@ export function DashboardPage() {
           <JiraSection />
           <GitLabSection />
           <TodosSection />
-          <InboxSection />
           <ProductivitySection />
           <ActivitySection />
           <OpenCodeSection />

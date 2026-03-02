@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AgentModelConfig } from '@/types/settings'
 import {
   checkConnection,
@@ -154,74 +154,24 @@ export function useSessionTokens(sessionId: string | null) {
 
 export type SessionSource = 'all' | 'dashboard' | 'external'
 
-export function useAllSessionsTokens(days?: number, source: SessionSource = 'all') {
-  const { data: allSessions = [] } = useOpenCodeSessions()
+const EMPTY_TOKEN_STATS = {
+  input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0,
+  cost: 0, total: 0, models: [] as string[], sessionCount: 0,
+}
 
-  const sessions = useMemo(() => {
-    let filtered = allSessions
-    if (days) {
-      const cutoff = Date.now() - days * 86_400_000
-      filtered = filtered.filter((s) => new Date(s.createdAt).getTime() >= cutoff)
-    }
-    if (source === 'dashboard') {
-      filtered = filtered.filter((s) => s.title.startsWith(DASHBOARD_SESSION_PREFIX))
-    } else if (source === 'external') {
-      filtered = filtered.filter((s) => !s.title.startsWith(DASHBOARD_SESSION_PREFIX))
-    }
-    return filtered
-  }, [allSessions, days, source])
-
-  const messageQueries = useQueries({
-    queries: sessions.map((session) => ({
-      queryKey: ['opencode', 'messages', session.id],
-      queryFn: () => fetchMessages(session.id),
-      staleTime: 60_000,
-      refetchOnWindowFocus: false,
-    })),
+export function useAllSessionsTokens(days?: number, _source: SessionSource = 'all') {
+  const params = days ? `?days=${days}` : ''
+  const { data } = useQuery({
+    queryKey: ['opencode', 'token-stats', days],
+    queryFn: async () => {
+      const res = await fetch(`/api/opencode/token-stats${params}`)
+      if (!res.ok) throw new Error('Failed to fetch token stats')
+      return res.json()
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   })
-
-  return useMemo(() => {
-    let input = 0, output = 0, reasoning = 0, cacheRead = 0, cacheWrite = 0, cost = 0
-    const models = new Set<string>()
-    const perSession: Array<{
-      id: string; title: string; input: number; output: number
-      reasoning: number; cost: number; models: string[]; updatedAt: string
-    }> = []
-
-    for (let i = 0; i < sessions.length; i++) {
-      const session = sessions[i]
-      const messages = messageQueries[i]?.data
-      if (!messages) continue
-
-      let sInput = 0, sOutput = 0, sReasoning = 0, sCost = 0
-      const sModels = new Set<string>()
-      for (const msg of messages) {
-        if (msg.tokens) {
-          sInput += msg.tokens.input
-          sOutput += msg.tokens.output
-          sReasoning += msg.tokens.reasoning
-          cacheRead += msg.tokens.cache.read
-          cacheWrite += msg.tokens.cache.write
-        }
-        if (msg.cost) sCost += msg.cost
-        if (msg.modelId) { sModels.add(msg.modelId); models.add(msg.modelId) }
-      }
-      input += sInput; output += sOutput; reasoning += sReasoning; cost += sCost
-      perSession.push({
-        id: session.id, title: session.title || `Session ${session.id.slice(0, 6)}`,
-        input: sInput, output: sOutput, reasoning: sReasoning, cost: sCost,
-        models: Array.from(sModels), updatedAt: session.updatedAt,
-      })
-    }
-
-    return {
-      input, output, reasoning, cacheRead, cacheWrite, cost,
-      total: input + output + reasoning,
-      models: Array.from(models),
-      sessionCount: sessions.length,
-      perSession,
-    }
-  }, [sessions, messageQueries])
+  return data ?? EMPTY_TOKEN_STATS
 }
 
 export function useAgentModels() {

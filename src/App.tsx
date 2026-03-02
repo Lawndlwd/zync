@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/app-layout'
 import { DashboardPage } from '@/pages/dashboard'
 import { JiraPage } from '@/pages/jira'
-import { TodosPage } from '@/pages/todos'
+import { TasksPage } from '@/pages/tasks'
 import { InboxPage } from '@/pages/inbox'
 import { JournalPage } from '@/pages/journal'
 import { SettingsPage } from '@/pages/settings'
@@ -12,6 +12,7 @@ import { GitLabPage } from '@/pages/gitlab'
 import { GitLabMRPage } from '@/pages/gitlab-mr'
 import { DocumentsPage } from '@/pages/documents'
 import { OpenCodePage } from '@/pages/opencode'
+import { CanvasPage } from '@/pages/canvas'
 import { useEffect } from 'react'
 import { useSettingsStore } from '@/store/settings'
 import { fetchServerSettings } from '@/services/jira'
@@ -54,7 +55,8 @@ export function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/jira" element={<JiraPage />} />
-        <Route path="/todos" element={<TodosPage />} />
+        <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/tasks/:projectName" element={<TasksPage />} />
         <Route path="/inbox" element={<InboxPage />} />
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/productivity" element={<ProductivityPage />} />
@@ -65,6 +67,7 @@ export function App() {
         <Route path="/documents/:folder" element={<DocumentsPage />} />
         <Route path="/documents/:folder/:doc" element={<DocumentsPage />} />
         <Route path="/opencode" element={<OpenCodePage />} />
+        <Route path="/canvas" element={<CanvasPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>

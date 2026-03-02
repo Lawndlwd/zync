@@ -137,5 +137,15 @@ export function initDb(): void {
     db.exec(`ALTER TABLE memories ADD COLUMN embedding_model TEXT`)
   }
 
+  // Processed emails table for Gmail integration
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS processed_emails (
+      message_id TEXT PRIMARY KEY,
+      thread_id TEXT,
+      processed_at TEXT DEFAULT (datetime('now')),
+      action TEXT
+    );
+  `)
+
   console.log('Memory database initialized')
 }

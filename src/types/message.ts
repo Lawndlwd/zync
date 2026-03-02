@@ -1,3 +1,28 @@
+export interface GmailMessage {
+  id: string
+  threadId: string
+  from: string
+  subject: string
+  snippet: string
+  date: string
+  isUnread: boolean
+}
+
+export interface ThreadMessage {
+  id: string
+  from: string
+  to: string
+  subject: string
+  body: string
+  date: string
+  messageId: string
+}
+
+export interface GmailThread {
+  threadId: string
+  messages: ThreadMessage[]
+}
+
 export interface Message {
   id: string
   sender: string

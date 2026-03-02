@@ -109,7 +109,8 @@ export class TelegramAdapter implements ChannelAdapter {
       console.error('Telegram bot error:', err)
     })
 
-    await bot.start()
+    // bot.start() blocks forever (long-polling), so fire-and-forget
+    bot.start()
     console.log('Telegram adapter started')
   }
 

@@ -48,9 +48,16 @@ import {
 import { webSearchTool, webSearchSchema } from './tools/web-search.js'
 import { browseTool, browseSchema, screenshotTool, screenshotSchema } from './tools/browser.js'
 import { renderCanvasTool, renderCanvasSchema, clearCanvasTool, clearCanvasSchema } from './tools/canvas.js'
+import {
+  gmailGetUnread, gmailGetUnreadSchema,
+  gmailGetThread, gmailGetThreadSchema,
+  gmailSendReply, gmailSendReplySchema,
+  gmailCompose, gmailComposeSchema,
+  gmailSearch, gmailSearchSchema,
+} from './tools/gmail.js'
 
 const server = new McpServer({
-  name: 'ai-dashboard',
+  name: 'zync',
   version: '1.0.0',
 })
 
@@ -286,18 +293,65 @@ server.tool('screenshot', 'Take a screenshot of a URL', screenshotSchema.shape,
 
 // --- Canvas tools (2) ---
 
-server.tool('render_canvas', 'Render HTML/CSS/JS content in the live canvas (A2UI)', renderCanvasSchema.shape,
+server.tool('render_canvas', 'Render COMPLETE HTML/CSS/JS to the live canvas. Call ONCE with all content — never call multiple times.', renderCanvasSchema.shape,
   async (args) => ({ content: [{ type: 'text' as const, text: await renderCanvasTool(args) }] }))
 
 server.tool('clear_canvas', 'Clear the live canvas', clearCanvasSchema.shape,
   async () => ({ content: [{ type: 'text' as const, text: await clearCanvasTool() }] }))
+
+// --- Gmail tools (5) ---
+
+server.tool(
+  'gmail_get_unread',
+  'Fetch unread emails from the last N days. Returns sender, subject, snippet, date for each email.',
+  gmailGetUnreadSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await gmailGetUnread(args) }],
+  })
+)
+
+server.tool(
+  'gmail_get_thread',
+  'Fetch a full email thread by thread ID. Returns all messages with decoded bodies.',
+  gmailGetThreadSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await gmailGetThread(args) }],
+  })
+)
+
+server.tool(
+  'gmail_send_reply',
+  'Send a reply to an email thread. NEVER send without user confirmation.',
+  gmailSendReplySchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await gmailSendReply(args) }],
+  })
+)
+
+server.tool(
+  'gmail_compose',
+  'Compose and send a new email. NEVER send without user confirmation.',
+  gmailComposeSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await gmailCompose(args) }],
+  })
+)
+
+server.tool(
+  'gmail_search',
+  'Search emails using Gmail search syntax (e.g. "from:john subject:meeting", "is:unread", "newer_than:2d").',
+  gmailSearchSchema.shape,
+  async (args) => ({
+    content: [{ type: 'text' as const, text: await gmailSearch(args) }],
+  })
+)
 
 // --- Start server ---
 
 async function main() {
   const transport = new StdioServerTransport()
   await server.connect(transport)
-  console.error('ai-dashboard MCP server running on stdio')
+  console.error('zync MCP server running on stdio')
 }
 
 main().catch((err) => {

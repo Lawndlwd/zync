@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import {
   Inbox,
   LayoutDashboard,
-  ListTodo,
+  KanbanSquare,
   BookOpen,
   Settings,
   Ticket,
@@ -12,25 +12,46 @@ import {
   GitMerge,
   FileText,
   Terminal,
+  Monitor,
+  MessageCircle,
+  Send,
+  Mail,
 } from 'lucide-react'
 import { useOpenCodeStore } from '@/store/opencode'
+import { WakeWordDetector } from '@/components/voice/WakeWordDetector'
+import { useBotChannels } from '@/hooks/useBot'
 
 const links = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', color: 'text-indigo-400' },
   { to: '/inbox', icon: Inbox, label: 'Inbox', color: 'text-sky-400' },
   { to: '/jira', icon: Ticket, label: 'Jira', color: 'text-blue-400' },
-  { to: '/todos', icon: ListTodo, label: 'To-Do', color: 'text-emerald-400' },
+  { to: '/tasks', icon: KanbanSquare, label: 'Tasks & Projects', color: 'text-emerald-400' },
   { to: '/journal', icon: BookOpen, label: 'Journal', color: 'text-amber-400' },
   { to: '/productivity', icon: BarChart3, label: 'Productivity', color: 'text-orange-400' },
   { to: '/activity', icon: Activity, label: 'Activity', color: 'text-rose-400' },
   { to: '/gitlab', icon: GitMerge, label: 'GitLab', color: 'text-violet-400' },
   { to: '/documents', icon: FileText, label: 'Documents', color: 'text-teal-400' },
   { to: '/opencode', icon: Terminal, label: 'OpenCode', color: 'text-cyan-400' },
+  { to: '/canvas', icon: Monitor, label: 'Canvas', color: 'text-pink-400' },
 ]
+
+const channelIcons: Record<string, typeof MessageCircle> = {
+  whatsapp: MessageCircle,
+  telegram: Send,
+  gmail: Mail,
+}
+
+const channelColors: Record<string, string> = {
+  whatsapp: 'text-green-400',
+  telegram: 'text-blue-400',
+  gmail: 'text-red-400',
+}
 
 export function Sidebar() {
   const ocConnected = useOpenCodeStore((s) => s.connectionStatus.connected)
   const ocServerUrl = useOpenCodeStore((s) => s.serverUrl)
+  const { data: channels } = useBotChannels()
+  const connectedChannels = channels?.filter((c) => c.connected) || []
 
   return (
     <aside className="flex h-screen w-16 flex-col items-center border-r border-white/[0.06] bg-black/40 backdrop-blur-xl py-4 lg:w-60">
@@ -64,6 +85,30 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Connected channels */}
+      {connectedChannels.length > 0 && (
+        <div className="mb-4 px-3 w-full">
+          <div className="flex items-center gap-2 lg:gap-0 lg:flex-col lg:items-stretch">
+            {connectedChannels.map((ch) => {
+              const Icon = channelIcons[ch.channel] || MessageCircle
+              const color = channelColors[ch.channel] || 'text-zinc-400'
+              return (
+                <div
+                  key={ch.channel}
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 lg:mb-1"
+                >
+                  <Icon size={14} className={cn('shrink-0', color)} />
+                  <span className={cn('hidden lg:block text-xs font-medium capitalize', color)}>
+                    {ch.channel}
+                  </span>
+                  <div className="hidden lg:flex ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <nav className="flex flex-1 flex-col gap-1 px-3 w-full">
         {links.map(({ to, icon: Icon, label, color }) => (
           <NavLink
@@ -91,6 +136,7 @@ export function Sidebar() {
 
       {/* Bottom section */}
       <div className="flex flex-col gap-1 px-3 w-full border-t border-white/[0.06] pt-3">
+        <WakeWordDetector />
         <NavLink
           to="/settings"
           className={({ isActive }) =>

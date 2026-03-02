@@ -91,6 +91,14 @@ class ChannelManager {
     await adapter.sendTyping(chatId)
   }
 
+  async unregister(channelType: ChannelType): Promise<void> {
+    const adapter = this.adapters.get(channelType)
+    if (adapter) {
+      await adapter.stop()
+      this.adapters.delete(channelType)
+    }
+  }
+
   getAdapter(channelType: ChannelType): ChannelAdapter | undefined {
     return this.adapters.get(channelType)
   }

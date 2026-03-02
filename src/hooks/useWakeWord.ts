@@ -6,10 +6,13 @@ interface UseWakeWordOptions {
   enabled?: boolean
 }
 
-const MAX_CONSECUTIVE_ERRORS = 3
-const RESTART_DELAY_MS = 300
+const MAX_FATAL_ERRORS = 5
+const BASE_RETRY_MS = 500
+const MAX_RETRY_MS = 10_000
+// Transient errors that should be retried with backoff
+const TRANSIENT_ERRORS = new Set(['network', 'service-not-allowed', 'audio-capture'])
 
-export function useWakeWord({ phrase = 'hey claw', onDetected, enabled: _enabled = true }: UseWakeWordOptions) {
+export function useWakeWord({ phrase = 'ok zinc', onDetected, enabled: _enabled = true }: UseWakeWordOptions) {
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
   const recognitionRef = useRef<any>(null)
@@ -67,12 +70,13 @@ export function useWakeWord({ phrase = 'hey claw', onDetected, enabled: _enabled
     recognition.onend = () => {
       // Use enabledRef for current value (avoids stale closure)
       if (recognitionRef.current && !detectedRef.current && enabledRef.current) {
-        // Add delay between restarts to avoid tight loops
+        // Exponential backoff based on fail count
+        const delay = Math.min(BASE_RETRY_MS * Math.pow(2, failCountRef.current), MAX_RETRY_MS)
         setTimeout(() => {
           if (recognitionRef.current && !detectedRef.current && enabledRef.current) {
             try { recognition.start() } catch {}
           }
-        }, RESTART_DELAY_MS)
+        }, delay)
       } else {
         setIsListening(false)
       }
@@ -80,19 +84,23 @@ export function useWakeWord({ phrase = 'hey claw', onDetected, enabled: _enabled
 
     recognition.onerror = (event: any) => {
       if (event.error === 'no-speech' || event.error === 'aborted') return
-      console.error('Wake word error:', event.error)
 
-      failCountRef.current += 1
-
-      // After MAX_CONSECUTIVE_ERRORS fatal errors, stop to avoid infinite loop
-      if (failCountRef.current >= MAX_CONSECUTIVE_ERRORS) {
-        console.error(`Wake word: ${MAX_CONSECUTIVE_ERRORS} consecutive errors, stopping.`)
-        recognitionRef.current = null
-        setIsListening(false)
+      if (TRANSIENT_ERRORS.has(event.error)) {
+        // Transient errors: increment counter but let onend retry with backoff
+        failCountRef.current += 1
+        console.warn(`Wake word: transient "${event.error}" (attempt ${failCountRef.current})`)
         return
       }
 
-      // For fewer errors, let onend handle the restart
+      // True fatal errors (not-allowed, language-not-supported, etc.)
+      failCountRef.current += 1
+      console.error('Wake word error:', event.error)
+
+      if (failCountRef.current >= MAX_FATAL_ERRORS) {
+        console.error(`Wake word: ${MAX_FATAL_ERRORS} consecutive errors, stopping.`)
+        recognitionRef.current = null
+        setIsListening(false)
+      }
     }
 
     recognition.start()

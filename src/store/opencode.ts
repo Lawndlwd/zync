@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { OpenCodeSession, OpenCodeConnectionStatus } from '@/types/opencode'
 
 interface OpenCodeState {
@@ -18,24 +19,32 @@ interface OpenCodeState {
   setSidebarOpen: (open: boolean) => void
 }
 
-export const useOpenCodeStore = create<OpenCodeState>()((set) => ({
-  serverUrl: 'http://localhost:4096',
-  connectionStatus: { connected: false, serverUrl: 'http://localhost:4096' },
-  activeSessionId: null,
-  sessions: [],
-  sidebarOpen: false,
+export const useOpenCodeStore = create<OpenCodeState>()(
+  persist(
+    (set) => ({
+      serverUrl: 'http://localhost:4096',
+      connectionStatus: { connected: false, serverUrl: 'http://localhost:4096' },
+      activeSessionId: null,
+      sessions: [],
+      sidebarOpen: false,
 
-  setServerUrl: (url) => set({ serverUrl: url }),
-  setConnectionStatus: (status) => set({ connectionStatus: status }),
-  setActiveSessionId: (id) => set({ activeSessionId: id }),
-  setSessions: (sessions) => set({ sessions }),
-  addSession: (session) =>
-    set((state) => ({ sessions: [session, ...state.sessions] })),
-  removeSession: (id) =>
-    set((state) => ({
-      sessions: state.sessions.filter((s) => s.id !== id),
-      activeSessionId: state.activeSessionId === id ? null : state.activeSessionId,
-    })),
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-}))
+      setServerUrl: (url) => set({ serverUrl: url }),
+      setConnectionStatus: (status) => set({ connectionStatus: status }),
+      setActiveSessionId: (id) => set({ activeSessionId: id }),
+      setSessions: (sessions) => set({ sessions }),
+      addSession: (session) =>
+        set((state) => ({ sessions: [session, ...state.sessions] })),
+      removeSession: (id) =>
+        set((state) => ({
+          sessions: state.sessions.filter((s) => s.id !== id),
+          activeSessionId: state.activeSessionId === id ? null : state.activeSessionId,
+        })),
+      toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
+    }),
+    {
+      name: 'opencode-store',
+      partialize: (state) => ({ serverUrl: state.serverUrl }),
+    }
+  )
+)
