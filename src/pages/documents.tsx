@@ -16,9 +16,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { MilkdownEditor } from '@/components/ui/milkdown-editor'
-import { MarkdownContent } from '@/components/ui/markdown'
 import { cn } from '@/lib/utils'
-import { FolderOpen, Plus, FileText, Pencil, Trash2, Save, Loader2, ArrowLeft, ChevronRight, Eye } from 'lucide-react'
+import { FolderOpen, Plus, FileText, Pencil, Trash2, Save, Loader2, ArrowLeft, ChevronRight } from 'lucide-react'
 import type { Document } from '@/types/document'
 
 // ─── View: Folders ───
@@ -206,7 +205,6 @@ function DocumentsView({
 
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [previewMode, setPreviewMode] = useState(true)
   const [docTitle, setDocTitle] = useState('')
   const [docContent, setDocContent] = useState('')
   const [initialDocApplied, setInitialDocApplied] = useState(false)
@@ -222,7 +220,6 @@ function DocumentsView({
         setSelectedDoc(doc)
         setDocTitle(doc.title)
         setDocContent(doc.content)
-        setPreviewMode(true)
         setInitialDocApplied(true)
         return
       }
@@ -233,14 +230,12 @@ function DocumentsView({
     setSelectedDoc(doc)
     setDocTitle(doc.title)
     setDocContent(doc.content)
-    setPreviewMode(true)
     onNavigateDoc(doc.title)
   }, [documents, selectedDoc, isCreating, initialDoc, initialDocApplied, onNavigateDoc])
 
   const selectDoc = (doc: Document) => {
     setSelectedDoc(doc)
     setIsCreating(false)
-    setPreviewMode(true)
     setDocTitle(doc.title)
     setDocContent(doc.content)
     onNavigateDoc(doc.title)
@@ -249,7 +244,6 @@ function DocumentsView({
   const startNew = () => {
     setSelectedDoc(null)
     setIsCreating(true)
-    setPreviewMode(false)
     setDocTitle('')
     setDocContent('')
     onNavigateDoc(null)
@@ -357,19 +351,23 @@ function DocumentsView({
           </div>
         </div>
 
-        {/* Editor / Preview area */}
+        {/* Editor area */}
         <div className="flex-1 flex flex-col min-w-0">
           {isEditing ? (
-            previewMode && selectedDoc ? (
-              /* ── Preview mode ── */
-              <div className="flex-1 flex flex-col p-5 gap-4">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-semibold text-zinc-100 flex-1 truncate">{docTitle}</h2>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button onClick={() => setPreviewMode(false)} className="h-10 px-5 gap-2 text-base">
-                      <Pencil size={18} />
-                      Edit
-                    </Button>
+            <div className="flex-1 flex flex-col p-5 gap-4">
+              <div className="flex items-center gap-4">
+                <Input
+                  value={docTitle}
+                  onChange={e => setDocTitle(e.target.value)}
+                  placeholder="Document title..."
+                  className="text-lg font-semibold flex-1 h-12"
+                />
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button onClick={handleSave} disabled={!docTitle.trim() || isSaving} className="h-10 px-5 gap-2 text-base">
+                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    Save
+                  </Button>
+                  {selectedDoc && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-10 w-10 p-0">
@@ -391,77 +389,23 @@ function DocumentsView({
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  </div>
-                </div>
-                <div className="flex-1 min-h-0 overflow-y-auto prose-docs">
-                  {docContent ? (
-                    <MarkdownContent raw>{docContent}</MarkdownContent>
-                  ) : (
-                    <p className="text-sm text-zinc-600 italic">Empty document</p>
                   )}
                 </div>
               </div>
-            ) : (
-              /* ── Edit mode ── */
-              <div className="flex-1 flex flex-col p-5 gap-4">
-                <div className="flex items-center gap-4">
-                  <Input
-                    value={docTitle}
-                    onChange={e => setDocTitle(e.target.value)}
-                    placeholder="Document title..."
-                    className="text-lg font-semibold flex-1 h-12"
-                  />
-                  <div className="flex items-center gap-2 shrink-0">
-                    {selectedDoc && (
-                      <Button variant="outline" onClick={() => setPreviewMode(true)} className="h-10 px-4 gap-2 text-base">
-                        <Eye size={18} />
-                        Preview
-                      </Button>
-                    )}
-                    <Button onClick={handleSave} disabled={!docTitle.trim() || isSaving} className="h-10 px-5 gap-2 text-base">
-                      {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                      Save
-                    </Button>
-                    {selectedDoc && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-10 w-10 p-0">
-                            <Trash2 size={18} className="text-zinc-400" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete "{selectedDoc.title}"?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete {selectedDoc.path}.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction variant="destructive" onClick={() => handleDelete(selectedDoc)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </div>
 
-                <div className="flex-1 min-h-0">
-                  <MilkdownEditor
-                    value={docContent}
-                    onChange={setDocContent}
-                    placeholder="Write your rules, guidelines, or coding standards in markdown..."
-                    minHeight="calc(100vh - 250px)"
-                  />
-                </div>
-
-                <p className="text-sm text-zinc-600">
-                  Saves as <code className="bg-white/[0.06] px-1.5 py-0.5 rounded text-sm">{folder}/{docTitle.trim() || 'untitled'}.md</code>
-                </p>
+              <div className="flex-1 min-h-0">
+                <MilkdownEditor
+                  value={docContent}
+                  onChange={setDocContent}
+                  placeholder="Write your rules, guidelines, or coding standards in markdown..."
+                  minHeight="calc(100vh - 250px)"
+                />
               </div>
-            )
+
+              <p className="text-sm text-zinc-600">
+                Saves as <code className="bg-white/[0.06] px-1.5 py-0.5 rounded text-sm">{folder}/{docTitle.trim() || 'untitled'}.md</code>
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center flex-1 text-zinc-500">
               <FileText size={56} className="mb-4 text-zinc-700" />
