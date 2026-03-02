@@ -1,9 +1,7 @@
-import type { JSONContent } from '@tiptap/react'
-
 export interface JournalEntry {
   id: string
   date: string
-  content: JSONContent
+  content: string
   linkedIssues: string[]
   completedTodos: string[]
   createdAt: string

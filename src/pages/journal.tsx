@@ -2,11 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useJournalStore } from '@/store/journal'
 import { useHabitsStore } from '@/store/habits'
 import { useTodos } from '@/hooks/useTodos'
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import TaskList from '@tiptap/extension-task-list'
-import TaskItem from '@tiptap/extension-task-item'
+import { MilkdownEditor } from '@/components/ui/milkdown-editor'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,14 +54,14 @@ function JournalOverview({
     setJTarget('')
   }
 
-  // Get snippet from journal entry
+  // Get snippet from journal entry (markdown string)
   const getSnippet = () => {
-    if (!entry?.content?.content) return null
-    const textNodes = entry.content.content
-      .flatMap((node: { content?: Array<{ text?: string }> }) => node.content || [])
-      .filter((n: { text?: string }) => n.text)
-      .map((n: { text?: string }) => n.text)
-    const text = textNodes.join(' ').trim()
+    if (!entry?.content || typeof entry.content !== 'string') return null
+    // Strip markdown headings and trim
+    const text = entry.content
+      .replace(/^#{1,6}\s+.*$/gm, '')
+      .replace(/\n{2,}/g, ' ')
+      .trim()
     if (!text) return null
     return text.length > 120 ? text.slice(0, 120) + '...' : text
   }
@@ -229,28 +225,12 @@ export function JournalPage() {
   const recentDates = Array.from({ length: 14 }, (_, i) => formatDateKey(subDays(new Date(), i)))
   const allDates = [...new Set([...recentDates, ...dates])].sort().reverse()
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Placeholder.configure({ placeholder: 'Start writing...' }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-    ],
-    content: entry.content,
-    onUpdate: ({ editor }) => {
-      updateEntry(selectedDate, editor.getJSON())
+  const handleContentChange = useCallback(
+    (markdown: string) => {
+      updateEntry(selectedDate, markdown)
     },
-  })
-
-  useEffect(() => {
-    if (editor && entry) {
-      const currentJSON = JSON.stringify(editor.getJSON())
-      const entryJSON = JSON.stringify(entry.content)
-      if (currentJSON !== entryJSON) {
-        editor.commands.setContent(entry.content)
-      }
-    }
-  }, [selectedDate, entry, editor])
+    [selectedDate, updateEntry]
+  )
 
   const handleFillFocus = useCallback(() => {
     openChat()
@@ -360,12 +340,12 @@ export function JournalPage() {
 
             <TabsContent value="journal">
               <ErrorBoundary>
-                <Card className="min-h-[60vh] p-6">
-                  <EditorContent
-                    editor={editor}
-                    className="prose prose-invert prose-sm max-w-none min-h-[50vh] focus:outline-none [&_.ProseMirror]:min-h-[50vh] [&_.ProseMirror]:outline-none"
-                  />
-                </Card>
+                <MilkdownEditor
+                  value={entry.content}
+                  onChange={handleContentChange}
+                  placeholder="Start writing..."
+                  minHeight="60vh"
+                />
               </ErrorBoundary>
             </TabsContent>
 
