@@ -9,7 +9,6 @@ RAW_BASE="https://raw.githubusercontent.com/Lawndlwd/zync/main"
 COMPOSE_URL="$RAW_BASE/docker-compose.prod.yml"
 SCRIPT_URL="$RAW_BASE/install.sh"
 OPENCODE_INSTALL_URL="https://opencode.ai/install"
-SKIP_OPENCODE="${SKIP_OPENCODE:-false}"
 ZYNC_PORT="${ZYNC_PORT:-8080}"
 
 # --- Helpers ---
@@ -26,15 +25,11 @@ check_cmd() {
 }
 
 # --- Parse flags ---
-ENABLE_VOICE=false
 DO_UPDATE=false
 for arg in "$@"; do
   case "$arg" in
-    --update)         DO_UPDATE=true ;;
-    --voice)          ENABLE_VOICE=true ;;
-    --skip-opencode)  SKIP_OPENCODE=true ;;
-    --port=*)         ZYNC_PORT="${arg#--port=}" ;;
-    *)                ;;
+    --update) DO_UPDATE=true ;;
+    *)        ;;
   esac
 done
 
@@ -60,16 +55,10 @@ if ! docker info &>/dev/null; then
   exit 1
 fi
 
-# --- Install OpenCode ---
+# --- Install OpenCode (required) ---
 install_opencode() {
   if command -v opencode &>/dev/null; then
     ok "OpenCode already installed ($(opencode --version 2>/dev/null || echo "unknown"))"
-    return 0
-  fi
-
-  if [[ "$SKIP_OPENCODE" == "true" ]]; then
-    warn "Skipping OpenCode install (--skip-opencode)"
-    warn "Zync works without it, but AI agent features require OpenCode."
     return 0
   fi
 
@@ -79,17 +68,17 @@ install_opencode() {
   curl -fsSL "$OPENCODE_INSTALL_URL" | bash || INSTALL_EXIT=$?
 
   if [[ "$INSTALL_EXIT" -ne 0 ]]; then
-    warn "OpenCode installation failed (exit code: $INSTALL_EXIT)"
+    err "OpenCode installation failed (exit code: $INSTALL_EXIT)"
     case "$OS" in
       Linux)
-        warn "Try: snap install opencode"
+        err "Try: snap install opencode"
         ;;
       Darwin)
-        warn "Try: brew install opencode-ai/tap/opencode"
+        err "Try: brew install opencode-ai/tap/opencode"
         ;;
     esac
-    warn "Zync will continue without OpenCode."
-    return 0
+    err "Zync requires OpenCode. Install it manually and re-run this script."
+    exit 1
   fi
 
   # Reload shell config so opencode is on PATH
@@ -110,7 +99,8 @@ install_opencode() {
         return 0
       fi
     done
-    warn "OpenCode installed but not on PATH yet. Open a new terminal."
+    err "OpenCode installed but not on PATH. Add it to PATH and re-run."
+    exit 1
   fi
 }
 
@@ -132,7 +122,6 @@ set_env() {
   local key="$1" val="$2"
   touch .env
   if grep -q "^${key}=" .env; then
-    # portable sed in-place (works on macOS and Linux)
     local tmp; tmp="$(mktemp)"
     sed "s|^${key}=.*|${key}=${val}|" .env > "$tmp" && mv "$tmp" .env
   else
@@ -140,32 +129,22 @@ set_env() {
   fi
 }
 
-# --- Build compose profiles arg ---
-COMPOSE_PROFILES=""
-if [[ "$ENABLE_VOICE" == "true" ]]; then
-  COMPOSE_PROFILES="--profile voice"
-fi
-
 # --- Handle --update ---
 if [[ "$DO_UPDATE" == "true" ]]; then
   info "Updating Zync..."
   download_files
   set_env "ZYNC_PORT" "$ZYNC_PORT"
-  docker compose $COMPOSE_PROFILES pull
-  docker compose $COMPOSE_PROFILES up -d
+  docker compose --profile voice pull
+  docker compose --profile voice up -d
   ok "Zync containers updated!"
-  # fall through to restart opencode serve + print summary
 else
   # --- Fresh install ---
   download_files
   set_env "ZYNC_PORT" "$ZYNC_PORT"
 
   info "Pulling images (this may take a minute on first install)..."
-  if [[ "$ENABLE_VOICE" == "true" ]]; then
-    info "Voice services enabled (whisper + wakeword)"
-  fi
-  docker compose $COMPOSE_PROFILES pull
-  docker compose $COMPOSE_PROFILES up -d
+  docker compose --profile voice pull
+  docker compose --profile voice up -d
 fi
 
 # --- Wait for backend health ---
@@ -190,11 +169,6 @@ fi
 
 # --- Start OpenCode serve ---
 start_opencode() {
-  if ! command -v opencode &>/dev/null; then
-    warn "OpenCode not found — skipping. AI agent features unavailable."
-    return 0
-  fi
-
   # Kill any existing opencode serve process
   pkill -f "opencode serve" 2>/dev/null || true
   sleep 1
@@ -205,13 +179,13 @@ start_opencode() {
   nohup opencode serve --cors "$CORS_ORIGIN" > "$INSTALL_DIR/opencode.log" 2>&1 &
   local OC_PID=$!
 
-  # Give it a moment to start
   sleep 2
 
   if kill -0 "$OC_PID" 2>/dev/null; then
     ok "OpenCode running (PID $OC_PID, log: $INSTALL_DIR/opencode.log)"
   else
-    warn "OpenCode failed to start. Check: $INSTALL_DIR/opencode.log"
+    err "OpenCode failed to start. Check: $INSTALL_DIR/opencode.log"
+    exit 1
   fi
 }
 
@@ -229,18 +203,15 @@ info "Services:"
 echo "  Frontend:   http://localhost:$ZYNC_PORT"
 echo "  Backend:    http://localhost:3001"
 echo "  OpenCode:   http://localhost:4096"
-if [[ "$ENABLE_VOICE" == "true" ]]; then
-  echo "  Whisper:    internal (voice transcription)"
-  echo "  Wakeword:   http://localhost:9000"
-fi
+echo "  Whisper:    internal (voice transcription)"
+echo "  Wakeword:   http://localhost:9000"
 echo ""
 info "Useful commands:"
 echo "  cd $INSTALL_DIR"
-echo "  docker compose logs -f              # View logs"
-echo "  docker compose down                 # Stop Zync"
-echo "  docker compose up -d                # Start Zync"
-echo "  ./install.sh --update               # Update to latest"
-echo "  ./install.sh --update --voice       # Update with voice services"
+echo "  docker compose logs -f           # View logs"
+echo "  docker compose down              # Stop Zync"
+echo "  docker compose up -d             # Start Zync"
+echo "  ./install.sh --update            # Update to latest"
 echo ""
 info "Install log: $LOG_FILE"
 info "OpenCode log: $INSTALL_DIR/opencode.log"

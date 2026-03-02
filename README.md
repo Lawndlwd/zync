@@ -28,22 +28,9 @@ curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bas
 
 This will:
 1. Install [OpenCode](https://opencode.ai) if not already installed
-2. Pull pre-built Docker images
+2. Pull pre-built Docker images (frontend, backend, whisper, wakeword)
 3. Start all services
 4. Launch `opencode serve` with CORS configured
-
-### Options
-
-```bash
-# Custom port
-curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bash -s -- --port=3000
-
-# Enable voice services (whisper transcription + wakeword detection)
-curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bash -s -- --voice
-
-# Skip OpenCode install
-curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bash -s -- --skip-opencode
-```
 
 ### Update
 
@@ -54,13 +41,13 @@ cd ~/.zync
 
 ## Services
 
-| Service    | URL                    | Description                      |
-|------------|------------------------|----------------------------------|
-| Frontend   | http://localhost:8080   | Dashboard UI                     |
-| Backend    | http://localhost:3001   | API server                       |
-| OpenCode   | http://localhost:4096   | AI agent (runs on host)          |
-| Whisper    | internal               | Voice transcription (optional)   |
-| Wakeword   | http://localhost:9000   | Voice activation (optional)      |
+| Service    | URL                    | Description                |
+|------------|------------------------|----------------------------|
+| Frontend   | http://localhost:8080   | Dashboard UI               |
+| Backend    | http://localhost:3001   | API server                 |
+| OpenCode   | http://localhost:4096   | AI agent (runs on host)    |
+| Whisper    | internal               | Voice transcription        |
+| Wakeword   | http://localhost:9000   | Voice activation           |
 
 ## Configuration
 
@@ -92,7 +79,6 @@ TELEGRAM_BOT_TOKEN=...
 ## Development
 
 ```bash
-# Clone the repo
 git clone https://github.com/Lawndlwd/zync.git
 cd zync
 
@@ -117,5 +103,4 @@ docker compose logs -f           # View logs
 docker compose down              # Stop Zync
 docker compose up -d             # Start Zync
 ./install.sh --update            # Update to latest
-./install.sh --update --voice    # Update with voice services
 ```
