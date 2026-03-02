@@ -18,7 +18,7 @@ import {
   Mail,
 } from 'lucide-react'
 import { useOpenCodeStore } from '@/store/opencode'
-import { WakeWordDetector } from '@/components/voice/WakeWordDetector'
+
 import { useBotChannels } from '@/hooks/useBot'
 
 const links = [
@@ -136,7 +136,6 @@ export function Sidebar() {
 
       {/* Bottom section */}
       <div className="flex flex-col gap-1 px-3 w-full border-t border-white/[0.06] pt-3">
-        <WakeWordDetector />
         <NavLink
           to="/settings"
           className={({ isActive }) =>

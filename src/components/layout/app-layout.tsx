@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from './sidebar'
 import { useOpenCodeSSE } from '@/hooks/useOpenCodeSSE'
 import { ChatPanel } from '@/components/ai-agent/chat-panel'
+import { DynamicIsland } from '@/components/voice/DynamicIsland'
 
 export function AppLayout() {
   useOpenCodeSSE()
@@ -21,6 +22,7 @@ export function AppLayout() {
         </div>
       </main>
       <ChatPanel />
+      <DynamicIsland />
     </div>
   )
 }
