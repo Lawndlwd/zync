@@ -11,24 +11,16 @@ const execFileAsync = promisify(execFile)
 // Whisper microservice URL (preferred in Docker)
 const WHISPER_SERVICE_URL = getConfig('WHISPER_SERVICE_URL') || ''
 
-// Whisper-cpp settings (local fallback)
-const WHISPER_PATH = getConfig('WHISPER_PATH', '/opt/homebrew/opt/whisper-cpp/bin/whisper-cli') || '/opt/homebrew/opt/whisper-cpp/bin/whisper-cli'
-const WHISPER_MODEL = getConfig('WHISPER_MODEL') || resolve(import.meta.dirname, '../../data/ggml-base.en.bin')
-
 // faster-whisper (whisper-ctranslate2) settings (local fallback)
-const WHISPER_BACKEND = getConfig('WHISPER_BACKEND', 'auto') || 'auto'
 const FASTER_WHISPER_PATH = getConfig('FASTER_WHISPER_PATH', 'whisper-ctranslate2') || 'whisper-ctranslate2'
 const FASTER_WHISPER_MODEL = getConfig('FASTER_WHISPER_MODEL', 'base.en') || 'base.en'
 
 const TEMP_DIR = getConfig('TEMP_DIR', '/tmp') || '/tmp'
 
-// Formats whisper-cpp supports natively
-const NATIVE_FORMATS = new Set(['flac', 'mp3', 'ogg', 'wav'])
-
 // Detected backend (resolved once at startup)
-let resolvedBackend: 'service' | 'faster-whisper' | 'whisper-cpp' | null = null
+let resolvedBackend: 'service' | 'faster-whisper' | null = null
 
-async function detectBackend(): Promise<'service' | 'faster-whisper' | 'whisper-cpp'> {
+async function detectBackend(): Promise<'service' | 'faster-whisper'> {
   if (resolvedBackend) return resolvedBackend
 
   // Try whisper microservice first
@@ -45,24 +37,16 @@ async function detectBackend(): Promise<'service' | 'faster-whisper' | 'whisper-
     }
   }
 
-  if (WHISPER_BACKEND === 'whisper-cpp') {
-    resolvedBackend = 'whisper-cpp'
-    return resolvedBackend
-  }
-
-  if (WHISPER_BACKEND === 'faster-whisper') {
-    resolvedBackend = 'faster-whisper'
-    return resolvedBackend
-  }
-
-  // Auto-detect: try faster-whisper first
+  // Verify faster-whisper is installed
   try {
     await execFileAsync(FASTER_WHISPER_PATH, ['--help'], { timeout: 5_000 })
     resolvedBackend = 'faster-whisper'
     logger.info('[transcribe] Using faster-whisper backend')
   } catch {
-    resolvedBackend = 'whisper-cpp'
-    logger.info('[transcribe] Using whisper-cpp backend (faster-whisper not found)')
+    throw new Error(
+      'faster-whisper (whisper-ctranslate2) is not installed. ' +
+      'Install it with: pip install whisper-ctranslate2'
+    )
   }
 
   return resolvedBackend
@@ -96,25 +80,6 @@ async function convertToWav(inputPath: string, outputPath: string): Promise<void
     '-y',              // overwrite
     outputPath,
   ], { timeout: 30_000 })
-}
-
-async function transcribeWithWhisperCpp(wavPath: string, outputBase: string): Promise<string> {
-  const args = [
-    '--model', WHISPER_MODEL,
-    '--file', wavPath,
-    '--output-txt',
-    '--output-file', outputBase,
-    '--no-timestamps',
-  ]
-
-  await execFileAsync(WHISPER_PATH, args, { timeout: 60_000 })
-
-  const outputFile = `${outputBase}.txt`
-  if (!existsSync(outputFile)) {
-    throw new Error('Whisper output file not found')
-  }
-
-  return readFileSync(outputFile, 'utf-8').trim()
 }
 
 async function transcribeWithFasterWhisper(wavPath: string): Promise<string> {
@@ -152,29 +117,17 @@ export async function transcribeAudio(audioBuffer: Buffer, format = 'ogg'): Prom
   const id = randomUUID()
   const tempInput = resolve(TEMP_DIR, `whisper-${id}.${format}`)
   const tempWav = resolve(TEMP_DIR, `whisper-${id}.wav`)
-  const tempOutputBase = resolve(TEMP_DIR, `whisper-${id}`)
 
-  // Track files to clean up
   const tempFiles = [tempInput, tempWav]
 
   try {
     writeFileSync(tempInput, audioBuffer)
 
-    // Always convert to WAV for consistency (both backends need 16kHz mono)
-    const whisperInput = NATIVE_FORMATS.has(format) && backend === 'whisper-cpp' ? tempInput : tempWav
-    if (whisperInput === tempWav) {
-      await convertToWav(tempInput, tempWav)
-    }
+    await convertToWav(tempInput, tempWav)
 
-    if (backend === 'faster-whisper') {
-      // faster-whisper creates its own output file
-      const stem = basename(whisperInput).replace(/\.[^.]+$/, '')
-      tempFiles.push(resolve(dirname(whisperInput), `${stem}.txt`))
-      return await transcribeWithFasterWhisper(whisperInput)
-    } else {
-      tempFiles.push(`${tempOutputBase}.txt`)
-      return await transcribeWithWhisperCpp(whisperInput, tempOutputBase)
-    }
+    const stem = basename(tempWav).replace(/\.[^.]+$/, '')
+    tempFiles.push(resolve(dirname(tempWav), `${stem}.txt`))
+    return await transcribeWithFasterWhisper(tempWav)
   } finally {
     for (const f of tempFiles) {
       try { unlinkSync(f) } catch {}
