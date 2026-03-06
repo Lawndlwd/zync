@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
-  Inbox,
   LayoutDashboard,
   KanbanSquare,
   Settings,
@@ -10,14 +9,16 @@ import {
   BarChart3,
   Activity,
   GitMerge,
+  Github,
   FileText,
-  Terminal,
   Monitor,
   MessageCircle,
   Send,
   Mail,
   ChevronDown,
   ChevronRight,
+  Briefcase,
+  UserCircle,
 } from 'lucide-react'
 import { useOpenCodeStore } from '@/store/opencode'
 
@@ -44,7 +45,7 @@ const navGroups: NavGroup[] = [
       { to: '/', icon: LayoutDashboard, label: 'Dashboard', color: 'text-indigo-400' },
       { to: '/productivity', icon: BarChart3, label: 'Productivity', color: 'text-orange-400' },
       { to: '/tasks', icon: KanbanSquare, label: 'Tasks & Projects', color: 'text-emerald-400' },
-      { to: '/inbox', icon: Inbox, label: 'Inbox', color: 'text-sky-400' },
+      { to: '/chat', icon: MessageCircle, label: 'Chat', color: 'text-sky-400' },
     ],
   },
   {
@@ -53,6 +54,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/jira', icon: Ticket, label: 'Jira', color: 'text-blue-400' },
       { to: '/gitlab', icon: GitMerge, label: 'GitLab', color: 'text-violet-400' },
+      { to: '/github', icon: Github, label: 'GitHub', color: 'text-zinc-100' },
     ],
   },
   {
@@ -61,8 +63,9 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/documents', icon: FileText, label: 'Documents', color: 'text-teal-400' },
       { to: '/activity', icon: Activity, label: 'Activity', color: 'text-rose-400' },
-      { to: '/opencode', icon: Terminal, label: 'OpenCode', color: 'text-cyan-400' },
       { to: '/canvas', icon: Monitor, label: 'Canvas', color: 'text-pink-400' },
+      { to: '/jobs', icon: Briefcase, label: 'Job Search', color: 'text-amber-400' },
+      { to: '/profile', icon: UserCircle, label: 'Profile & CV', color: 'text-teal-400' },
     ],
   },
 ]
