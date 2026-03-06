@@ -36,14 +36,61 @@ export async function parseResume(rawText: string): Promise<Omit<Profile, 'id' |
   const sessionId = await getOrCreateSession(SESSION_PURPOSE)
   const msgsBefore = (await getSessionMessages(sessionId)).length
 
-  const prompt = `Parse this resume into structured JSON. Return ONLY a JSON object (in a markdown code fence) with these fields:
-- name (string)
-- title (string, current/desired job title)
-- summary (string, 2-3 sentence professional summary)
-- skills (string array)
-- experience (string, concise markdown summary of work history)
-- education (string, concise summary)
-- languages (string array)
+  const prompt = `Parse this resume into structured JSON. Return ONLY a JSON object (in a markdown code fence) matching this exact schema:
+
+{
+  "name": string,
+  "title": string (current or desired job title),
+  "summary": string (2-3 sentence professional summary),
+  "email": string (or "" if not found),
+  "phone": string (or "" if not found),
+  "location": string (city/region or "" if not found),
+  "linkedin": string (LinkedIn URL or "" if not found),
+  "website": string (personal website/portfolio URL or "" if not found),
+  "skills": string[] (list of technical and soft skills),
+  "experience": string (concise markdown summary of all work history for backward compatibility),
+  "experiences": [
+    {
+      "id": string (generate a unique UUID v4 for each entry, e.g. "a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+      "title": string (job title),
+      "company": string,
+      "location": string (or ""),
+      "startDate": string (e.g. "Jan 2020" or "2020"),
+      "endDate": string (e.g. "Present" or "Dec 2023"),
+      "bullets": string[] (key responsibilities and achievements as bullet points)
+    }
+  ],
+  "education": string (concise summary of all education for backward compatibility),
+  "educations": [
+    {
+      "id": string (generate a unique UUID v4 for each entry),
+      "school": string,
+      "degree": string (e.g. "Bachelor of Science"),
+      "field": string (e.g. "Computer Science"),
+      "startDate": string (or ""),
+      "endDate": string (or ""),
+      "gpa": string (or "")
+    }
+  ],
+  "projects": [
+    {
+      "id": string (generate a unique UUID v4 for each entry),
+      "name": string,
+      "description": string,
+      "url": string (or ""),
+      "technologies": string[]
+    }
+  ],
+  "languages": string[] (spoken/written languages)
+}
+
+Important:
+- Every "id" field MUST be a unique UUID v4 string (e.g. "f47ac10b-58cc-4372-a567-0d02b2c3d479"). Generate a different one for each entry.
+- "experience" should be a concise markdown text summarizing all work history.
+- "experiences" should be the detailed structured array of each position.
+- "education" should be a concise text summary of all education.
+- "educations" should be the detailed structured array of each degree/certification.
+- If a field is not found in the resume, use "" for strings, [] for arrays.
 
 Resume text:
 ---
@@ -59,6 +106,7 @@ ${rawText.slice(0, 8000)}
     logger.error({ response: response.slice(0, 500) }, 'Failed to parse resume JSON from LLM')
     return {
       name: '', title: '', summary: rawText.slice(0, 200),
+      email: '', phone: '', location: '', linkedin: '', website: '',
       skills: [], experience: '', experiences: [],
       education: '', educations: [], projects: [],
       languages: [],
