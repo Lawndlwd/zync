@@ -50,10 +50,20 @@ export interface ProfileProject {
   technologies: string[]
 }
 
+export type CvTemplateId =
+  | 'classic'
+  | 'modern-left'
+  | 'bold-sidebar'
+  | 'executive-banner'
+  | 'minimal-two-col'
+  | 'timeline'
+  | 'compact-ats'
+  | 'magazine'
+
 export interface CvTheme {
   id: string
   name: string
-  layout: 'single-column' | 'two-column' | 'sidebar' | 'left-sidebar' | 'compact' | 'timeline'
+  template: CvTemplateId
   primaryColor: string
   secondaryColor: string
   accentColor: string
@@ -63,7 +73,6 @@ export interface CvTheme {
   fontSize: number
   lineHeight: number
   sectionSpacing: number
-  headerStyle: 'centered' | 'left' | 'inline'
   showPhoto: boolean
 }
 

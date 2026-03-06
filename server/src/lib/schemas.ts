@@ -307,7 +307,7 @@ const ProfileProjectSchema = z.object({
 const CvThemeSchema = z.object({
   id: z.string(),
   name: z.string(),
-  layout: z.enum(['single-column', 'two-column', 'sidebar', 'left-sidebar', 'compact', 'timeline']),
+  template: z.enum(['classic', 'modern-left', 'bold-sidebar', 'executive-banner', 'minimal-two-col', 'timeline', 'compact-ats', 'magazine']),
   primaryColor: z.string(),
   secondaryColor: z.string(),
   accentColor: z.string(),
@@ -317,7 +317,6 @@ const CvThemeSchema = z.object({
   fontSize: z.number(),
   lineHeight: z.number(),
   sectionSpacing: z.number(),
-  headerStyle: z.enum(['centered', 'left', 'inline']),
   showPhoto: z.boolean(),
 })
 

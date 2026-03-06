@@ -1,5 +1,5 @@
-import type { CvTheme } from '@/types/jobs'
-import { CV_THEMES, FONT_OPTIONS } from '@/lib/cv-themes'
+import type { CvTheme, CvTemplateId } from '@/types/jobs'
+import { CV_THEMES, FONT_OPTIONS, TEMPLATE_INFO } from '@/lib/cv-themes'
 import {
   Select,
   SelectContent,
@@ -9,73 +9,78 @@ import {
 } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
-import { Columns2, Columns3, PanelLeft, PanelRight, LayoutList, GitBranch, AlignCenter, AlignLeft, AlignJustify } from 'lucide-react'
 
 interface ThemeCustomizerProps {
   theme: CvTheme
   onChange: (theme: CvTheme) => void
 }
 
-const LAYOUT_OPTIONS: { value: CvTheme['layout']; label: string; icon: React.ReactNode }[] = [
-  { value: 'single-column', label: 'Single', icon: <Columns2 className="size-4" /> },
-  { value: 'two-column', label: 'Two Col', icon: <Columns3 className="size-4" /> },
-  { value: 'sidebar', label: 'Right Bar', icon: <PanelLeft className="size-4" /> },
-  { value: 'left-sidebar', label: 'Left Bar', icon: <PanelRight className="size-4" /> },
-  { value: 'compact', label: 'Compact', icon: <LayoutList className="size-4" /> },
-  { value: 'timeline', label: 'Timeline', icon: <GitBranch className="size-4" /> },
-]
-
-const HEADER_OPTIONS: { value: CvTheme['headerStyle']; label: string; icon: React.ReactNode }[] = [
-  { value: 'centered', label: 'Centered', icon: <AlignCenter className="size-4" /> },
-  { value: 'left', label: 'Left', icon: <AlignLeft className="size-4" /> },
-  { value: 'inline', label: 'Inline', icon: <AlignJustify className="size-4" /> },
-]
+const templateIds = Object.keys(TEMPLATE_INFO) as CvTemplateId[]
 
 export function ThemeCustomizer({ theme, onChange }: ThemeCustomizerProps) {
   const set = <K extends keyof CvTheme>(key: K, value: CvTheme[K]) => {
     onChange({ ...theme, [key]: value })
   }
 
+  const themesForTemplate = CV_THEMES.filter(t => t.template === theme.template)
+
   return (
     <div className="space-y-6">
-      {/* Preset selector */}
+      {/* Template selector */}
       <div className="space-y-2">
-        <Label className="text-zinc-400 text-xs uppercase tracking-wider">Preset Themes</Label>
-        <div className="grid grid-cols-2 gap-1.5 max-h-60 overflow-y-auto pr-1">
-          {CV_THEMES.map((preset) => (
-            <button
-              key={preset.id}
-              onClick={() => onChange(preset)}
-              className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-all ${
-                theme.id === preset.id
-                  ? 'ring-2 ring-indigo-500 border-indigo-500/50 bg-white/[0.06]'
-                  : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]'
-              }`}
-            >
-              <div className="flex gap-0.5 shrink-0">
-                <span
-                  className="block size-3 rounded-sm"
-                  style={{ backgroundColor: preset.primaryColor }}
-                />
-                <span
-                  className="block size-3 rounded-sm"
-                  style={{ backgroundColor: preset.accentColor }}
-                />
-                <span
-                  className="block size-3 rounded-sm"
-                  style={{ backgroundColor: preset.backgroundColor }}
-                />
-              </div>
-              <div className="min-w-0">
-                <span className="text-zinc-100 truncate block">{preset.name}</span>
-                <span className="text-zinc-500 text-[10px] truncate block">{preset.layout}</span>
-              </div>
-            </button>
-          ))}
+        <Label className="text-zinc-400 text-xs uppercase tracking-wider">Template</Label>
+        <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+          {templateIds.map((id) => {
+            const info = TEMPLATE_INFO[id]
+            return (
+              <button
+                key={id}
+                onClick={() => {
+                  const firstTheme = CV_THEMES.find(t => t.template === id)
+                  if (firstTheme) onChange(firstTheme)
+                }}
+                className={`rounded-md border px-2.5 py-2 text-left transition-all ${
+                  theme.template === id
+                    ? 'ring-2 ring-indigo-500 border-indigo-500/50 bg-white/[0.06]'
+                    : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]'
+                }`}
+              >
+                <span className="text-zinc-100 text-sm font-medium block">{info.label}</span>
+                <span className="text-zinc-500 text-[10px] leading-tight block mt-0.5">{info.description}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Color controls */}
+      {/* Color presets for current template */}
+      {themesForTemplate.length > 1 && (
+        <div className="space-y-2">
+          <Label className="text-zinc-400 text-xs uppercase tracking-wider">Color Preset</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {themesForTemplate.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => onChange(preset)}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-all ${
+                  theme.id === preset.id
+                    ? 'ring-2 ring-indigo-500 border-indigo-500/50 bg-white/[0.06]'
+                    : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]'
+                }`}
+              >
+                <div className="flex gap-0.5 shrink-0">
+                  <span className="block size-3 rounded-sm" style={{ backgroundColor: preset.accentColor }} />
+                  <span className="block size-3 rounded-sm" style={{ backgroundColor: preset.primaryColor }} />
+                  <span className="block size-3 rounded-sm" style={{ backgroundColor: preset.backgroundColor }} />
+                </div>
+                <span className="text-zinc-200">{preset.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Custom colors */}
       <div className="space-y-2">
         <Label className="text-zinc-400 text-xs uppercase tracking-wider">Colors</Label>
         <div className="grid grid-cols-2 gap-3">
@@ -137,52 +142,9 @@ export function ThemeCustomizer({ theme, onChange }: ThemeCustomizerProps) {
         </div>
       </div>
 
-      {/* Layout selector */}
-      <div className="space-y-2">
-        <Label className="text-zinc-400 text-xs uppercase tracking-wider">Layout</Label>
-        <div className="grid grid-cols-3 gap-1.5">
-          {LAYOUT_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => set('layout', opt.value)}
-              className={`flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition-all ${
-                theme.layout === opt.value
-                  ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-400'
-                  : 'border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200'
-              }`}
-            >
-              {opt.icon}
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Header style */}
-      <div className="space-y-2">
-        <Label className="text-zinc-400 text-xs uppercase tracking-wider">Header Style</Label>
-        <div className="grid grid-cols-3 gap-2">
-          {HEADER_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => set('headerStyle', opt.value)}
-              className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-all ${
-                theme.headerStyle === opt.value
-                  ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-400'
-                  : 'border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200'
-              }`}
-            >
-              {opt.icon}
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Sliders */}
       <div className="space-y-4">
         <Label className="text-zinc-400 text-xs uppercase tracking-wider">Typography</Label>
-
         <div className="space-y-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -197,7 +159,6 @@ export function ThemeCustomizer({ theme, onChange }: ThemeCustomizerProps) {
               step={0.5}
             />
           </div>
-
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-zinc-400 text-sm">Line Height</span>
@@ -211,7 +172,6 @@ export function ThemeCustomizer({ theme, onChange }: ThemeCustomizerProps) {
               step={0.1}
             />
           </div>
-
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-zinc-400 text-sm">Section Spacing</span>
