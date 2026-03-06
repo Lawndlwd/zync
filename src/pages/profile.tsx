@@ -66,7 +66,7 @@ export function ProfilePage() {
 
       {/* Two-panel layout */}
       <div className="min-h-0 flex-1">
-        <ResizablePanelGroup direction="horizontal">
+        <ResizablePanelGroup orientation="horizontal">
           <ResizablePanel defaultSize={40} minSize={30}>
             <ScrollArea className="h-full">
               <div className="space-y-6 p-4">
