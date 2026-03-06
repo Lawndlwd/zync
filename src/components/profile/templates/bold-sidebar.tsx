@@ -204,14 +204,23 @@ export function BoldSidebarTemplate({ profile, theme }: TemplateProps) {
           color: var(--cv-accent);
           margin-top: 2px;
         }
+        .cv-bold-sidebar [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-bold-sidebar [data-field]:hover {
+          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline-offset: 2px;
+        }
       `}} />
       <div className="cv-bold-sidebar" style={cssVars}>
         {/* Sidebar */}
         <div className="bs-sidebar">
           <div>
             <div className="bs-avatar">{initials}</div>
-            <h1 className="bs-sidebar-name">{profile.name}</h1>
-            <div className="bs-sidebar-title">{profile.title}</div>
+            <h1 className="bs-sidebar-name" data-field="name">{profile.name}</h1>
+            <div className="bs-sidebar-title" data-field="title">{profile.title}</div>
           </div>
 
           {contactItems.length > 0 && (
@@ -255,21 +264,21 @@ export function BoldSidebarTemplate({ profile, theme }: TemplateProps) {
           {profile.summary && (
             <div className="bs-section">
               <h2 className="bs-section-title">Summary</h2>
-              <p className="bs-summary">{profile.summary}</p>
+              <p className="bs-summary" data-field="summary">{profile.summary}</p>
             </div>
           )}
 
           {profile.experiences.length > 0 && (
             <div className="bs-section">
               <h2 className="bs-section-title">Experience</h2>
-              {profile.experiences.map((exp) => (
+              {profile.experiences.map((exp, i) => (
                 <div key={exp.id} className="bs-entry">
                   <div className="bs-entry-dates">{exp.startDate} &ndash; {exp.endDate || 'Present'}</div>
-                  <div className="bs-entry-title">{exp.title}</div>
-                  <div className="bs-entry-sub">{exp.company}{exp.location ? ` \u2014 ${exp.location}` : ''}</div>
+                  <div className="bs-entry-title" data-field={`experiences.${i}.title`}>{exp.title}</div>
+                  <div className="bs-entry-sub"><span data-field={`experiences.${i}.company`}>{exp.company}</span>{exp.location ? <span> &mdash; <span data-field={`experiences.${i}.location`}>{exp.location}</span></span> : ''}</div>
                   {exp.bullets.length > 0 && (
                     <ul className="bs-bullets">
-                      {exp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                      {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
                     </ul>
                   )}
                 </div>
@@ -280,11 +289,11 @@ export function BoldSidebarTemplate({ profile, theme }: TemplateProps) {
           {profile.educations.length > 0 && (
             <div className="bs-section">
               <h2 className="bs-section-title">Education</h2>
-              {profile.educations.map((edu) => (
+              {profile.educations.map((edu, i) => (
                 <div key={edu.id} className="bs-entry">
                   <div className="bs-entry-dates">{edu.startDate} &ndash; {edu.endDate || 'Present'}</div>
-                  <div className="bs-entry-title">{edu.degree}{edu.field ? `, ${edu.field}` : ''}</div>
-                  <div className="bs-entry-sub">{edu.school}</div>
+                  <div className="bs-entry-title" data-field={`educations.${i}.degree`}>{edu.degree}{edu.field ? `, ${edu.field}` : ''}</div>
+                  <div className="bs-entry-sub" data-field={`educations.${i}.school`}>{edu.school}</div>
                   {edu.gpa && <div style={{ fontSize: '8.5pt', color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>GPA: {edu.gpa}</div>}
                 </div>
               ))}
@@ -294,10 +303,10 @@ export function BoldSidebarTemplate({ profile, theme }: TemplateProps) {
           {profile.projects.length > 0 && (
             <div className="bs-section">
               <h2 className="bs-section-title">Projects</h2>
-              {profile.projects.map((proj) => (
+              {profile.projects.map((proj, i) => (
                 <div key={proj.id} className="bs-project">
-                  <div className="bs-project-name">{proj.name}</div>
-                  <div className="bs-project-desc">{proj.description}</div>
+                  <div className="bs-project-name" data-field={`projects.${i}.name`}>{proj.name}</div>
+                  <div className="bs-project-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
                   {proj.technologies.length > 0 && (
                     <div className="bs-project-tech">{proj.technologies.join(' \u00B7 ')}</div>
                   )}

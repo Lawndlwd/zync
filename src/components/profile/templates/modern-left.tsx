@@ -139,11 +139,20 @@ export function ModernLeftTemplate({ profile, theme }: TemplateProps) {
           border-radius: 2px;
           font-weight: 500;
         }
+        .cv-modern-left [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-modern-left [data-field]:hover {
+          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline-offset: 2px;
+        }
       `}} />
       <div className="cv-modern-left" style={cssVars}>
         <div className="ml-header">
-          <h1 className="ml-name">{profile.name}</h1>
-          <div className="ml-title">{profile.title}</div>
+          <h1 className="ml-name" data-field="name">{profile.name}</h1>
+          <div className="ml-title" data-field="title">{profile.title}</div>
           <div className="ml-contact">
             {contactItems.map((item, i) => (
               <span key={i} className="ml-contact-item">
@@ -157,25 +166,25 @@ export function ModernLeftTemplate({ profile, theme }: TemplateProps) {
         {profile.summary && (
           <div className="ml-section">
             <h2 className="ml-section-title">Profile</h2>
-            <p className="ml-summary">{profile.summary}</p>
+            <p className="ml-summary" data-field="summary">{profile.summary}</p>
           </div>
         )}
 
         {profile.experiences.length > 0 && (
           <div className="ml-section">
             <h2 className="ml-section-title">Experience</h2>
-            {profile.experiences.map((exp) => (
+            {profile.experiences.map((exp, i) => (
               <div key={exp.id} className="ml-entry">
                 <div className="ml-entry-header">
                   <div>
-                    <span className="ml-company">{exp.company}</span>
-                    <span className="ml-role"> &mdash; {exp.title}</span>
+                    <span className="ml-company" data-field={`experiences.${i}.company`}>{exp.company}</span>
+                    <span className="ml-role"> &mdash; <span data-field={`experiences.${i}.title`}>{exp.title}</span></span>
                   </div>
                   <span className="ml-dates">{exp.startDate} &ndash; {exp.endDate || 'Present'}</span>
                 </div>
                 {exp.bullets.length > 0 && (
                   <ul className="ml-bullets">
-                    {exp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                    {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
                   </ul>
                 )}
               </div>
@@ -186,12 +195,12 @@ export function ModernLeftTemplate({ profile, theme }: TemplateProps) {
         {profile.educations.length > 0 && (
           <div className="ml-section">
             <h2 className="ml-section-title">Education</h2>
-            {profile.educations.map((edu) => (
+            {profile.educations.map((edu, i) => (
               <div key={edu.id} className="ml-entry">
                 <div className="ml-entry-header">
                   <div>
-                    <span className="ml-company">{edu.school}</span>
-                    <span className="ml-role"> &mdash; {edu.degree}{edu.field ? `, ${edu.field}` : ''}</span>
+                    <span className="ml-company" data-field={`educations.${i}.school`}>{edu.school}</span>
+                    <span className="ml-role"> &mdash; <span data-field={`educations.${i}.degree`}>{edu.degree}</span>{edu.field ? `, ${edu.field}` : ''}</span>
                   </div>
                   <span className="ml-dates">{edu.startDate} &ndash; {edu.endDate || 'Present'}</span>
                 </div>
@@ -215,11 +224,11 @@ export function ModernLeftTemplate({ profile, theme }: TemplateProps) {
         {profile.projects.length > 0 && (
           <div className="ml-section">
             <h2 className="ml-section-title">Projects</h2>
-            {profile.projects.map((proj) => (
+            {profile.projects.map((proj, i) => (
               <div key={proj.id} className="ml-entry">
-                <span className="ml-company">{proj.name}</span>
+                <span className="ml-company" data-field={`projects.${i}.name`}>{proj.name}</span>
                 {proj.url && <span style={{ fontSize: '8.5pt', color: 'var(--cv-accent)', marginLeft: 8 }}>{proj.url}</span>}
-                <div style={{ color: 'var(--cv-secondary)', marginTop: 2 }}>{proj.description}</div>
+                <div style={{ color: 'var(--cv-secondary)', marginTop: 2 }} data-field={`projects.${i}.description`}>{proj.description}</div>
                 {proj.technologies.length > 0 && (
                   <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {proj.technologies.map((t, i) => (

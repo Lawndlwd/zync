@@ -191,12 +191,21 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
           margin-bottom: 3px;
           color: var(--cv-primary);
         }
+        .cv-executive-banner [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-executive-banner [data-field]:hover {
+          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline-offset: 2px;
+        }
       `}} />
       <div className="cv-executive-banner" style={cssVars}>
         {/* Banner */}
         <div className="eb-banner">
-          <h1 className="eb-banner-name">{profile.name}</h1>
-          <div className="eb-banner-title">{profile.title}</div>
+          <h1 className="eb-banner-name" data-field="name">{profile.name}</h1>
+          <div className="eb-banner-title" data-field="title">{profile.title}</div>
           <div className="eb-contact-strip">
             {contactItems.map((item, i) => (
               <span key={i}>{item}</span>
@@ -214,7 +223,7 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
                   <span className="eb-section-dot" />
                   Summary
                 </h2>
-                <p className="eb-summary">{profile.summary}</p>
+                <p className="eb-summary" data-field="summary">{profile.summary}</p>
               </div>
             )}
 
@@ -224,14 +233,14 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
                   <span className="eb-section-dot" />
                   Experience
                 </h2>
-                {profile.experiences.map((exp) => (
+                {profile.experiences.map((exp, i) => (
                   <div key={exp.id} className="eb-entry">
-                    <div className="eb-entry-company">{exp.company}</div>
-                    <div className="eb-entry-role">{exp.title}</div>
-                    <div className="eb-entry-dates">{exp.startDate} &ndash; {exp.endDate || 'Present'}{exp.location ? ` \u00B7 ${exp.location}` : ''}</div>
+                    <div className="eb-entry-company" data-field={`experiences.${i}.company`}>{exp.company}</div>
+                    <div className="eb-entry-role" data-field={`experiences.${i}.title`}>{exp.title}</div>
+                    <div className="eb-entry-dates">{exp.startDate} &ndash; {exp.endDate || 'Present'}{exp.location ? <span> &middot; <span data-field={`experiences.${i}.location`}>{exp.location}</span></span> : ''}</div>
                     {exp.bullets.length > 0 && (
                       <ul className="eb-bullets">
-                        {exp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                        {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
                       </ul>
                     )}
                   </div>
@@ -245,10 +254,10 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
                   <span className="eb-section-dot" />
                   Education
                 </h2>
-                {profile.educations.map((edu) => (
+                {profile.educations.map((edu, i) => (
                   <div key={edu.id} className="eb-edu-entry">
-                    <div className="eb-edu-degree">{edu.degree}{edu.field ? `, ${edu.field}` : ''}</div>
-                    <div className="eb-edu-school">{edu.school}</div>
+                    <div className="eb-edu-degree" data-field={`educations.${i}.degree`}>{edu.degree}{edu.field ? `, ${edu.field}` : ''}</div>
+                    <div className="eb-edu-school" data-field={`educations.${i}.school`}>{edu.school}</div>
                     <div className="eb-edu-dates">{edu.startDate} &ndash; {edu.endDate || 'Present'}{edu.gpa ? ` \u00B7 GPA: ${edu.gpa}` : ''}</div>
                   </div>
                 ))}
@@ -278,10 +287,10 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
                   <span className="eb-section-dot" />
                   Projects
                 </h2>
-                {profile.projects.map((proj) => (
+                {profile.projects.map((proj, i) => (
                   <div key={proj.id} className="eb-project">
-                    <div className="eb-project-name">{proj.name}</div>
-                    <div className="eb-project-desc">{proj.description}</div>
+                    <div className="eb-project-name" data-field={`projects.${i}.name`}>{proj.name}</div>
+                    <div className="eb-project-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
                     {proj.technologies.length > 0 && (
                       <div className="eb-project-tech">{proj.technologies.join(' \u00B7 ')}</div>
                     )}

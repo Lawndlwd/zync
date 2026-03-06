@@ -35,9 +35,8 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
         }
         .cv-magazine .mag-header {
           background: var(--cv-accent);
-          padding: 28mm 22mm 20mm;
+          padding: 12mm 18mm 10mm;
           position: relative;
-          min-height: 60mm;
           display: flex;
           flex-direction: column;
           justify-content: flex-end;
@@ -48,7 +47,7 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
         }
         .cv-magazine .mag-name {
           font-family: var(--cv-font-heading);
-          font-size: 40pt;
+          font-size: 26pt;
           font-weight: 800;
           color: #ffffff;
           margin: 0;
@@ -70,10 +69,10 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
         }
         .cv-magazine .mag-photo {
           position: absolute;
-          top: 20mm;
-          right: 22mm;
-          width: 55mm;
-          height: 55mm;
+          top: 8mm;
+          right: 18mm;
+          width: 35mm;
+          height: 35mm;
           border-radius: 50%;
           background: rgba(255,255,255,0.15);
           border: 3px solid rgba(255,255,255,0.3);
@@ -87,7 +86,7 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
           padding: 16mm 22mm 20mm;
         }
         .cv-magazine .mag-quote {
-          font-size: 13pt;
+          font-size: 10pt;
           font-style: italic;
           color: var(--cv-secondary);
           margin: 0 0 var(--cv-section-spacing);
@@ -97,7 +96,7 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
         }
         .cv-magazine .mag-quote::before {
           content: '\\201C';
-          font-size: 60pt;
+          font-size: 36pt;
           font-style: normal;
           color: var(--cv-accent);
           position: absolute;
@@ -211,6 +210,15 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
           color: var(--cv-secondary);
           margin-top: 2px;
         }
+        .cv-magazine [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-magazine [data-field]:hover {
+          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline-offset: 2px;
+        }
       `}} />
       <div className="cv-magazine" style={cssVars}>
         <div className="mag-header">
@@ -220,8 +228,8 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
             </div>
           )}
           <div className="mag-header-content">
-            <h1 className="mag-name">{profile.name}</h1>
-            <div className="mag-title">{profile.title}</div>
+            <h1 className="mag-name" data-field="name">{profile.name}</h1>
+            <div className="mag-title" data-field="title">{profile.title}</div>
             <div className="mag-contact-row">
               {contactItems.map((item, i) => (
                 <span key={i}>{item}</span>
@@ -232,7 +240,7 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
 
         <div className="mag-body">
           {profile.summary && (
-            <div className="mag-quote">
+            <div className="mag-quote" data-field="summary">
               {profile.summary}
             </div>
           )}
@@ -242,14 +250,14 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
               {profile.experiences.length > 0 && (
                 <div>
                   <h2 className="mag-section-title">Experience</h2>
-                  {profile.experiences.map((exp) => (
+                  {profile.experiences.map((exp, i) => (
                     <div key={exp.id} className="mag-card">
-                      <div className="mag-card-title">{exp.title}</div>
-                      <div className="mag-card-sub">{exp.company}{exp.location ? `, ${exp.location}` : ''}</div>
+                      <div className="mag-card-title" data-field={`experiences.${i}.title`}>{exp.title}</div>
+                      <div className="mag-card-sub"><span data-field={`experiences.${i}.company`}>{exp.company}</span>{exp.location ? <>, <span data-field={`experiences.${i}.location`}>{exp.location}</span></> : ''}</div>
                       <div className="mag-card-dates">{exp.startDate} &ndash; {exp.endDate || 'Present'}</div>
                       {exp.bullets.length > 0 && (
                         <ul className="mag-card-bullets">
-                          {exp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                          {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
                         </ul>
                       )}
                     </div>
@@ -262,10 +270,10 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
               {profile.educations.length > 0 && (
                 <div>
                   <h2 className="mag-section-title">Education</h2>
-                  {profile.educations.map((edu) => (
+                  {profile.educations.map((edu, i) => (
                     <div key={edu.id} className="mag-card">
-                      <div className="mag-card-title">{edu.degree}{edu.field ? `, ${edu.field}` : ''}</div>
-                      <div className="mag-card-sub">{edu.school}</div>
+                      <div className="mag-card-title"><span data-field={`educations.${i}.degree`}>{edu.degree}</span>{edu.field ? <>, <span data-field={`educations.${i}.field`}>{edu.field}</span></> : ''}</div>
+                      <div className="mag-card-sub" data-field={`educations.${i}.school`}>{edu.school}</div>
                       <div className="mag-card-dates">{edu.startDate} &ndash; {edu.endDate || 'Present'}</div>
                       {edu.gpa && <div className="mag-edu-gpa">GPA: {edu.gpa}</div>}
                     </div>
@@ -298,10 +306,10 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
               {profile.projects.length > 0 && (
                 <div>
                   <h2 className="mag-section-title">Projects</h2>
-                  {profile.projects.map((proj) => (
+                  {profile.projects.map((proj, i) => (
                     <div key={proj.id} className="mag-proj-card">
-                      <div className="mag-proj-name">{proj.name}</div>
-                      <div className="mag-proj-desc">{proj.description}</div>
+                      <div className="mag-proj-name" data-field={`projects.${i}.name`}>{proj.name}</div>
+                      <div className="mag-proj-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
                       {proj.technologies.length > 0 && (
                         <div className="mag-proj-tech">{proj.technologies.join(' / ')}</div>
                       )}

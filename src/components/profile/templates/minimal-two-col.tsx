@@ -116,35 +116,44 @@ export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
           font-size: 8.5pt;
           margin-top: 2px;
         }
+        .cv-min2col [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-min2col [data-field]:hover {
+          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline-offset: 2px;
+        }
       `}} />
       <div className="cv-min2col" style={cssVars}>
-        <div className="m2c-name">{profile.name}</div>
+        <div className="m2c-name" data-field="name">{profile.name}</div>
         <div className="m2c-meta">
-          {profile.title}{contactItems.length > 0 && <> &nbsp;&middot;&nbsp; {contactItems.join(' &middot; ')}</>}
+          <span data-field="title">{profile.title}</span>{contactItems.length > 0 && <> &nbsp;&middot;&nbsp; {contactItems.join(' &middot; ')}</>}
         </div>
 
         {profile.summary && (
           <div className="m2c-row">
             <div className="m2c-label">About</div>
-            <div className="m2c-content m2c-summary">{profile.summary}</div>
+            <div className="m2c-content m2c-summary" data-field="summary">{profile.summary}</div>
           </div>
         )}
 
         {profile.experiences.length > 0 && (
           <div style={{ marginBottom: 'var(--cv-section-spacing)' }}>
-            {profile.experiences.map((exp, idx) => (
+            {profile.experiences.map((exp, i) => (
               <div key={exp.id} className="m2c-entry-row">
                 <div className="m2c-date">
-                  {idx === 0 && <div className="m2c-label" style={{ textAlign: 'left', marginBottom: 8 }}>Experience</div>}
+                  {i === 0 && <div className="m2c-label" style={{ textAlign: 'left', marginBottom: 8 }}>Experience</div>}
                   {exp.startDate} &ndash; {exp.endDate || 'Present'}
                 </div>
                 <div className="m2c-content">
-                  <span className="m2c-entry-title">{exp.title}</span>
-                  <span className="m2c-entry-company"> &mdash; {exp.company}</span>
-                  {exp.location && <span className="m2c-entry-company">, {exp.location}</span>}
+                  <span className="m2c-entry-title" data-field={`experiences.${i}.title`}>{exp.title}</span>
+                  <span className="m2c-entry-company" data-field={`experiences.${i}.company`}> &mdash; {exp.company}</span>
+                  {exp.location && <span className="m2c-entry-company" data-field={`experiences.${i}.location`}>, {exp.location}</span>}
                   {exp.bullets.length > 0 && (
                     <ul className="m2c-bullets">
-                      {exp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                      {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
                     </ul>
                   )}
                 </div>
@@ -155,15 +164,15 @@ export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
 
         {profile.educations.length > 0 && (
           <div style={{ marginBottom: 'var(--cv-section-spacing)' }}>
-            {profile.educations.map((edu, idx) => (
+            {profile.educations.map((edu, i) => (
               <div key={edu.id} className="m2c-entry-row">
                 <div className="m2c-date">
-                  {idx === 0 && <div className="m2c-label" style={{ textAlign: 'left', marginBottom: 8 }}>Education</div>}
+                  {i === 0 && <div className="m2c-label" style={{ textAlign: 'left', marginBottom: 8 }}>Education</div>}
                   {edu.startDate} &ndash; {edu.endDate || 'Present'}
                 </div>
                 <div className="m2c-content">
-                  <span className="m2c-entry-title">{edu.degree}{edu.field ? `, ${edu.field}` : ''}</span>
-                  <span className="m2c-entry-company"> &mdash; {edu.school}</span>
+                  <span className="m2c-entry-title"><span data-field={`educations.${i}.degree`}>{edu.degree}</span>{edu.field ? <>, <span data-field={`educations.${i}.field`}>{edu.field}</span></> : ''}</span>
+                  <span className="m2c-entry-company" data-field={`educations.${i}.school`}> &mdash; {edu.school}</span>
                   {edu.gpa && <div style={{ fontSize: '9pt', color: 'var(--cv-secondary)', marginTop: 2 }}>GPA: {edu.gpa}</div>}
                 </div>
               </div>
@@ -182,11 +191,11 @@ export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
           <div className="m2c-row">
             <div className="m2c-label">Projects</div>
             <div className="m2c-content">
-              {profile.projects.map((proj) => (
+              {profile.projects.map((proj, i) => (
                 <div key={proj.id} className="m2c-entry">
-                  <span className="m2c-entry-title">{proj.name}</span>
+                  <span className="m2c-entry-title" data-field={`projects.${i}.name`}>{proj.name}</span>
                   {proj.url && <span style={{ fontSize: '8pt', color: 'var(--cv-secondary)', marginLeft: 6 }}>{proj.url}</span>}
-                  <div className="m2c-proj-desc">{proj.description}</div>
+                  <div className="m2c-proj-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
                   {proj.technologies.length > 0 && (
                     <div className="m2c-proj-tech">{proj.technologies.join(', ')}</div>
                   )}

@@ -192,11 +192,20 @@ export function TimelineTemplate({ profile, theme }: TemplateProps) {
           color: var(--cv-secondary);
           margin-top: 2px;
         }
+        .cv-timeline [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-timeline [data-field]:hover {
+          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline-offset: 2px;
+        }
       `}} />
       <div className="cv-timeline" style={cssVars}>
         <div className="tl-header">
-          <h1 className="tl-name">{profile.name}</h1>
-          <div className="tl-title">{profile.title}</div>
+          <h1 className="tl-name" data-field="name">{profile.name}</h1>
+          <div className="tl-title" data-field="title">{profile.title}</div>
           <div className="tl-contact">
             {contactItems.map((item, i) => (
               <span key={i} className="tl-contact-item">{item}</span>
@@ -205,22 +214,22 @@ export function TimelineTemplate({ profile, theme }: TemplateProps) {
         </div>
 
         {profile.summary && (
-          <p className="tl-summary">{profile.summary}</p>
+          <p className="tl-summary" data-field="summary">{profile.summary}</p>
         )}
 
         {profile.experiences.length > 0 && (
           <div className="tl-section">
             <h2 className="tl-section-title">Experience</h2>
             <div className="tl-track">
-              {profile.experiences.map((exp) => (
+              {profile.experiences.map((exp, i) => (
                 <div key={exp.id} className="tl-entry">
                   <div className="tl-dot" />
                   <div className="tl-date">{exp.startDate} &ndash; {exp.endDate || 'Present'}</div>
-                  <div className="tl-entry-title">{exp.title}</div>
-                  <div className="tl-entry-sub">{exp.company}{exp.location ? `, ${exp.location}` : ''}</div>
+                  <div className="tl-entry-title" data-field={`experiences.${i}.title`}>{exp.title}</div>
+                  <div className="tl-entry-sub"><span data-field={`experiences.${i}.company`}>{exp.company}</span>{exp.location ? <>, <span data-field={`experiences.${i}.location`}>{exp.location}</span></> : ''}</div>
                   {exp.bullets.length > 0 && (
                     <ul className="tl-bullets">
-                      {exp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                      {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
                     </ul>
                   )}
                 </div>
@@ -233,12 +242,12 @@ export function TimelineTemplate({ profile, theme }: TemplateProps) {
           <div className="tl-section">
             <h2 className="tl-section-title">Education</h2>
             <div className="tl-track">
-              {profile.educations.map((edu) => (
+              {profile.educations.map((edu, i) => (
                 <div key={edu.id} className="tl-entry">
                   <div className="tl-dot" />
                   <div className="tl-date">{edu.startDate} &ndash; {edu.endDate || 'Present'}</div>
-                  <div className="tl-entry-title">{edu.degree}{edu.field ? `, ${edu.field}` : ''}</div>
-                  <div className="tl-entry-sub">{edu.school}</div>
+                  <div className="tl-entry-title"><span data-field={`educations.${i}.degree`}>{edu.degree}</span>{edu.field ? <>, <span data-field={`educations.${i}.field`}>{edu.field}</span></> : ''}</div>
+                  <div className="tl-entry-sub" data-field={`educations.${i}.school`}>{edu.school}</div>
                   {edu.gpa && <div className="tl-edu-gpa">GPA: {edu.gpa}</div>}
                 </div>
               ))}
@@ -260,10 +269,10 @@ export function TimelineTemplate({ profile, theme }: TemplateProps) {
         {profile.projects.length > 0 && (
           <div className="tl-section">
             <h2 className="tl-section-title">Projects</h2>
-            {profile.projects.map((proj) => (
+            {profile.projects.map((proj, i) => (
               <div key={proj.id} className="tl-proj-card">
-                <div className="tl-proj-title">{proj.name}</div>
-                <div className="tl-proj-desc">{proj.description}</div>
+                <div className="tl-proj-title" data-field={`projects.${i}.name`}>{proj.name}</div>
+                <div className="tl-proj-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
                 {proj.technologies.length > 0 && (
                   <div className="tl-proj-tech">{proj.technologies.join(' / ')}</div>
                 )}

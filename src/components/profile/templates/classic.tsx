@@ -117,11 +117,20 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
         .cv-classic .classic-skills-line {
           color: var(--cv-primary);
         }
+        .cv-classic [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-classic [data-field]:hover {
+          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline-offset: 2px;
+        }
       `}} />
       <div className="cv-classic" style={cssVars}>
         <div className="classic-header">
-          <h1 className="classic-name">{profile.name}</h1>
-          <div className="classic-title">{profile.title}</div>
+          <h1 className="classic-name" data-field="name">{profile.name}</h1>
+          <div className="classic-title" data-field="title">{profile.title}</div>
           <div className="classic-contact">{contactItems.join(' | ')}</div>
         </div>
 
@@ -131,7 +140,7 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
           <div className="classic-section">
             <h2 className="classic-section-title">Summary</h2>
             <hr className="classic-section-line" />
-            <p className="classic-summary">{profile.summary}</p>
+            <p className="classic-summary" data-field="summary">{profile.summary}</p>
           </div>
         )}
 
@@ -139,13 +148,13 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
           <div className="classic-section">
             <h2 className="classic-section-title">Experience</h2>
             <hr className="classic-section-line" />
-            {profile.experiences.map((exp) => (
+            {profile.experiences.map((exp, i) => (
               <div key={exp.id} className="classic-entry">
                 <div className="classic-entry-header">
                   <div>
-                    <span className="classic-entry-title">{exp.title}</span>
+                    <span className="classic-entry-title" data-field={`experiences.${i}.title`}>{exp.title}</span>
                     <span> &mdash; </span>
-                    <span className="classic-entry-company">{exp.company}</span>
+                    <span className="classic-entry-company" data-field={`experiences.${i}.company`}>{exp.company}</span>
                   </div>
                   <span className="classic-entry-dates">
                     {exp.startDate} &ndash; {exp.endDate || 'Present'}
@@ -153,7 +162,7 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
                 </div>
                 {exp.bullets.length > 0 && (
                   <ul className="classic-bullets">
-                    {exp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                    {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
                   </ul>
                 )}
               </div>
@@ -165,13 +174,13 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
           <div className="classic-section">
             <h2 className="classic-section-title">Education</h2>
             <hr className="classic-section-line" />
-            {profile.educations.map((edu) => (
+            {profile.educations.map((edu, i) => (
               <div key={edu.id} className="classic-entry">
                 <div className="classic-entry-header">
                   <div>
-                    <span className="classic-entry-title">{edu.degree}{edu.field ? `, ${edu.field}` : ''}</span>
+                    <span className="classic-entry-title" data-field={`educations.${i}.degree`}>{edu.degree}{edu.field ? `, ${edu.field}` : ''}</span>
                     <span> &mdash; </span>
-                    <span className="classic-entry-company">{edu.school}</span>
+                    <span className="classic-entry-company" data-field={`educations.${i}.school`}>{edu.school}</span>
                   </div>
                   <span className="classic-entry-dates">
                     {edu.startDate} &ndash; {edu.endDate || 'Present'}
@@ -195,12 +204,12 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
           <div className="classic-section">
             <h2 className="classic-section-title">Projects</h2>
             <hr className="classic-section-line" />
-            {profile.projects.map((proj) => (
+            {profile.projects.map((proj, i) => (
               <div key={proj.id} className="classic-entry">
                 <div className="classic-entry-header">
-                  <span className="classic-entry-title">{proj.name}</span>
+                  <span className="classic-entry-title" data-field={`projects.${i}.name`}>{proj.name}</span>
                 </div>
-                <div style={{ marginTop: 2, color: 'var(--cv-secondary)' }}>{proj.description}</div>
+                <div style={{ marginTop: 2, color: 'var(--cv-secondary)' }} data-field={`projects.${i}.description`}>{proj.description}</div>
                 {proj.technologies.length > 0 && (
                   <div style={{ marginTop: 2, fontSize: '9pt', color: 'var(--cv-accent)' }}>{proj.technologies.join(', ')}</div>
                 )}

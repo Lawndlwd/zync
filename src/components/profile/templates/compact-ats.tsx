@@ -129,34 +129,43 @@ export function CompactAtsTemplate({ profile, theme }: TemplateProps) {
           color: var(--cv-secondary);
           font-size: 9pt;
         }
+        .cv-ats [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-ats [data-field]:hover {
+          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline-offset: 2px;
+        }
       `}} />
       <div className="cv-ats" style={cssVars}>
-        <h1 className="ats-name">{profile.name}</h1>
+        <h1 className="ats-name" data-field="name">{profile.name}</h1>
         <div className="ats-contact">{contactItems.join(' | ')}</div>
         <hr className="ats-divider" />
 
         {profile.summary && (
           <div className="ats-section">
             <h2 className="ats-section-title">Summary</h2>
-            <p className="ats-summary">{profile.summary}</p>
+            <p className="ats-summary" data-field="summary">{profile.summary}</p>
           </div>
         )}
 
         {profile.experiences.length > 0 && (
           <div className="ats-section">
             <h2 className="ats-section-title">Experience</h2>
-            {profile.experiences.map((exp) => (
+            {profile.experiences.map((exp, i) => (
               <div key={exp.id} className="ats-entry">
                 <div className="ats-entry-header">
                   <div className="ats-entry-left">
-                    <span className="ats-entry-title">{exp.title}</span>
-                    <span className="ats-entry-detail"> &mdash; {exp.company}{exp.location ? `, ${exp.location}` : ''}</span>
+                    <span className="ats-entry-title" data-field={`experiences.${i}.title`}>{exp.title}</span>
+                    <span className="ats-entry-detail"> &mdash; <span data-field={`experiences.${i}.company`}>{exp.company}</span>{exp.location ? <>, <span data-field={`experiences.${i}.location`}>{exp.location}</span></> : ''}</span>
                   </div>
                   <span className="ats-entry-dates">{exp.startDate} &ndash; {exp.endDate || 'Present'}</span>
                 </div>
                 {exp.bullets.length > 0 && (
                   <ul className="ats-bullets">
-                    {exp.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                    {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
                   </ul>
                 )}
               </div>
@@ -167,12 +176,12 @@ export function CompactAtsTemplate({ profile, theme }: TemplateProps) {
         {profile.educations.length > 0 && (
           <div className="ats-section">
             <h2 className="ats-section-title">Education</h2>
-            {profile.educations.map((edu) => (
+            {profile.educations.map((edu, i) => (
               <div key={edu.id} className="ats-entry">
                 <div className="ats-entry-header">
                   <div className="ats-entry-left">
-                    <span className="ats-entry-title">{edu.degree}{edu.field ? `, ${edu.field}` : ''}</span>
-                    <span className="ats-entry-detail"> &mdash; {edu.school}</span>
+                    <span className="ats-entry-title"><span data-field={`educations.${i}.degree`}>{edu.degree}</span>{edu.field ? <>, <span data-field={`educations.${i}.field`}>{edu.field}</span></> : ''}</span>
+                    <span className="ats-entry-detail" data-field={`educations.${i}.school`}> &mdash; {edu.school}</span>
                     {edu.gpa && <span className="ats-entry-detail"> (GPA: {edu.gpa})</span>}
                   </div>
                   <span className="ats-entry-dates">{edu.startDate} &ndash; {edu.endDate || 'Present'}</span>
@@ -203,13 +212,13 @@ export function CompactAtsTemplate({ profile, theme }: TemplateProps) {
         {profile.projects.length > 0 && (
           <div className="ats-section">
             <h2 className="ats-section-title">Projects</h2>
-            {profile.projects.map((proj) => (
+            {profile.projects.map((proj, i) => (
               <div key={proj.id} className="ats-proj-inline">
-                <span className="ats-proj-title">{proj.name}</span>
+                <span className="ats-proj-title" data-field={`projects.${i}.name`}>{proj.name}</span>
                 {proj.technologies.length > 0 && (
                   <span className="ats-proj-tech"> ({proj.technologies.join(', ')})</span>
                 )}
-                <span> &mdash; {proj.description}</span>
+                <span data-field={`projects.${i}.description`}> &mdash; {proj.description}</span>
               </div>
             ))}
           </div>

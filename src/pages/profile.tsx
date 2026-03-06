@@ -80,7 +80,7 @@ export function ProfilePage() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={60} minSize={35}>
-            <CvPreview profile={localProfile} theme={theme} />
+            <CvPreview profile={localProfile} theme={theme} onChange={handleChange} />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
