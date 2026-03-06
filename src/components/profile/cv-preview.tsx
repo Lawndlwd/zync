@@ -13,39 +13,30 @@ interface CvPreviewProps {
 export function CvPreview({ profile, theme, onChange }: CvPreviewProps) {
   const [zoom, setZoom] = useState(0.6)
   const cvRef = useRef<HTMLDivElement>(null)
-  const [editingEl, setEditingEl] = useState<HTMLElement | null>(null)
   const [editingField, setEditingField] = useState<string | null>(null)
+  const editingElRef = useRef<HTMLElement | null>(null)
+  const profileRef = useRef(profile)
+  profileRef.current = profile
 
-  // Click on CV element to edit it
-  const handleCvClick = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement
-    const editable = target.closest('[data-field]') as HTMLElement | null
-    if (!editable || !onChange) return
+  const clearEdit = () => {
+    const el = editingElRef.current
+    if (el) {
+      el.contentEditable = 'false'
+      el.style.outline = ''
+      el.style.outlineOffset = ''
+      el.style.borderRadius = ''
+    }
+    editingElRef.current = null
+    setEditingField(null)
+  }
 
-    e.stopPropagation()
-    if (editable === editingEl) return
-
-    // Commit previous edit
-    if (editingEl) commitEdit(editingEl)
-
-    editable.contentEditable = 'true'
-    editable.focus()
-    editable.style.outline = '2px solid #6c5ce7'
-    editable.style.outlineOffset = '2px'
-    editable.style.borderRadius = '2px'
-    setEditingEl(editable)
-    setEditingField(editable.dataset.field!)
-  }, [editingEl, onChange])
-
-  const commitEdit = useCallback((el: HTMLElement) => {
-    if (!onChange) return
-    el.contentEditable = 'false'
-    el.style.outline = ''
-    el.style.outlineOffset = ''
-    el.style.borderRadius = ''
+  const commitAndClear = () => {
+    const el = editingElRef.current
+    if (!el || !onChange) { clearEdit(); return }
 
     const field = el.dataset.field!
     const text = el.innerText.trim()
+    const p = profileRef.current
 
     const parts = field.split('.')
     if (parts.length === 1) {
@@ -54,7 +45,7 @@ export function CvPreview({ profile, theme, onChange }: CvPreviewProps) {
       const [arrayName, indexStr, prop] = parts
       const index = parseInt(indexStr)
       const key = arrayName as keyof Profile
-      const arr = [...(profile[key] as any[])]
+      const arr = [...(p[key] as any[])]
       if (arr[index]) {
         arr[index] = { ...arr[index], [prop]: text }
         onChange({ [key]: arr })
@@ -64,7 +55,7 @@ export function CvPreview({ profile, theme, onChange }: CvPreviewProps) {
       const index = parseInt(indexStr)
       const subIndex = parseInt(subIndexStr)
       const key = arrayName as keyof Profile
-      const arr = [...(profile[key] as any[])]
+      const arr = [...(p[key] as any[])]
       if (arr[index] && Array.isArray(arr[index][prop])) {
         const subArr = [...arr[index][prop]]
         subArr[subIndex] = text
@@ -72,54 +63,62 @@ export function CvPreview({ profile, theme, onChange }: CvPreviewProps) {
         onChange({ [key]: arr })
       }
     }
-  }, [onChange, profile])
+    clearEdit()
+  }
 
-  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+  const startEdit = (el: HTMLElement) => {
+    // Commit any previous edit first
+    if (editingElRef.current && editingElRef.current !== el) {
+      commitAndClear()
+    }
+
+    el.contentEditable = 'true'
+    el.focus()
+    el.style.outline = '2px solid #6c5ce7'
+    el.style.outlineOffset = '2px'
+    el.style.borderRadius = '2px'
+    editingElRef.current = el
+    setEditingField(el.dataset.field!)
+  }
+
+  // Click on CV element
+  const handleCvClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement
-    if (!target.closest('[data-field]') && !target.closest('.cv-toolbar') && editingEl) {
-      commitEdit(editingEl)
-      setEditingEl(null)
-      setEditingField(null)
-    }
-  }, [editingEl, commitEdit])
+    const editable = target.closest('[data-field]') as HTMLElement | null
+    if (!editable || !onChange) return
 
-  useEffect(() => {
-    if (!editingEl) return
-    const handleBlur = (e: FocusEvent) => {
-      const related = e.relatedTarget as HTMLElement | null
-      if (related?.closest('.cv-toolbar')) return
-      commitEdit(editingEl)
-      setEditingEl(null)
-      setEditingField(null)
-    }
-    editingEl.addEventListener('blur', handleBlur)
-    return () => editingEl.removeEventListener('blur', handleBlur)
-  }, [editingEl, commitEdit])
+    e.stopPropagation()
+    if (editable === editingElRef.current) return
+    startEdit(editable)
+  }
 
+  // Click outside to deselect
+  const handleContainerClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.closest('[data-field]') && !target.closest('.cv-toolbar')) {
+      if (editingElRef.current) commitAndClear()
+    }
+  }
+
+  // Keyboard: Enter commits, Escape cancels
   useEffect(() => {
-    if (!editingEl) return
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!editingElRef.current) return
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        commitEdit(editingEl)
-        setEditingEl(null)
-        setEditingField(null)
+        commitAndClear()
       }
       if (e.key === 'Escape') {
-        editingEl.contentEditable = 'false'
-        editingEl.style.outline = ''
-        editingEl.style.outlineOffset = ''
-        setEditingEl(null)
-        setEditingField(null)
+        clearEdit()
       }
     }
-    editingEl.addEventListener('keydown', handleKeyDown)
-    return () => editingEl.removeEventListener('keydown', handleKeyDown)
-  }, [editingEl, commitEdit])
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const execCmd = (cmd: string, value?: string) => {
     document.execCommand(cmd, false, value)
-    editingEl?.focus()
+    editingElRef.current?.focus()
   }
 
   const handlePrint = useCallback(() => {
@@ -147,9 +146,8 @@ export function CvPreview({ profile, theme, onChange }: CvPreviewProps) {
 
   return (
     <div className="relative flex h-full flex-col bg-zinc-950" onClick={handleContainerClick}>
-      {/* Top bar: zoom + formatting toolbar + print */}
+      {/* Top bar */}
       <div className="flex items-center gap-2 border-b border-white/[0.08] px-4 py-2">
-        {/* Zoom controls */}
         <div className="flex items-center gap-1">
           {[0.5, 0.75, 1].map((z) => (
             <Button key={z} variant={zoom === z ? 'secondary' : 'ghost'} size="xs" onClick={() => setZoom(z)}>
@@ -158,58 +156,41 @@ export function CvPreview({ profile, theme, onChange }: CvPreviewProps) {
           ))}
         </div>
 
-        {/* Formatting toolbar - appears when editing */}
+        {/* Formatting toolbar - inline in top bar when editing */}
         {editingField && (
           <>
             <div className="mx-1 h-5 w-px bg-white/[0.1]" />
             <div className="cv-toolbar flex items-center gap-0.5 rounded-md border border-white/[0.1] bg-white/[0.04] px-1.5 py-0.5">
-              <span className="mr-1 text-[10px] text-zinc-500 max-w-24 truncate">{editingField.split('.').pop()}</span>
-              <button
-                className="rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100"
-                title="Bold"
-                onMouseDown={e => { e.preventDefault(); execCmd('bold') }}
-              >
+              <span className="mr-1.5 text-[10px] text-zinc-500 max-w-28 truncate">{editingField.split('.').pop()}</span>
+              <button className="rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100" title="Bold"
+                onMouseDown={e => { e.preventDefault(); execCmd('bold') }}>
                 <Bold size={13} />
               </button>
-              <button
-                className="rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100"
-                title="Italic"
-                onMouseDown={e => { e.preventDefault(); execCmd('italic') }}
-              >
+              <button className="rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100" title="Italic"
+                onMouseDown={e => { e.preventDefault(); execCmd('italic') }}>
                 <Italic size={13} />
               </button>
               <div className="mx-0.5 h-4 w-px bg-white/[0.08]" />
-              <button
-                className="rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100"
-                title="Smaller text"
-                onMouseDown={e => { e.preventDefault(); execCmd('fontSize', '2') }}
-              >
+              <button className="rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100" title="Smaller"
+                onMouseDown={e => { e.preventDefault(); execCmd('fontSize', '2') }}>
                 <Type size={11} />
               </button>
-              <button
-                className="rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100"
-                title="Larger text"
-                onMouseDown={e => { e.preventDefault(); execCmd('fontSize', '5') }}
-              >
+              <button className="rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100" title="Larger"
+                onMouseDown={e => { e.preventDefault(); execCmd('fontSize', '5') }}>
                 <Type size={16} />
               </button>
               <div className="mx-0.5 h-4 w-px bg-white/[0.08]" />
-              <label className="flex cursor-pointer items-center rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100" title="Text color">
+              <label className="flex cursor-pointer items-center rounded p-1 text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100" title="Color">
                 <Palette size={13} />
-                <input
-                  type="color"
-                  className="absolute h-0 w-0 opacity-0"
-                  onChange={e => { execCmd('foreColor', e.target.value) }}
-                />
+                <input type="color" className="absolute h-0 w-0 opacity-0"
+                  onChange={e => { execCmd('foreColor', e.target.value) }} />
               </label>
             </div>
           </>
         )}
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Right side */}
         {onChange && !editingField && (
           <span className="text-[10px] text-zinc-600">Click any text to edit</span>
         )}
