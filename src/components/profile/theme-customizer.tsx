@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
-import { Columns2, Columns3, PanelLeft, AlignCenter, AlignLeft, AlignJustify } from 'lucide-react'
+import { Columns2, Columns3, PanelLeft, PanelRight, LayoutList, GitBranch, AlignCenter, AlignLeft, AlignJustify } from 'lucide-react'
 
 interface ThemeCustomizerProps {
   theme: CvTheme
@@ -19,7 +19,10 @@ interface ThemeCustomizerProps {
 const LAYOUT_OPTIONS: { value: CvTheme['layout']; label: string; icon: React.ReactNode }[] = [
   { value: 'single-column', label: 'Single', icon: <Columns2 className="size-4" /> },
   { value: 'two-column', label: 'Two Col', icon: <Columns3 className="size-4" /> },
-  { value: 'sidebar', label: 'Sidebar', icon: <PanelLeft className="size-4" /> },
+  { value: 'sidebar', label: 'Right Bar', icon: <PanelLeft className="size-4" /> },
+  { value: 'left-sidebar', label: 'Left Bar', icon: <PanelRight className="size-4" /> },
+  { value: 'compact', label: 'Compact', icon: <LayoutList className="size-4" /> },
+  { value: 'timeline', label: 'Timeline', icon: <GitBranch className="size-4" /> },
 ]
 
 const HEADER_OPTIONS: { value: CvTheme['headerStyle']; label: string; icon: React.ReactNode }[] = [
@@ -38,28 +41,35 @@ export function ThemeCustomizer({ theme, onChange }: ThemeCustomizerProps) {
       {/* Preset selector */}
       <div className="space-y-2">
         <Label className="text-zinc-400 text-xs uppercase tracking-wider">Preset Themes</Label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-1.5 max-h-60 overflow-y-auto pr-1">
           {CV_THEMES.map((preset) => (
             <button
               key={preset.id}
               onClick={() => onChange(preset)}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all ${
+              className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-all ${
                 theme.id === preset.id
                   ? 'ring-2 ring-indigo-500 border-indigo-500/50 bg-white/[0.06]'
                   : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]'
               }`}
             >
-              <div className="flex gap-1 shrink-0">
+              <div className="flex gap-0.5 shrink-0">
                 <span
-                  className="block size-2.5 rounded-full"
+                  className="block size-3 rounded-sm"
                   style={{ backgroundColor: preset.primaryColor }}
                 />
                 <span
-                  className="block size-2.5 rounded-full"
+                  className="block size-3 rounded-sm"
                   style={{ backgroundColor: preset.accentColor }}
                 />
+                <span
+                  className="block size-3 rounded-sm"
+                  style={{ backgroundColor: preset.backgroundColor }}
+                />
               </div>
-              <span className="text-zinc-100 truncate">{preset.name}</span>
+              <div className="min-w-0">
+                <span className="text-zinc-100 truncate block">{preset.name}</span>
+                <span className="text-zinc-500 text-[10px] truncate block">{preset.layout}</span>
+              </div>
             </button>
           ))}
         </div>
@@ -130,12 +140,12 @@ export function ThemeCustomizer({ theme, onChange }: ThemeCustomizerProps) {
       {/* Layout selector */}
       <div className="space-y-2">
         <Label className="text-zinc-400 text-xs uppercase tracking-wider">Layout</Label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {LAYOUT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => set('layout', opt.value)}
-              className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-all ${
+              className={`flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition-all ${
                 theme.layout === opt.value
                   ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-400'
                   : 'border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200'

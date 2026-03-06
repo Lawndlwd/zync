@@ -145,6 +145,129 @@
   margin: -0.5rem 0;
 }
 
+/* Left Sidebar */
+
+[data-layout='left-sidebar'] .cv-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 2rem;
+}
+
+[data-layout='left-sidebar'] .cv-aside {
+  order: -1;
+  background: color-mix(in srgb, var(--cv-accent) 6%, var(--cv-bg));
+  border-right: 3px solid var(--cv-accent);
+  padding: 1rem 1.15rem 1rem 1rem;
+  border-radius: 2px;
+  margin: -0.5rem 0;
+}
+
+/* Compact */
+
+[data-layout='compact'] .cv-document,
+.cv-document[data-layout='compact'] {
+  padding: 10mm 12mm;
+}
+
+[data-layout='compact'] .cv-body {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.2rem;
+}
+
+[data-layout='compact'] .cv-name {
+  font-size: 1.6em;
+  margin-bottom: 0.05em;
+}
+
+[data-layout='compact'] .cv-title {
+  font-size: 1em;
+  margin-bottom: 0.3em;
+}
+
+[data-layout='compact'] .cv-header {
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.4rem;
+}
+
+[data-layout='compact'] .cv-entry {
+  margin-bottom: 0.4rem;
+}
+
+[data-layout='compact'] .cv-section-title {
+  font-size: 1em;
+  margin-bottom: 0.3em;
+  padding-bottom: 0.1em;
+}
+
+[data-layout='compact'] .cv-bullets {
+  padding-left: 1.1em;
+}
+
+[data-layout='compact'] .cv-bullets li {
+  margin-bottom: 0.08em;
+}
+
+[data-layout='compact'] .cv-tag {
+  font-size: 0.8em;
+  padding: 0.1em 0.4em;
+}
+
+/* Timeline */
+
+[data-layout='timeline'] .cv-body {
+  display: block;
+}
+
+[data-layout='timeline'] .cv-aside {
+  margin-top: var(--cv-section-spacing);
+}
+
+[data-layout='timeline'] .cv-entry {
+  position: relative;
+  padding-left: 1.8rem;
+  margin-bottom: 0.8rem;
+}
+
+[data-layout='timeline'] .cv-entry::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: -0.8rem;
+  width: 2px;
+  background: color-mix(in srgb, var(--cv-accent) 30%, transparent);
+}
+
+[data-layout='timeline'] .cv-entry:last-child::before {
+  bottom: 0;
+}
+
+[data-layout='timeline'] .cv-entry::after {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 0.45em;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cv-accent);
+  border: 2px solid var(--cv-bg);
+}
+
+[data-layout='timeline'] .cv-entry-dates {
+  display: block;
+  font-size: 0.82em;
+  margin-bottom: 0.15em;
+  color: var(--cv-accent);
+  font-weight: 500;
+}
+
+[data-layout='timeline'] .cv-entry-header {
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
 /* ----- Sections ----- */
 
 .cv-section + .cv-section {

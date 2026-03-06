@@ -53,7 +53,7 @@ export interface ProfileProject {
 export interface CvTheme {
   id: string
   name: string
-  layout: 'single-column' | 'two-column' | 'sidebar'
+  layout: 'single-column' | 'two-column' | 'sidebar' | 'left-sidebar' | 'compact' | 'timeline'
   primaryColor: string
   secondaryColor: string
   accentColor: string

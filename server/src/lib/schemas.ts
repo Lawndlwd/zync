@@ -80,6 +80,33 @@ export const GitlabCreateMrSchema = z.object({
   title: z.string().min(1),
 }).passthrough()
 
+// --- GitHub ---
+export const GithubConfigSchema = z.object({
+  baseUrl: z.string().url(),
+  pat: z.string().min(1),
+})
+
+export const GithubCommentSchema = z.object({
+  body: z.string().min(1),
+})
+
+export const GithubReviewCommentSchema = z.object({
+  body: z.string().min(1),
+  commit_id: z.string(),
+  path: z.string(),
+  line: z.number().optional(),
+  side: z.enum(['LEFT', 'RIGHT']).optional(),
+  subject_type: z.enum(['line', 'file']).optional(),
+}).passthrough()
+
+export const GithubCreatePrSchema = z.object({
+  head: z.string(),
+  base: z.string(),
+  title: z.string().min(1),
+  body: z.string().optional(),
+  draft: z.boolean().optional(),
+})
+
 // --- Todos ---
 export const TodoCreateSchema = z.object({
   title: z.string().min(1),
@@ -280,7 +307,7 @@ const ProfileProjectSchema = z.object({
 const CvThemeSchema = z.object({
   id: z.string(),
   name: z.string(),
-  layout: z.enum(['single-column', 'two-column', 'sidebar']),
+  layout: z.enum(['single-column', 'two-column', 'sidebar', 'left-sidebar', 'compact', 'timeline']),
   primaryColor: z.string(),
   secondaryColor: z.string(),
   accentColor: z.string(),
