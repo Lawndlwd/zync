@@ -197,6 +197,7 @@ export const GmailConfigSchema = z.object({
   clientId: z.string().optional(),
   clientSecret: z.string().optional(),
   refreshToken: z.string().optional(),
+  enabledServices: z.array(z.string()).optional(),
 })
 
 // --- Secrets ---
@@ -225,3 +226,89 @@ export const ConfigBulkSetSchema = z.array(
     category: z.string().max(64).default('general'),
   })
 )
+
+// --- Jobs ---
+export const CampaignCreateSchema = z.object({
+  name: z.string().min(1),
+  role: z.string().min(1),
+  city: z.string().min(1),
+  country: z.string().min(1),
+  salary_min: z.number().nullable().optional(),
+  salary_max: z.number().nullable().optional(),
+  remote: z.enum(['onsite', 'remote', 'hybrid', 'any']).default('any'),
+  experience_level: z.enum(['junior', 'mid', 'senior', 'any']).default('any'),
+  max_results: z.number().min(1).max(20).default(5),
+  posted_within_days: z.number().min(1).max(30).nullable().optional(),
+})
+
+export const CampaignStatusSchema = z.object({
+  status: z.enum(['idle', 'hunting', 'curated', 'applying', 'closed']),
+})
+
+export const JobStatusSchema = z.object({
+  status: z.enum(['new', 'shortlisted', 'applied', 'dismissed']),
+})
+
+const ProfileExperienceSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  company: z.string(),
+  location: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string().optional(),
+  bullets: z.array(z.string()),
+})
+
+const ProfileEducationSchema = z.object({
+  id: z.string(),
+  school: z.string(),
+  degree: z.string(),
+  field: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string().optional(),
+  gpa: z.string().optional(),
+})
+
+const ProfileProjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  url: z.string().optional(),
+  technologies: z.array(z.string()),
+})
+
+const CvThemeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  layout: z.enum(['single-column', 'two-column', 'sidebar']),
+  primaryColor: z.string(),
+  secondaryColor: z.string(),
+  accentColor: z.string(),
+  backgroundColor: z.string(),
+  fontHeading: z.string(),
+  fontBody: z.string(),
+  fontSize: z.number(),
+  lineHeight: z.number(),
+  sectionSpacing: z.number(),
+  headerStyle: z.enum(['centered', 'left', 'inline']),
+  showPhoto: z.boolean(),
+})
+
+export const ProfileUpdateSchema = z.object({
+  name: z.string().optional(),
+  title: z.string().optional(),
+  summary: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  location: z.string().optional(),
+  linkedin: z.string().optional(),
+  website: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  experience: z.string().optional(),
+  experiences: z.array(ProfileExperienceSchema).optional(),
+  education: z.string().optional(),
+  educations: z.array(ProfileEducationSchema).optional(),
+  projects: z.array(ProfileProjectSchema).optional(),
+  languages: z.array(z.string()).optional(),
+  cv_theme: CvThemeSchema.optional(),
+})
