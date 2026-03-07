@@ -4,9 +4,7 @@ import { useOpenCodeStore } from '@/store/opencode'
 
 /**
  * Global SSE hook — mounts at app layout level.
- * Drives connection status via EventSource (no polling when connected).
- * On error, closes the EventSource — the status query's disconnect polling
- * will detect when the server is back, then bump `reconnectCount` to re-establish SSE.
+ * Listens to OpenCode events, invalidates react-query caches, logs usage.
  */
 export function useOpenCodeSSE() {
   const serverUrl = useOpenCodeStore((s) => s.serverUrl)
@@ -28,7 +26,6 @@ export function useOpenCodeSSE() {
     }, 500)
   }, [queryClient])
 
-  // Main SSE connection effect
   useEffect(() => {
     const eventSource = new EventSource(`${serverUrl}/global/event`)
     eventSourceRef.current = eventSource
@@ -45,24 +42,90 @@ export function useOpenCodeSSE() {
       try {
         const raw = JSON.parse(e.data)
         const data = raw.payload || raw
+        const store = useOpenCodeStore.getState()
+        const { isStreaming, streamingMessage: sm } = store
 
+        // --- session events ---
         if (
           data.type === 'session.updated' ||
           data.type === 'session.created' ||
           data.type === 'session.deleted'
         ) {
           invalidate(['opencode', 'sessions'])
+
+          if (data.type === 'session.updated') {
+            const info = data.properties?.info
+            const sid = info?.id
+
+            if (isStreaming && sm && sid === sm.sessionId && (info?.status === 'idle' || info?.status === 'completed')) {
+              useOpenCodeStore.getState().finishStreaming()
+              // Immediately invalidate messages (no debounce) so final state loads
+              queryClient.invalidateQueries({ queryKey: ['opencode', 'messages', sid] })
+              if (sid) {
+                fetch('/api/opencode/log-usage', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ sessionId: sid }),
+                }).catch(() => {})
+              }
+            } else if (!isStreaming && sid) {
+              fetch('/api/opencode/log-usage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: sid }),
+              }).catch(() => {})
+            }
+          }
         }
 
-        if (
-          data.type === 'message.created' ||
-          data.type === 'message.updated' ||
-          data.type === 'message.part.updated'
-        ) {
-          const sessionId =
-            data.properties?.info?.sessionID ||
-            data.properties?.part?.sessionID ||
-            data.properties?.sessionID
+        // --- message created / updated ---
+        if (data.type === 'message.created' || data.type === 'message.updated') {
+          const info = data.properties?.info
+          const sessionId = info?.sessionID
+          if (isStreaming && sm && sessionId === sm.sessionId) {
+            if (info?.role === 'user' && info?.id) {
+              useOpenCodeStore.getState().trackUserMsgId(info.id)
+            }
+            // Don't invalidate message queries during streaming
+          } else if (sessionId) {
+            invalidate(['opencode', 'messages', sessionId])
+          }
+        }
+
+        // --- message part updated ---
+        if (data.type === 'message.part.updated') {
+          const part = data.properties?.part
+          const sessionId = part?.sessionID
+
+          if (isStreaming && sm && sessionId === sm.sessionId) {
+            // Skip user echo parts
+            if (sm.userMsgIds.has(part?.messageID)) return
+
+            if (part?.type === 'text' && part.text) {
+              useOpenCodeStore.getState().appendStreamingText(part.id, part.text)
+            } else if (part?.type === 'tool') {
+              const toolState = part.state?.status === 'running' ? 'call'
+                : part.state?.status === 'error' ? 'result'
+                : part.state?.status === 'completed' ? 'result'
+                : 'call'
+              useOpenCodeStore.getState().addStreamingToolCall({
+                type: 'tool-invocation',
+                toolInvocation: {
+                  id: part.callID || part.id,
+                  toolName: part.tool || 'unknown',
+                  args: typeof part.state?.input === 'string'
+                    ? (() => { try { return JSON.parse(part.state.input) } catch { return {} } })()
+                    : (part.state?.input || {}),
+                  state: toolState,
+                  result: part.state?.output ?? part.state?.error,
+                },
+              })
+            }
+            // Don't invalidate during streaming
+            return
+          }
+
+          // Not streaming — invalidate as before
           if (sessionId) {
             invalidate(['opencode', 'messages', sessionId])
           }
@@ -93,7 +156,6 @@ export function useOpenCodeSSE() {
     }
   }, [serverUrl, reconnectCount, invalidate, setConnectionStatus, queryClient])
 
-  // When status polling detects reconnection, bump reconnectCount to re-establish SSE
   const prevConnected = useRef(connected)
   useEffect(() => {
     if (connected && !prevConnected.current && !eventSourceRef.current) {
