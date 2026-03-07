@@ -5,6 +5,10 @@ import { useOpenCodeStore } from '@/store/opencode'
 /**
  * Global SSE hook — mounts at app layout level.
  * Listens to OpenCode events, feeds streaming store, invalidates caches, logs usage.
+ *
+ * Completion events from OpenCode come in triples:
+ *   session.status idle → session.idle → session.updated
+ * We handle the FIRST one and suppress the rest via justFinishedRef.
  */
 export function useOpenCodeSSE() {
   const serverUrl = useOpenCodeStore((s) => s.serverUrl)
@@ -14,6 +18,8 @@ export function useOpenCodeSSE() {
   const eventSourceRef = useRef<EventSource | null>(null)
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const [reconnectCount, setReconnectCount] = useState(0)
+  // Track session that just finished to suppress duplicate completion events
+  const justFinishedRef = useRef<{ sessionId: string; time: number } | null>(null)
 
   const invalidate = useCallback((key: string[]) => {
     const cacheKey = key.join('/')
@@ -26,21 +32,10 @@ export function useOpenCodeSSE() {
     }, 500)
   }, [queryClient])
 
-  const finishStreamingForSession = useCallback((sessionId: string) => {
-    // Guard: only run once — set isStreaming false immediately to block duplicate events
-    const store = useOpenCodeStore.getState()
-    if (!store.isStreaming) return
-    store.setIsStreaming(false)
-    // Refetch final messages, THEN clear streamingMessage (prevents blink)
-    queryClient.refetchQueries({ queryKey: ['opencode', 'messages', sessionId] }).finally(() => {
-      useOpenCodeStore.getState().finishStreaming()
-    })
-    fetch('/api/opencode/log-usage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
-    }).catch(() => {})
-  }, [queryClient])
+  const isJustFinished = useCallback((sessionId: string) => {
+    const jf = justFinishedRef.current
+    return jf && jf.sessionId === sessionId && Date.now() - jf.time < 3000
+  }, [])
 
   useEffect(() => {
     const eventSource = new EventSource(`${serverUrl}/global/event`)
@@ -64,45 +59,26 @@ export function useOpenCodeSSE() {
         const store = useOpenCodeStore.getState()
         const { isStreaming, streamingMessage: sm } = store
 
-        // --- session.idle — OpenCode signals session is done ---
-        if (type === 'session.idle') {
-          const sid = data.properties?.sessionID || data.properties?.id
-          invalidate(['opencode', 'sessions'])
-          if (isStreaming && sm && sid === sm.sessionId) {
-            finishStreamingForSession(sid)
-          } else if (sid) {
-            fetch('/api/opencode/log-usage', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ sessionId: sid }),
-            }).catch(() => {})
-          }
-          return
-        }
+        // --- Completion events: session.status idle / session.idle / session.updated ---
+        // OpenCode fires all three in sequence. Handle first, suppress rest.
 
-        // --- session.status — status changes (idle, busy, error) ---
         if (type === 'session.status') {
-          const props = data.properties
-          const sid = props?.sessionID || props?.id
-          const status = props?.status?.type || props?.status
-          invalidate(['opencode', 'sessions'])
-          if (isStreaming && sm && sid === sm.sessionId && (status === 'idle' || status === 'error')) {
-            finishStreamingForSession(sid)
-          }
-          return
-        }
-
-        // --- session.updated / session.created / session.deleted ---
-        if (type === 'session.updated' || type === 'session.created' || type === 'session.deleted') {
-          invalidate(['opencode', 'sessions'])
-
-          if (type === 'session.updated') {
-            const info = data.properties?.info
-            const sid = info?.id
-            const status = info?.status
-            if (isStreaming && sm && sid === sm.sessionId && (status === 'idle' || status === 'completed' || status === 'error')) {
-              finishStreamingForSession(sid)
-            } else if (!isStreaming && sid) {
+          const sid = data.properties?.sessionID
+          const status = data.properties?.status?.type || data.properties?.status
+          if (status === 'idle' || status === 'error') {
+            invalidate(['opencode', 'sessions'])
+            if (isStreaming && sm && sid === sm.sessionId) {
+              justFinishedRef.current = { sessionId: sid, time: Date.now() }
+              store.setIsStreaming(false)
+              queryClient.refetchQueries({ queryKey: ['opencode', 'messages', sid] }).finally(() => {
+                useOpenCodeStore.getState().finishStreaming()
+              })
+              fetch('/api/opencode/log-usage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: sid }),
+              }).catch(() => {})
+            } else if (sid && !isJustFinished(sid)) {
               fetch('/api/opencode/log-usage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -110,6 +86,31 @@ export function useOpenCodeSSE() {
               }).catch(() => {})
             }
           }
+          return
+        }
+
+        if (type === 'session.idle') {
+          const sid = data.properties?.sessionID
+          invalidate(['opencode', 'sessions'])
+          if (isStreaming && sm && sid === sm.sessionId) {
+            justFinishedRef.current = { sessionId: sid, time: Date.now() }
+            store.setIsStreaming(false)
+            queryClient.refetchQueries({ queryKey: ['opencode', 'messages', sid] }).finally(() => {
+              useOpenCodeStore.getState().finishStreaming()
+            })
+            fetch('/api/opencode/log-usage', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessionId: sid }),
+            }).catch(() => {})
+          }
+          // else: suppressed — session.status already handled it, or justFinished
+          return
+        }
+
+        if (type === 'session.updated' || type === 'session.created' || type === 'session.deleted') {
+          invalidate(['opencode', 'sessions'])
+          // Don't log usage from session.updated — session.status/session.idle handle it
           return
         }
 
@@ -121,7 +122,7 @@ export function useOpenCodeSSE() {
             if (info?.role === 'user' && info?.id) {
               useOpenCodeStore.getState().trackUserMsgId(info.id)
             }
-          } else if (sessionId) {
+          } else if (sessionId && !isJustFinished(sessionId)) {
             invalidate(['opencode', 'messages', sessionId])
           }
           return
@@ -154,11 +155,13 @@ export function useOpenCodeSSE() {
             return
           }
 
-          if (sessionId) invalidate(['opencode', 'messages', sessionId])
+          if (sessionId && !isJustFinished(sessionId)) {
+            invalidate(['opencode', 'messages', sessionId])
+          }
           return
         }
 
-        // --- message.part.delta — incremental deltas (newer API) ---
+        // --- message.part.delta — incremental deltas ---
         if (type === 'message.part.delta') {
           const props = data.properties
           const sessionId = props?.sessionID
@@ -168,7 +171,9 @@ export function useOpenCodeSSE() {
             }
             return
           }
-          if (sessionId) invalidate(['opencode', 'messages', sessionId])
+          if (sessionId && !isJustFinished(sessionId)) {
+            invalidate(['opencode', 'messages', sessionId])
+          }
           return
         }
       } catch {
@@ -195,7 +200,7 @@ export function useOpenCodeSSE() {
       }
       debounceTimers.current = {}
     }
-  }, [serverUrl, reconnectCount, invalidate, setConnectionStatus, queryClient, finishStreamingForSession])
+  }, [serverUrl, reconnectCount, invalidate, isJustFinished, setConnectionStatus, queryClient])
 
   const prevConnected = useRef(connected)
   useEffect(() => {
