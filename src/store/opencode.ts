@@ -20,6 +20,7 @@ interface OpenCodeState {
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
 
+  setIsStreaming: (v: boolean) => void
   startStreaming: (sessionId: string) => void
   appendStreamingText: (partId: string, fullText: string) => void
   appendStreamingDelta: (partId: string, delta: string) => void
@@ -60,6 +61,7 @@ export const useOpenCodeStore = create<OpenCodeState>()(
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
+      setIsStreaming: (v) => set({ isStreaming: v }),
       startStreaming: (sessionId) =>
         set({
           isStreaming: true,
