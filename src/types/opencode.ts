@@ -44,3 +44,12 @@ export interface OpenCodeConnectionStatus {
   serverUrl: string
   error?: string
 }
+
+export interface StreamingMessage {
+  sessionId: string
+  parts: OpenCodePart[]
+  /** Set of user message IDs to skip their echo in SSE */
+  userMsgIds: Set<string>
+  /** Track how much of each part we've already rendered */
+  partLengths: Map<string, number>
+}
