@@ -1,29 +1,28 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Square, Sparkles, ArrowDown } from 'lucide-react'
+import { Send, Sparkles, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { MessageBubble } from './MessageBubble'
 import {
   useOpenCodeMessages,
-  useSendPrompt,
-  useAbortSession,
   useCreateSession,
 } from '@/hooks/useOpenCode'
 import { useOpenCodeStore } from '@/store/opencode'
+import { sendPrompt } from '@/services/opencode'
 
 export function OpenCodeChat() {
   const activeSessionId = useOpenCodeStore((s) => s.activeSessionId)
+  const isStreaming = useOpenCodeStore((s) => s.isStreaming)
+  const streamingMessage = useOpenCodeStore((s) => s.streamingMessage)
+  const startStreaming = useOpenCodeStore((s) => s.startStreaming)
+  const finishStreaming = useOpenCodeStore((s) => s.finishStreaming)
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showScrollDown, setShowScrollDown] = useState(false)
 
   const { data: messages = [] } = useOpenCodeMessages(activeSessionId)
-  const sendPrompt = useSendPrompt()
-  const abortSession = useAbortSession()
   const createSession = useCreateSession()
-
-  const isRunning = sendPrompt.isPending
 
   useEffect(() => {
     const el = scrollRef.current
@@ -36,11 +35,29 @@ export function OpenCodeChat() {
     return () => el.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      }
+    })
+  }, [activeSessionId, messages.length])
+
   useEffect(() => {
     if (scrollRef.current && !showScrollDown) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages, showScrollDown])
+  }, [messages, streamingMessage?.parts, showScrollDown])
+
+  // Focus textarea when streaming finishes
+  const prevStreaming = useRef(isStreaming)
+  useEffect(() => {
+    if (prevStreaming.current && !isStreaming) {
+      setTimeout(() => textareaRef.current?.focus(), 0)
+    }
+    prevStreaming.current = isStreaming
+  }, [isStreaming])
 
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
@@ -50,14 +67,13 @@ export function OpenCodeChat() {
   }
 
   const handleSend = useCallback(async () => {
-    if (!input.trim() || isRunning) return
+    if (!input.trim() || isStreaming) return
     const text = input.trim()
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
     let sessionId = activeSessionId
 
-    // Auto-create a session if none is active
     if (!sessionId) {
       try {
         const session = await createSession.mutateAsync(undefined)
@@ -67,17 +83,15 @@ export function OpenCodeChat() {
       }
     }
 
-    sendPrompt.mutate(
-      { sessionId, text },
-      { onSettled: () => setTimeout(() => textareaRef.current?.focus(), 0) }
-    )
-  }, [input, isRunning, activeSessionId, createSession, sendPrompt])
+    startStreaming(sessionId)
 
-  const handleStop = useCallback(() => {
-    if (activeSessionId) {
-      abortSession.mutate(activeSessionId)
+    try {
+      await sendPrompt(sessionId, text)
+    } catch {
+      finishStreaming()
+      setTimeout(() => textareaRef.current?.focus(), 0)
     }
-  }, [activeSessionId, abortSession])
+  }, [input, isStreaming, activeSessionId, createSession, startStreaming, finishStreaming])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -98,7 +112,7 @@ export function OpenCodeChat() {
       {/* Scrollable message area */}
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-8 py-6 lg:px-12">
-          {messages.length === 0 && (
+          {messages.length === 0 && !isStreaming && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10">
                 <Sparkles size={24} className="text-indigo-400" />
@@ -147,12 +161,23 @@ export function OpenCodeChat() {
             </div>
           )}
 
-          {isRunning && (
-            <div className="mt-4 flex items-center gap-2 text-zinc-500">
-              <Sparkles
-                size={14}
-                className="text-indigo-400 animate-pulse"
+          {streamingMessage && streamingMessage.sessionId === activeSessionId && (
+            <div>
+              <MessageBubble
+                message={{
+                  id: 'streaming',
+                  sessionId: streamingMessage.sessionId,
+                  role: 'assistant',
+                  parts: streamingMessage.parts,
+                  createdAt: new Date().toISOString(),
+                }}
               />
+            </div>
+          )}
+
+          {isStreaming && (!streamingMessage?.parts.length || streamingMessage.parts.every(p => p.type === 'text' && p.text === '')) && (
+            <div className="mt-4 flex items-center gap-2 text-zinc-500">
+              <Sparkles size={14} className="text-indigo-400 animate-pulse" />
               <span className="text-sm">Thinking...</span>
             </div>
           )}
@@ -182,7 +207,7 @@ export function OpenCodeChat() {
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             placeholder="Message..."
-            disabled={isRunning}
+            disabled={isStreaming}
             className="block w-full min-h-[44px] max-h-[200px] resize-none bg-transparent px-4 pt-3 pb-10 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none"
             rows={1}
           />
@@ -191,25 +216,14 @@ export function OpenCodeChat() {
               <span className="text-[11px] text-zinc-700 select-none">
                 Shift+Enter for newline
               </span>
-              {isRunning ? (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300"
-                  onClick={handleStop}
-                >
-                  <Square size={14} />
-                </Button>
-              ) : (
-                <Button
-                  size="icon"
-                  className="h-7 w-7 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-30 disabled:bg-zinc-800"
-                  onClick={handleSend}
-                  disabled={!input.trim()}
-                >
-                  <Send size={14} />
-                </Button>
-              )}
+              <Button
+                size="icon"
+                className="h-7 w-7 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-30 disabled:bg-zinc-800"
+                onClick={handleSend}
+                disabled={!input.trim() || isStreaming}
+              >
+                <Send size={14} />
+              </Button>
             </div>
           </div>
         </div>
