@@ -69,10 +69,7 @@ export function useOpenCodeSSE() {
             invalidate(['opencode', 'sessions'])
             if (isStreaming && sm && sid === sm.sessionId) {
               justFinishedRef.current = { sessionId: sid, time: Date.now() }
-              store.setIsStreaming(false)
-              queryClient.refetchQueries({ queryKey: ['opencode', 'messages', sid] }).finally(() => {
-                useOpenCodeStore.getState().finishStreaming()
-              })
+              store.finishStreaming()
               fetch('/api/opencode/log-usage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -94,10 +91,7 @@ export function useOpenCodeSSE() {
           invalidate(['opencode', 'sessions'])
           if (isStreaming && sm && sid === sm.sessionId) {
             justFinishedRef.current = { sessionId: sid, time: Date.now() }
-            store.setIsStreaming(false)
-            queryClient.refetchQueries({ queryKey: ['opencode', 'messages', sid] }).finally(() => {
-              useOpenCodeStore.getState().finishStreaming()
-            })
+            store.finishStreaming()
             fetch('/api/opencode/log-usage', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

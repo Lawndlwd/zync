@@ -17,6 +17,7 @@ export function OpenCodeChat() {
   const startStreaming = useOpenCodeStore((s) => s.startStreaming)
   const finishStreaming = useOpenCodeStore((s) => s.finishStreaming)
   const [input, setInput] = useState('')
+  const [pendingUserMsg, setPendingUserMsg] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showScrollDown, setShowScrollDown] = useState(false)
@@ -54,6 +55,7 @@ export function OpenCodeChat() {
   const prevStreaming = useRef(isStreaming)
   useEffect(() => {
     if (prevStreaming.current && !isStreaming) {
+      setPendingUserMsg(null)
       setTimeout(() => textareaRef.current?.focus(), 0)
     }
     prevStreaming.current = isStreaming
@@ -85,6 +87,7 @@ export function OpenCodeChat() {
       }
     }
 
+    setPendingUserMsg(text)
     startStreaming(sessionId)
 
     try {
@@ -160,6 +163,21 @@ export function OpenCodeChat() {
                   <MessageBubble message={msg} />
                 </div>
               ))}
+            </div>
+          )}
+
+          {pendingUserMsg && activeSessionId && (
+            <div>
+              {messages.length > 0 && <Separator className="my-5 bg-white/[0.04]" />}
+              <MessageBubble
+                message={{
+                  id: 'pending-user',
+                  sessionId: activeSessionId,
+                  role: 'user',
+                  parts: [{ type: 'text', text: pendingUserMsg }],
+                  createdAt: new Date().toISOString(),
+                }}
+              />
             </div>
           )}
 
