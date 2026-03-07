@@ -41,6 +41,9 @@ server/.env
 # Local MCP config (contains tokens)
 .mcp.json
 
+# Worktrees
+.worktrees/
+
 # Secrets vault
 server/data/secrets.db
 server/data/secrets.db-shm
