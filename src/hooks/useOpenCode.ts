@@ -9,7 +9,6 @@ import {
   createSession,
   deleteSession,
   abortSession,
-  sendPrompt,
 } from '@/services/opencode'
 import { useOpenCodeStore } from '@/store/opencode'
 
@@ -54,6 +53,7 @@ export function useOpenCodeSessions() {
     // No polling — SSE handles real-time updates
     staleTime: 10_000,
     refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev, // keep previous data during refetch to prevent flicker
   })
 }
 
@@ -65,6 +65,7 @@ export function useOpenCodeMessages(sessionId: string | null) {
     // No polling — SSE handles real-time updates
     staleTime: 5_000,
     refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev, // keep previous data during refetch to prevent flicker
   })
 }
 
@@ -103,39 +104,22 @@ export function useAbortSession() {
   })
 }
 
-export function useSendPrompt() {
-  const queryClient = useQueryClient()
-  const { data: agentModels } = useAgentModels()
-
-  return useMutation({
-    mutationFn: ({ sessionId, text }: { sessionId: string; text: string }) => {
-      let model: { providerID: string; modelID: string } | undefined
-      if (agentModels?.opencode?.model) {
-        const [providerID, ...rest] = agentModels.opencode.model.split('/')
-        model = { providerID, modelID: rest.join('/') }
-      }
-      return sendPrompt(sessionId, text, model)
-    },
-    onSuccess: (_, { sessionId }) => {
-      // Single invalidation after sending — SSE will handle subsequent updates
-      queryClient.invalidateQueries({ queryKey: ['opencode', 'messages', sessionId] })
-    },
-  })
-}
-
 export function useSessionTokens(sessionId: string | null) {
   const { data: messages } = useOpenCodeMessages(sessionId)
 
   return useMemo(() => {
     if (!messages) return null
-    let input = 0, output = 0, reasoning = 0, cacheRead = 0, cacheWrite = 0, cost = 0
+    let outputTotal = 0, reasoningTotal = 0, cacheRead = 0, cacheWrite = 0, cost = 0
+    let contextInput = 0
     const models = new Set<string>()
 
     for (const msg of messages) {
       if (msg.tokens) {
-        input += msg.tokens.input
-        output += msg.tokens.output
-        reasoning += msg.tokens.reasoning
+        // Use the latest message's input as "context size" (like OpenCode does)
+        // since each turn re-sends the full context
+        if (msg.tokens.input > 0) contextInput = msg.tokens.input
+        outputTotal += msg.tokens.output
+        reasoningTotal += msg.tokens.reasoning
         cacheRead += msg.tokens.cache.read
         cacheWrite += msg.tokens.cache.write
       }
@@ -144,8 +128,9 @@ export function useSessionTokens(sessionId: string | null) {
     }
 
     return {
-      input, output, reasoning, cacheRead, cacheWrite, cost,
-      total: input + output + reasoning,
+      input: contextInput, output: outputTotal, reasoning: reasoningTotal,
+      cacheRead, cacheWrite, cost,
+      total: contextInput + outputTotal + reasoningTotal,
       models: Array.from(models),
     }
   }, [messages])
