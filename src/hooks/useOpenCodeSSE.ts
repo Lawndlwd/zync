@@ -27,8 +27,12 @@ export function useOpenCodeSSE() {
   }, [queryClient])
 
   const finishStreamingForSession = useCallback((sessionId: string) => {
-    useOpenCodeStore.getState().finishStreaming()
-    queryClient.invalidateQueries({ queryKey: ['opencode', 'messages', sessionId] })
+    // Guard: only run once (multiple events fire for the same completion)
+    if (!useOpenCodeStore.getState().isStreaming) return
+    // Refetch final messages FIRST, then clear streaming state (prevents blink)
+    queryClient.refetchQueries({ queryKey: ['opencode', 'messages', sessionId] }).finally(() => {
+      useOpenCodeStore.getState().finishStreaming()
+    })
     fetch('/api/opencode/log-usage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
