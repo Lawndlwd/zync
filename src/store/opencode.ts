@@ -22,6 +22,7 @@ interface OpenCodeState {
 
   startStreaming: (sessionId: string) => void
   appendStreamingText: (partId: string, fullText: string) => void
+  appendStreamingDelta: (partId: string, delta: string) => void
   addStreamingToolCall: (part: OpenCodePart) => void
   trackUserMsgId: (msgId: string) => void
   finishStreaming: () => void
@@ -96,6 +97,24 @@ export const useOpenCodeStore = create<OpenCodeState>()(
           return {
             streamingMessage: { ...sm, parts: newParts, partLengths: newLengths },
           }
+        }),
+
+      appendStreamingDelta: (partId, delta) =>
+        set((state) => {
+          const sm = state.streamingMessage
+          if (!sm) return state
+          const existingIdx = sm.parts.findIndex(
+            (p) => p.type === 'text' && (p as any)._partId === partId
+          )
+          let newParts: OpenCodePart[]
+          if (existingIdx >= 0) {
+            newParts = [...sm.parts]
+            const existing = newParts[existingIdx] as { type: 'text'; text: string; _partId: string }
+            newParts[existingIdx] = { type: 'text', text: existing.text + delta, _partId: partId } as any
+          } else {
+            newParts = [...sm.parts, { type: 'text', text: delta, _partId: partId } as any]
+          }
+          return { streamingMessage: { ...sm, parts: newParts } }
         }),
 
       addStreamingToolCall: (part) =>

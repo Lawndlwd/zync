@@ -59,6 +59,7 @@ export function OpenCodeChat() {
     prevStreaming.current = isStreaming
   }, [isStreaming])
 
+
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
@@ -67,7 +68,8 @@ export function OpenCodeChat() {
   }
 
   const handleSend = useCallback(async () => {
-    if (!input.trim() || isStreaming) return
+    if (!input.trim()) return
+    if (isStreaming) finishStreaming()
     const text = input.trim()
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
@@ -207,7 +209,6 @@ export function OpenCodeChat() {
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             placeholder="Message..."
-            disabled={isStreaming}
             className="block w-full min-h-[44px] max-h-[200px] resize-none bg-transparent px-4 pt-3 pb-10 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none"
             rows={1}
           />
@@ -220,7 +221,7 @@ export function OpenCodeChat() {
                 size="icon"
                 className="h-7 w-7 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-30 disabled:bg-zinc-800"
                 onClick={handleSend}
-                disabled={!input.trim() || isStreaming}
+                disabled={!input.trim()}
               >
                 <Send size={14} />
               </Button>
