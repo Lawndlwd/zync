@@ -7,12 +7,11 @@ const TasksPage = lazy(() => import('@/pages/tasks').then(m => ({ default: m.Tas
 const ChatPage = lazy(() => import('@/pages/opencode').then(m => ({ default: m.OpenCodePage })))
 const SettingsPage = lazy(() => import('@/pages/settings').then(m => ({ default: m.SettingsPage })))
 const ProductivityPage = lazy(() => import('@/pages/productivity').then(m => ({ default: m.ProductivityPage })))
-const ActivityPage = lazy(() => import('@/pages/activity').then(m => ({ default: m.ActivityPage })))
 const DocumentsPage = lazy(() => import('@/pages/documents').then(m => ({ default: m.DocumentsPage })))
 const CanvasPage = lazy(() => import('@/pages/canvas').then(m => ({ default: m.CanvasPage })))
 const SetupPage = lazy(() => import('@/pages/setup').then(m => ({ default: m.SetupPage })))
-const JobsPage = lazy(() => import('@/pages/jobs').then(m => ({ default: m.JobsPage })))
-const ProfilePage = lazy(() => import('@/pages/profile').then(m => ({ default: m.ProfilePage })))
+const VaultPage = lazy(() => import('@/pages/vault').then(m => ({ default: m.VaultPage })))
+const CareerPage = lazy(() => import('@/pages/career').then(m => ({ default: m.CareerPage })))
 const SocialLayout = lazy(() => import('@/components/social/social-layout').then(m => ({ default: m.SocialLayout })))
 const SocialDashboard = lazy(() => import('@/pages/social-dashboard').then(m => ({ default: m.SocialDashboard })))
 const SocialTrending = lazy(() => import('@/pages/social-trending').then(m => ({ default: m.SocialTrending })))
@@ -97,12 +96,11 @@ export function App() {
             <Route path="/tasks/:projectName" element={<TasksPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/productivity" element={<ProductivityPage />} />
-            <Route path="/activity" element={<ActivityPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/documents/*" element={<DocumentsPage />} />
             <Route path="/canvas" element={<CanvasPage />} />
-            <Route path="/jobs" element={<JobsPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/vault" element={<VaultPage />} />
+            <Route path="/career" element={<CareerPage />} />
             <Route path="/social" element={<SocialLayout />}>
               <Route index element={<Navigate to="/social/dashboard" replace />} />
               <Route path="dashboard" element={<SocialDashboard />} />

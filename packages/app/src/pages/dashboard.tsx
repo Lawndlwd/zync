@@ -356,7 +356,7 @@ function ActivitySection({ span }: { span?: string }) {
   const barData = days <= 90 ? stats?.byDay : stats?.byDay.slice(-90)
 
   return (
-    <Section icon={Activity} iconColor="text-rose-400" title="AI Activity" to="/activity" className={cn('col-span-4', span ?? 'lg:col-span-4')}>
+    <Section icon={Activity} iconColor="text-rose-400" title="AI Activity" to="/" className={cn('col-span-4', span ?? 'lg:col-span-4')}>
       {/* Period selector */}
       <div className="flex gap-1 mb-3">
         {periodOptions.map((p) => (
