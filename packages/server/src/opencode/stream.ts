@@ -167,12 +167,12 @@ export async function streamOpenCode(
     })
   }
 
-  // Send the prompt
+  // Send the prompt — set promptSent AFTER the call resolves
+  // to avoid stale session.updated idle events closing the stream early
   try {
-    promptSent = true
     await sendPromptAsync(sessionId, prompt)
+    promptSent = true
   } catch (err) {
-    promptSent = false
     finish()
     callbacks.onError(err instanceof Error ? err : new Error(String(err)))
   }
