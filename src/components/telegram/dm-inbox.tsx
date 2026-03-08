@@ -79,7 +79,7 @@ export function DMInbox() {
       )}
 
       {/* Empty state */}
-      {!isLoading && !error && dms?.length === 0 && (
+      {!isLoading && !error && dms?.dms?.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-zinc-600">
           <Inbox size={32} className="mb-3" />
           <p className="text-sm">No messages{activeCategory ? ` in ${activeCategory}` : ''}</p>
@@ -87,9 +87,9 @@ export function DMInbox() {
       )}
 
       {/* DM list */}
-      {dms && dms.length > 0 && (
+      {dms?.dms && dms.dms.length > 0 && (
         <div className="flex flex-col gap-3">
-          {dms.map((dm) => (
+          {dms.dms.map((dm) => (
             <DMCard
               key={dm.id}
               dm={dm}
