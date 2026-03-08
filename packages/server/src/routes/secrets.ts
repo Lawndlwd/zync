@@ -1,8 +1,9 @@
+import crypto from 'node:crypto'
 import { Router } from 'express'
 import { getSecrets } from '../secrets/index.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { SecretSetSchema } from '@zync/shared/schemas'
+import { SecretSetSchema, SecretRevealSchema } from '@zync/shared/schemas'
 
 export const secretsRouter = Router()
 
@@ -36,6 +37,36 @@ secretsRouter.put('/', validate(SecretSetSchema), (req, res) => {
     const { name, value, category } = req.body
     svc.set(name, value, category)
     res.json({ success: true })
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
+// POST /api/secrets/:name/reveal — decrypt and return secret value
+secretsRouter.post('/:name/reveal', validate(SecretRevealSchema), (req, res) => {
+  try {
+    const svc = requireVault()
+    const { secretKey } = req.body
+
+    const serverKey = process.env.SECRET_KEY
+    if (!serverKey) {
+      res.status(403).json({ error: 'Invalid secret key' })
+      return
+    }
+    const a = Buffer.from(secretKey)
+    const b = Buffer.from(serverKey)
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      res.status(403).json({ error: 'Invalid secret key' })
+      return
+    }
+
+    const value = svc.get(req.params.name as string)
+    if (value === null) {
+      res.status(404).json({ error: 'Secret not found' })
+      return
+    }
+
+    res.json({ value })
   } catch (err) {
     errorResponse(res, err)
   }

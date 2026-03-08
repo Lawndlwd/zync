@@ -234,6 +234,10 @@ export const SecretSetSchema = z.object({
   category: z.string().max(64).default('general'),
 })
 
+export const SecretRevealSchema = z.object({
+  secretKey: z.string().min(32),
+})
+
 // --- Setup ---
 export const SetupVerifySchema = z.object({
   service: z.enum(['jira', 'gitlab', 'telegram', 'llm']),
