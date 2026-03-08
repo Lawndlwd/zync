@@ -1,4 +1,4 @@
-import type { SocialAccount, SocialPost, SocialComment, ReplyRule, ContentIdea, SocialPlatform, SocialMedia, MediaAnalysis, CaptionSuggestion, SocialInsights, WorkshopBoard, WorkshopCard, WorkshopMessage } from '@/types/social'
+import type { SocialAccount, SocialPost, SocialComment, ReplyRule, ContentIdea, SocialPlatform, SocialMedia, MediaAnalysis, CaptionSuggestion, SocialInsights, TrendResult, SavedTrend, WorkshopBoard, WorkshopCard, WorkshopMessage } from '@/types/social'
 export type { SocialInsights }
 
 const API_BASE = '/api/social'
@@ -196,6 +196,35 @@ export async function getCalendarPosts(start: string, end: string, platform?: st
   if (accountId != null) query.set('accountId', String(accountId))
   const data = await fetchJSON<{ posts: SocialPost[] }>(`${API_BASE}/calendar?${query}`)
   return data.posts
+}
+
+// --- Trends ---
+
+export async function searchTrends(topic: string, platform?: string): Promise<TrendResult[]> {
+  const data = await fetchJSON<{ trends: TrendResult[] }>(`${API_BASE}/trends/search`, {
+    method: 'POST',
+    body: JSON.stringify({ topic, platform }),
+  })
+  return data.trends
+}
+
+export async function getBookmarkedTrends(): Promise<SavedTrend[]> {
+  const data = await fetchJSON<{ trends: SavedTrend[] }>(`${API_BASE}/trends/bookmarks`)
+  return data.trends
+}
+
+export async function bookmarkTrend(trend: {
+  topic: string; platform: string; trend_title: string; description: string;
+  hashtags: string[]; content_ideas: string[]; relevance: string;
+}): Promise<{ id: number }> {
+  return fetchJSON(`${API_BASE}/trends/bookmark`, {
+    method: 'POST',
+    body: JSON.stringify(trend),
+  })
+}
+
+export async function removeBookmark(id: number): Promise<void> {
+  await fetchJSON(`${API_BASE}/trends/${id}`, { method: 'DELETE' })
 }
 
 // --- Workshop ---

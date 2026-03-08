@@ -143,6 +143,28 @@ export interface SocialFeatures {
   aiSuggestions: boolean
 }
 
+// --- Trending types ---
+
+export interface TrendResult {
+  trend_title: string
+  description: string
+  relevance: 'hot' | 'rising' | 'emerging'
+  hashtags: string[]
+  content_ideas: string[]
+}
+
+export interface SavedTrend {
+  id: number
+  topic: string
+  platform: string
+  trend_title: string
+  description: string
+  hashtags: string
+  content_ideas: string
+  relevance: string
+  created_at: string
+}
+
 // --- Workshop types ---
 
 export type WorkshopColumn = 'ideas' | 'review' | 'ready'
