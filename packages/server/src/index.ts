@@ -35,6 +35,7 @@ import { socialRouter } from './routes/social.js'
 import { telegramRouter } from './routes/telegram.js'
 import { initSocialDb } from './social/db.js'
 import { initTelegramDb } from './telegram/db.js'
+import { initWidgetsDb } from './widgets/db.js'
 import { scheduleSocialSync } from './social/scheduler.js'
 import { initCanvasWebSocket } from './canvas/renderer.js'
 import { startWakeWordServer, stopWakeWordServer } from './voice/wakeword.js'
@@ -143,6 +144,7 @@ initHeartbeat()
 initJobsDb()
 initSocialDb()
 initTelegramDb()
+initWidgetsDb()
 migrateJsonConfigs()
 
 // Initialize channel manager
