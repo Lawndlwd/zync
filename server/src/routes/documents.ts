@@ -36,23 +36,37 @@ function getFileStat(filePath: string) {
 
 // ── Folders (directories) ──
 
-documentsRouter.get('/folders', (_req, res) => {
+function countMdFiles(dirPath: string): number {
+  let count = 0
+  for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith('.md')) count++
+    else if (entry.isDirectory()) count += countMdFiles(join(dirPath, entry.name))
+  }
+  return count
+}
+
+documentsRouter.get('/folders', (req, res) => {
   try {
     const root = getDocsRoot()
-    const entries = readdirSync(root, { withFileTypes: true })
+    const parent = (req.query.parent as string) || ''
+    const base = parent ? safePath(root, parent) : root
+    if (!existsSync(base)) return res.json([])
+
+    const entries = readdirSync(base, { withFileTypes: true })
     const folders = entries
       .filter(e => e.isDirectory())
       .map(e => {
-        const dirPath = join(root, e.name)
-        const files = readdirSync(dirPath).filter(f => f.endsWith('.md'))
+        const dirPath = join(base, e.name)
         const stat = statSync(dirPath)
         return {
-          name: e.name,
-          docCount: files.length,
+          name: parent ? `${parent}/${e.name}` : e.name,
+          label: e.name,
+          docCount: countMdFiles(dirPath),
           createdAt: stat.birthtime.toISOString(),
+          system: e.name === 'system',
         }
       })
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => a.label.localeCompare(b.label))
     res.json(folders)
   } catch (err) {
     errorResponse(res, err)
@@ -107,6 +121,7 @@ documentsRouter.get('/', (req, res) => {
     const scanFolder = (folderName: string) => {
       const dirPath = safePath(root, folderName)
       if (!existsSync(dirPath)) return
+      const isSystem = folderName.split('/').includes('system')
       const files = readdirSync(dirPath).filter(f => f.endsWith('.md'))
       for (const file of files) {
         const filePath = join(dirPath, file)
@@ -119,6 +134,7 @@ documentsRouter.get('/', (req, res) => {
           title: basename(file, '.md'),
           content,
           metadata,
+          system: isSystem,
           ...stat,
         })
       }
@@ -214,8 +230,18 @@ documentsRouter.put('/file/{*path}', validate(DocumentUpdateSchema), (req, res) 
     const newFilePath = safePath(root, finalFolder, newFileName)
 
     if (content !== undefined) {
-      const fileContent = metadata ? serializeFrontmatter(metadata, content) : content
-      writeFileSync(filePath, fileContent, 'utf-8')
+      if (metadata) {
+        writeFileSync(filePath, serializeFrontmatter(metadata, content), 'utf-8')
+      } else {
+        // Preserve existing frontmatter when only content is updated
+        const existingRaw = readFileSync(filePath, 'utf-8')
+        const parsed = parseFrontmatter(existingRaw)
+        if (parsed.metadata && Object.keys(parsed.metadata).length > 0) {
+          writeFileSync(filePath, serializeFrontmatter(parsed.metadata, content), 'utf-8')
+        } else {
+          writeFileSync(filePath, content, 'utf-8')
+        }
+      }
     } else if (metadata) {
       // metadata changed but content not provided — read existing content and rewrite
       const existingRaw = readFileSync(filePath, 'utf-8')
