@@ -7,6 +7,8 @@ import type {
   OutboundMessage,
 } from './types.js'
 import { logger } from '../lib/logger.js'
+import { handleSupportMessage } from '../telegram/support.js'
+import { handleTelegramDM } from '../telegram/triage.js'
 
 interface TelegramAdapterConfig {
   botToken: string
@@ -27,10 +29,38 @@ export class TelegramAdapter implements ChannelAdapter {
     const bot = new Bot(this.config.botToken)
     this.bot = bot
 
-    // Filter by allowed users
+    // Route: owner messages go through normal pipeline, non-owner go to support
     bot.use(async (ctx, next) => {
       const userId = ctx.from?.id
-      if (!userId || !this.config.allowedUsers.includes(userId)) return
+      if (!userId) return
+
+      // Business messages are handled separately
+      if ((ctx as any).businessMessage) return await next()
+
+      // Owner — proceed to normal handlers (handleMessage pipeline)
+      if (this.config.allowedUsers.length === 0 || this.config.allowedUsers.includes(userId)) {
+        return await next()
+      }
+
+      // Non-owner — route to support handler
+      if (ctx.message?.text) {
+        const msg: InboundMessage = {
+          id: String(ctx.message.message_id),
+          channelType: 'telegram',
+          chatId: String(ctx.chat!.id),
+          senderId: String(ctx.from.id),
+          senderName: ctx.from.first_name + (ctx.from.last_name ? ` ${ctx.from.last_name}` : ''),
+          text: ctx.message.text,
+          timestamp: new Date(ctx.message.date * 1000),
+          raw: ctx,
+        }
+        await handleSupportMessage(msg)
+      }
+    })
+
+    // Log all updates for debugging
+    bot.use(async (ctx, next) => {
+      logger.info({ updateType: ctx.updateType, from: ctx.from?.id }, 'Telegram: received update')
       await next()
     })
 
@@ -105,14 +135,33 @@ export class TelegramAdapter implements ChannelAdapter {
       await this.dispatch(msg)
     })
 
+    // Handle Business Mode DMs (personal account messages forwarded to bot)
+    bot.on('business_message' as any, async (ctx: any) => {
+      const bm = ctx.businessMessage
+      if (!bm?.text) return
+
+      const senderName = bm.from.first_name + (bm.from.last_name ? ` ${bm.from.last_name}` : '')
+      await handleTelegramDM(
+        bot,
+        bm.business_connection_id,
+        String(bm.chat.id),
+        String(bm.from.id),
+        senderName,
+        bm.from.username,
+        bm.text,
+      )
+    })
+
     // Error handler
     bot.catch((err) => {
       logger.error({ err }, 'Telegram bot error')
     })
 
     // bot.start() blocks forever (long-polling), so fire-and-forget
-    bot.start()
-    logger.info('Telegram adapter started')
+    bot.start().catch((err) => {
+      logger.error({ err }, 'Telegram long-polling crashed')
+    })
+    logger.info({ allowedUsers: this.config.allowedUsers }, 'Telegram adapter started')
   }
 
   async stop(): Promise<void> {
