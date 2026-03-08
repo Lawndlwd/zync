@@ -37,6 +37,8 @@ import { initSocialDb } from './social/db.js'
 import { initTelegramDb } from './telegram/db.js'
 import { initWidgetsDb } from './widgets/db.js'
 import { scheduleSocialSync } from './social/scheduler.js'
+import { widgetsRouter } from './routes/widgets.js'
+import { scheduleWidgetRefresh } from './widgets/scheduler.js'
 import { initCanvasWebSocket } from './canvas/renderer.js'
 import { startWakeWordServer, stopWakeWordServer } from './voice/wakeword.js'
 import { WhatsAppAdapter } from './channels/whatsapp.js'
@@ -117,6 +119,7 @@ app.use('/api/setup', setupRouter)
 app.use('/api/jobs', jobsRouter)
 app.use('/api/social', socialRouter)
 app.use('/api/telegram', telegramRouter)
+app.use('/api/widgets', widgetsRouter)
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -187,6 +190,9 @@ scheduleJobScraping()
 
 // Schedule social media sync
 scheduleSocialSync()
+
+// Schedule widget refresh
+scheduleWidgetRefresh()
 
 // Server-side usage tracking — logs token usage for all OpenCode sessions (chat, bot, etc.)
 startUsageTracker(async (sessionId) => {
