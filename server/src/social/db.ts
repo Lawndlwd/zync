@@ -118,6 +118,18 @@ export function initSocialDb(): void {
 
     CREATE INDEX IF NOT EXISTS idx_workshop_cards_board ON workshop_cards(board_id);
     CREATE INDEX IF NOT EXISTS idx_workshop_messages_board ON workshop_messages(board_id);
+
+    CREATE TABLE IF NOT EXISTS social_account_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL REFERENCES social_accounts(id),
+      date TEXT NOT NULL,
+      followers INTEGER DEFAULT 0,
+      following INTEGER DEFAULT 0,
+      posts_count INTEGER DEFAULT 0,
+      profile_views INTEGER DEFAULT 0,
+      UNIQUE(account_id, date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_snapshots_account_date ON social_account_snapshots(account_id, date);
   `)
 
   // Migration: add sync_cursor column if missing
@@ -158,6 +170,17 @@ export function initSocialDb(): void {
     db.exec('CREATE INDEX IF NOT EXISTS idx_posts_account ON social_posts(account_id)')
     logger.info('Added account_id to social_posts')
   }
+  // Migration: add rich metrics columns to social_posts
+  if (!postCols.some((c) => c.name === 'reach')) {
+    db.exec('ALTER TABLE social_posts ADD COLUMN reach INTEGER DEFAULT 0')
+    db.exec('ALTER TABLE social_posts ADD COLUMN impressions INTEGER DEFAULT 0')
+    db.exec('ALTER TABLE social_posts ADD COLUMN shares_count INTEGER DEFAULT 0')
+    db.exec('ALTER TABLE social_posts ADD COLUMN saves_count INTEGER DEFAULT 0')
+    db.exec('ALTER TABLE social_posts ADD COLUMN video_views INTEGER DEFAULT 0')
+    db.exec('ALTER TABLE social_posts ADD COLUMN clicks INTEGER DEFAULT 0')
+    logger.info('Added reach/impressions/shares/saves/video_views/clicks to social_posts')
+  }
+
   const commentCols = db.prepare("PRAGMA table_info(social_comments)").all() as Array<{ name: string }>
   if (!commentCols.some((c) => c.name === 'account_id')) {
     db.exec('ALTER TABLE social_comments ADD COLUMN account_id INTEGER REFERENCES social_accounts(id)')
@@ -201,6 +224,31 @@ export function updateAccountSyncCursor(platform: string, username: string, curs
   ).run(cursor, platform, username)
 }
 
+// --- Account snapshot helpers ---
+
+export function upsertAccountSnapshot(accountId: number, data: { followers: number; following?: number; posts_count?: number; profile_views?: number }) {
+  const db = getSocialDb()
+  const today = new Date().toISOString().split('T')[0]
+  db.prepare(`
+    INSERT INTO social_account_snapshots (account_id, date, followers, following, posts_count, profile_views)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(account_id, date) DO UPDATE SET
+      followers = excluded.followers, following = excluded.following,
+      posts_count = excluded.posts_count, profile_views = excluded.profile_views
+  `).run(accountId, today, data.followers, data.following ?? 0, data.posts_count ?? 0, data.profile_views ?? 0)
+}
+
+export function getAccountSnapshots(accountId: number | undefined, startDate: string, endDate: string) {
+  const db = getSocialDb()
+  if (accountId) {
+    return db.prepare('SELECT * FROM social_account_snapshots WHERE account_id = ? AND date BETWEEN ? AND ? ORDER BY date').all(accountId, startDate, endDate)
+  }
+  return db.prepare(`
+    SELECT date, SUM(followers) as followers, SUM(following) as following, SUM(posts_count) as posts_count, SUM(profile_views) as profile_views
+    FROM social_account_snapshots WHERE date BETWEEN ? AND ? GROUP BY date ORDER BY date
+  `).all(startDate, endDate)
+}
+
 // --- Post helpers ---
 
 export function upsertPost(post: {
@@ -214,11 +262,17 @@ export function upsertPost(post: {
   comments_count?: number
   permalink?: string | null
   account_id?: number | null
+  reach?: number
+  impressions?: number
+  shares_count?: number
+  saves_count?: number
+  video_views?: number
+  clicks?: number
 }) {
   const db = getSocialDb()
   db.prepare(`
-    INSERT INTO social_posts (platform, external_id, content, media_url, posted_at, status, like_count, comments_count, permalink, account_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO social_posts (platform, external_id, content, media_url, posted_at, status, like_count, comments_count, permalink, account_id, reach, impressions, shares_count, saves_count, video_views, clicks)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(platform, external_id) DO UPDATE SET
       content = excluded.content,
       media_url = excluded.media_url,
@@ -226,8 +280,14 @@ export function upsertPost(post: {
       like_count = excluded.like_count,
       comments_count = excluded.comments_count,
       permalink = excluded.permalink,
-      account_id = excluded.account_id
-  `).run(post.platform, post.external_id, post.content, post.media_url ?? null, post.posted_at ?? null, post.status ?? 'published', post.like_count ?? 0, post.comments_count ?? 0, post.permalink ?? null, post.account_id ?? null)
+      account_id = excluded.account_id,
+      reach = excluded.reach,
+      impressions = excluded.impressions,
+      shares_count = excluded.shares_count,
+      saves_count = excluded.saves_count,
+      video_views = excluded.video_views,
+      clicks = excluded.clicks
+  `).run(post.platform, post.external_id, post.content, post.media_url ?? null, post.posted_at ?? null, post.status ?? 'published', post.like_count ?? 0, post.comments_count ?? 0, post.permalink ?? null, post.account_id ?? null, post.reach ?? 0, post.impressions ?? 0, post.shares_count ?? 0, post.saves_count ?? 0, post.video_views ?? 0, post.clicks ?? 0)
 }
 
 export function createDraftPost(post: {
