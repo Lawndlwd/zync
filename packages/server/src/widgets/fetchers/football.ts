@@ -1,73 +1,90 @@
-import { getSecret } from '../../secrets/index.js'
-import { getConfig } from '../../config/index.js'
 import { logger } from '../../lib/logger.js'
+
+// ESPN hidden API — free, no API key, no auth
+// Scoreboard: https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/scoreboard
+// Teams:      https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams
+
+export const LEAGUES = [
+  { slug: 'eng.1', name: 'Premier League' },
+  { slug: 'esp.1', name: 'La Liga' },
+  { slug: 'fra.1', name: 'Ligue 1' },
+  { slug: 'ger.1', name: 'Bundesliga' },
+  { slug: 'ita.1', name: 'Serie A' },
+  { slug: 'uefa.champions', name: 'Champions League' },
+  { slug: 'uefa.europa', name: 'Europa League' },
+  { slug: 'fifa.world', name: 'World Cup' },
+] as const
 
 export interface FootballMatch {
   homeTeam: string
+  homeLogo: string
   awayTeam: string
+  awayLogo: string
   homeScore: number | null
   awayScore: number | null
-  status: string
+  status: string // pre | in | post
+  statusDetail: string
   date: string
   competition: string
 }
 
-export interface FootballTeamData {
-  id: number
-  name: string
-  crest: string
-  nextMatch: FootballMatch | null
-  lastMatch: FootballMatch | null
+export interface FootballData {
+  league: string
+  leagueSlug: string
+  matches: FootballMatch[]
 }
 
-const API_BASE = 'https://api.football-data.org/v4'
-
-async function footballApi(path: string): Promise<any> {
-  const apiKey = getSecret('FOOTBALL_API_KEY') || getConfig('FOOTBALL_API_KEY')
-  if (!apiKey) throw new Error('FOOTBALL_API_KEY not configured')
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'X-Auth-Token': apiKey },
-  })
-  if (!res.ok) throw new Error(`Football API error: ${res.status}`)
+async function espn(path: string): Promise<any> {
+  const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${path}`)
+  if (!res.ok) throw new Error(`ESPN API error: ${res.status}`)
   return res.json()
 }
 
-function mapMatch(m: any): FootballMatch {
-  return {
-    homeTeam: m.homeTeam.shortName || m.homeTeam.name,
-    awayTeam: m.awayTeam.shortName || m.awayTeam.name,
-    homeScore: m.score?.fullTime?.home ?? null,
-    awayScore: m.score?.fullTime?.away ?? null,
-    status: m.status,
-    date: m.utcDate,
-    competition: m.competition?.name || '',
-  }
+export async function fetchLeagueScores(leagueSlug: string): Promise<FootballData> {
+  const data = await espn(`${leagueSlug}/scoreboard`)
+
+  const leagueName = data.leagues?.[0]?.name || leagueSlug
+  const events: any[] = data.events || []
+
+  const matches: FootballMatch[] = events.slice(0, 6).map((evt: any) => {
+    const comp = evt.competitions?.[0]
+    const home = comp?.competitors?.find((c: any) => c.homeAway === 'home')
+    const away = comp?.competitors?.find((c: any) => c.homeAway === 'away')
+    const status = comp?.status
+
+    return {
+      homeTeam: home?.team?.shortDisplayName || home?.team?.displayName || '?',
+      homeLogo: home?.team?.logo || '',
+      awayTeam: away?.team?.shortDisplayName || away?.team?.displayName || '?',
+      awayLogo: away?.team?.logo || '',
+      homeScore: home?.score != null ? parseInt(home.score) : null,
+      awayScore: away?.score != null ? parseInt(away.score) : null,
+      status: status?.type?.state || 'pre', // pre | in | post
+      statusDetail: status?.type?.shortDetail || status?.type?.detail || '',
+      date: evt.date || '',
+      competition: leagueName,
+    }
+  })
+
+  return { league: leagueName, leagueSlug, matches }
 }
 
-export async function fetchTeamData(teamId: number): Promise<FootballTeamData> {
-  const team = await footballApi(`/teams/${teamId}`)
-  const matches = await footballApi(`/teams/${teamId}/matches?status=SCHEDULED,LIVE,IN_PLAY,PAUSED,FINISHED&limit=10`)
-  const allMatches: any[] = matches.matches || []
-  const now = new Date()
-  const past = allMatches.filter((m: any) => new Date(m.utcDate) < now && m.status === 'FINISHED')
-  const upcoming = allMatches.filter((m: any) => new Date(m.utcDate) >= now || ['LIVE', 'IN_PLAY', 'PAUSED'].includes(m.status))
-  const lastMatch = past.length > 0 ? mapMatch(past[past.length - 1]) : null
-  const nextMatch = upcoming.length > 0 ? mapMatch(upcoming[0]) : null
-  return {
-    id: teamId,
-    name: team.shortName || team.name,
-    crest: team.crest,
-    nextMatch,
-    lastMatch,
-  }
-}
-
-export async function searchTeams(query: string): Promise<Array<{ id: number; name: string; crest: string }>> {
-  const data = await footballApi(`/teams?limit=10`)
-  const teams: any[] = data.teams || []
+export async function searchTeams(query: string, leagueSlug = 'eng.1'): Promise<Array<{ id: string; name: string; logo: string }>> {
+  const data = await espn(`${leagueSlug}/teams`)
+  const teams: any[] = data.sports?.[0]?.leagues?.[0]?.teams || []
   const q = query.toLowerCase()
+
   return teams
-    .filter((t: any) => t.name.toLowerCase().includes(q) || (t.shortName || '').toLowerCase().includes(q))
-    .slice(0, 5)
-    .map((t: any) => ({ id: t.id, name: t.shortName || t.name, crest: t.crest }))
+    .map((t: any) => t.team)
+    .filter((t: any) =>
+      t.displayName?.toLowerCase().includes(q) ||
+      t.shortDisplayName?.toLowerCase().includes(q) ||
+      t.abbreviation?.toLowerCase().includes(q)
+    )
+    .slice(0, 8)
+    .map((t: any) => ({
+      id: t.id,
+      name: t.shortDisplayName || t.displayName,
+      logo: t.logos?.[0]?.href || '',
+    }))
 }

@@ -1,17 +1,17 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { createWidget, refreshWidget, searchFootballTeams, type WidgetType } from '@/services/widgets'
-import { Cloud, Trophy, Newspaper, TrendingUp, ArrowLeft, Loader2, X } from 'lucide-react'
+import { createWidget, refreshWidget, fetchFootballLeagues, type WidgetType } from '@/services/widgets'
+import { Cloud, Trophy, Newspaper, TrendingUp, ArrowLeft, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const WIDGET_TYPES = [
   { type: 'weather' as WidgetType, icon: Cloud, color: 'text-sky-400', bg: 'bg-sky-400/10', label: 'Weather', desc: 'Real-time weather for your city' },
-  { type: 'football' as WidgetType, icon: Trophy, color: 'text-emerald-400', bg: 'bg-emerald-400/10', label: 'Football', desc: 'Live scores for your teams' },
-  { type: 'news' as WidgetType, icon: Newspaper, color: 'text-amber-400', bg: 'bg-amber-400/10', label: 'News', desc: 'AI-curated headlines' },
-  { type: 'finance' as WidgetType, icon: TrendingUp, color: 'text-violet-400', bg: 'bg-violet-400/10', label: 'Finance', desc: 'AI financial tips & insights' },
+  { type: 'football' as WidgetType, icon: Trophy, color: 'text-emerald-400', bg: 'bg-emerald-400/10', label: 'Football', desc: 'Live scores by league' },
+  { type: 'news' as WidgetType, icon: Newspaper, color: 'text-amber-400', bg: 'bg-amber-400/10', label: 'News', desc: 'Top 3 trending headlines' },
+  { type: 'finance' as WidgetType, icon: TrendingUp, color: 'text-violet-400', bg: 'bg-violet-400/10', label: 'Finance', desc: 'Top 3 financial insights' },
 ] as const
 
 const FINANCE_OPTIONS = ['crypto', 'stocks', 'savings', 'real estate', 'budgeting']
@@ -20,19 +20,22 @@ export function AddWidgetModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const [step, setStep] = useState<'pick' | 'config'>('pick')
   const [selectedType, setSelectedType] = useState<WidgetType | null>(null)
 
-  // Weather state
+  // Weather
   const [city, setCity] = useState('Paris')
 
-  // Football state
-  const [teamQuery, setTeamQuery] = useState('')
-  const [teamResults, setTeamResults] = useState<Array<{ id: number; name: string; crest: string }>>([])
-  const [selectedTeams, setSelectedTeams] = useState<Array<{ id: number; name: string }>>([])
-  const [searching, setSearching] = useState(false)
+  // Football
+  const [selectedLeague, setSelectedLeague] = useState('eng.1')
+  const { data: leagues = [] } = useQuery({
+    queryKey: ['football-leagues'],
+    queryFn: fetchFootballLeagues,
+    staleTime: Infinity,
+    enabled: open && selectedType === 'football',
+  })
 
-  // News state
+  // News
   const [topics, setTopics] = useState('technology, world')
 
-  // Finance state
+  // Finance
   const [focus, setFocus] = useState<string[]>(['savings'])
 
   const queryClient = useQueryClient()
@@ -43,12 +46,11 @@ export function AddWidgetModal({ open, onOpenChange }: { open: boolean; onOpenCh
       let settings: Record<string, any> = {}
       switch (selectedType) {
         case 'weather': settings = { city }; break
-        case 'football': settings = { teams: selectedTeams }; break
+        case 'football': settings = { league: selectedLeague }; break
         case 'news': settings = { topics: topics.split(',').map(t => t.trim()).filter(Boolean) }; break
         case 'finance': settings = { focus }; break
       }
       const widget = await createWidget(selectedType, settings)
-      // Fire and forget the refresh — don't block the modal close
       refreshWidget(widget.id).catch(() => {})
       return widget
     },
@@ -62,23 +64,10 @@ export function AddWidgetModal({ open, onOpenChange }: { open: boolean; onOpenCh
     setStep('pick')
     setSelectedType(null)
     setCity('Paris')
-    setTeamQuery('')
-    setTeamResults([])
-    setSelectedTeams([])
+    setSelectedLeague('eng.1')
     setTopics('technology, world')
     setFocus(['savings'])
     onOpenChange(false)
-  }
-
-  async function handleTeamSearch(q: string) {
-    setTeamQuery(q)
-    if (q.length < 2) { setTeamResults([]); return }
-    setSearching(true)
-    try {
-      const results = await searchFootballTeams(q)
-      setTeamResults(results.filter(r => !selectedTeams.some(s => s.id === r.id)))
-    } catch { setTeamResults([]) }
-    setSearching(false)
   }
 
   function toggleFocus(item: string) {
@@ -86,7 +75,7 @@ export function AddWidgetModal({ open, onOpenChange }: { open: boolean; onOpenCh
   }
 
   const canSubmit = selectedType === 'weather' ? city.trim().length > 0
-    : selectedType === 'football' ? selectedTeams.length > 0
+    : selectedType === 'football' ? !!selectedLeague
     : selectedType === 'news' ? topics.trim().length > 0
     : selectedType === 'finance' ? focus.length > 0
     : false
@@ -137,34 +126,24 @@ export function AddWidgetModal({ open, onOpenChange }: { open: boolean; onOpenCh
         {step === 'config' && selectedType === 'football' && (
           <div className="space-y-4">
             <div>
-              <label className="text-sm text-zinc-400 mb-1 block">Search teams</label>
-              <Input value={teamQuery} onChange={e => handleTeamSearch(e.target.value)} placeholder="e.g. Arsenal, Barcelona..." />
-            </div>
-            {searching && <p className="text-xs text-zinc-500">Searching...</p>}
-            {teamResults.length > 0 && (
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {teamResults.map(t => (
+              <label className="text-sm text-zinc-400 mb-1 block">League</label>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {leagues.map(l => (
                   <button
-                    key={t.id}
-                    onClick={() => { setSelectedTeams(prev => [...prev, { id: t.id, name: t.name }]); setTeamResults(prev => prev.filter(r => r.id !== t.id)); setTeamQuery('') }}
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-white/[0.06] text-sm text-zinc-200"
+                    key={l.slug}
+                    onClick={() => setSelectedLeague(l.slug)}
+                    className={cn(
+                      'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors',
+                      selectedLeague === l.slug
+                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                        : 'text-zinc-300 hover:bg-white/[0.06] border border-transparent'
+                    )}
                   >
-                    {t.crest && <img src={t.crest} alt="" className="w-5 h-5" />}
-                    {t.name}
+                    {l.name}
                   </button>
                 ))}
               </div>
-            )}
-            {selectedTeams.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedTeams.map(t => (
-                  <span key={t.id} className="flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-400 px-3 py-1 text-xs">
-                    {t.name}
-                    <button onClick={() => setSelectedTeams(prev => prev.filter(s => s.id !== t.id))}><X size={12} /></button>
-                  </span>
-                ))}
-              </div>
-            )}
+            </div>
             <Button onClick={() => mutation.mutate()} disabled={!canSubmit || mutation.isPending} className="w-full">
               {mutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Add Widget'}
             </Button>

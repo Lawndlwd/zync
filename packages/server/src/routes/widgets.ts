@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { getWidgets, getWidget, createWidget, deleteWidget, updateWidgetCache, updateWidgetSettings } from '../widgets/db.js'
 import { fetchWeather } from '../widgets/fetchers/weather.js'
-import { fetchTeamData, searchTeams } from '../widgets/fetchers/football.js'
+import { fetchLeagueScores, searchTeams, LEAGUES } from '../widgets/fetchers/football.js'
 import { fetchNews } from '../widgets/fetchers/news.js'
 import { fetchFinanceTips } from '../widgets/fetchers/finance.js'
 import { logger } from '../lib/logger.js'
@@ -90,12 +90,18 @@ widgetsRouter.post('/refresh-all', async (_req, res) => {
   }
 })
 
-// Search football teams
+// List available football leagues
+widgetsRouter.get('/football/leagues', (_req, res) => {
+  res.json(LEAGUES)
+})
+
+// Search football teams within a league
 widgetsRouter.get('/football/search', async (req, res) => {
   try {
     const q = (req.query.q as string) || ''
+    const league = (req.query.league as string) || 'eng.1'
     if (!q) return res.json([])
-    const teams = await searchTeams(q)
+    const teams = await searchTeams(q, league)
     res.json(teams)
   } catch (err) {
     logger.error({ err }, 'Failed to search teams')
@@ -107,15 +113,8 @@ export async function refreshWidget(type: string, settings: Record<string, any>)
   switch (type) {
     case 'weather':
       return fetchWeather(settings.city || 'Paris')
-    case 'football': {
-      const teams = settings.teams || []
-      const results = await Promise.allSettled(
-        teams.map((t: { id: number }) => fetchTeamData(t.id))
-      )
-      return results
-        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
-        .map(r => r.value)
-    }
+    case 'football':
+      return fetchLeagueScores(settings.league || 'eng.1')
     case 'news':
       return fetchNews(settings.topics || ['technology', 'world'])
     case 'finance':

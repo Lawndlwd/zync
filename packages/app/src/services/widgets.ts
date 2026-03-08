@@ -11,6 +11,11 @@ export interface Widget {
   created_at: string
 }
 
+export interface FootballLeague {
+  slug: string
+  name: string
+}
+
 export async function fetchWidgets(): Promise<Widget[]> {
   const res = await fetch(API)
   if (!res.ok) throw new Error(`Widgets error: ${res.status}`)
@@ -54,8 +59,8 @@ export async function refreshAllWidgets(): Promise<{ refreshed: number }> {
   return res.json()
 }
 
-export async function searchFootballTeams(q: string): Promise<Array<{ id: number; name: string; crest: string }>> {
-  const res = await fetch(`${API}/football/search?q=${encodeURIComponent(q)}`)
-  if (!res.ok) throw new Error(`Search error: ${res.status}`)
+export async function fetchFootballLeagues(): Promise<FootballLeague[]> {
+  const res = await fetch(`${API}/football/leagues`)
+  if (!res.ok) throw new Error(`Leagues error: ${res.status}`)
   return res.json()
 }

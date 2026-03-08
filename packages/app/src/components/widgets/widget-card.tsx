@@ -8,15 +8,16 @@ import {
   Droplets, Wind, Sun, CloudRain, CloudSnow, CloudLightning, CloudFog,
 } from 'lucide-react'
 
-// Weather icon mapper
+// Open-Meteo WMO icon mapper
 function WeatherIcon({ code, size = 20 }: { code: string; size?: number }) {
-  if (code?.includes('01')) return <Sun size={size} className="text-amber-400" />
-  if (code?.includes('02') || code?.includes('03') || code?.includes('04')) return <Cloud size={size} className="text-zinc-400" />
-  if (code?.includes('09') || code?.includes('10')) return <CloudRain size={size} className="text-sky-400" />
-  if (code?.includes('11')) return <CloudLightning size={size} className="text-amber-300" />
-  if (code?.includes('13')) return <CloudSnow size={size} className="text-blue-200" />
-  if (code?.includes('50')) return <CloudFog size={size} className="text-zinc-500" />
-  return <Cloud size={size} className="text-zinc-400" />
+  switch (code) {
+    case 'clear': return <Sun size={size} className="text-amber-400" />
+    case 'rain': return <CloudRain size={size} className="text-sky-400" />
+    case 'snow': return <CloudSnow size={size} className="text-blue-200" />
+    case 'thunder': return <CloudLightning size={size} className="text-amber-300" />
+    case 'fog': return <CloudFog size={size} className="text-zinc-500" />
+    default: return <Cloud size={size} className="text-zinc-400" />
+  }
 }
 
 // ── Weather Card ─────────────────────────────────────────────────
@@ -52,33 +53,28 @@ function WeatherCardContent({ data }: { data: any }) {
 
 // ── Football Card ────────────────────────────────────────────────
 function FootballCardContent({ data }: { data: any }) {
-  if (!data || !Array.isArray(data) || data.length === 0) return <p className="text-xs text-zinc-600">No data yet</p>
+  if (!data?.matches?.length) return <p className="text-xs text-zinc-600">No matches today</p>
   return (
-    <div className="space-y-3">
-      {data.map((team: any) => (
-        <div key={team.id}>
-          <div className="flex items-center gap-2 mb-1.5">
-            {team.crest && <img src={team.crest} alt="" className="w-4 h-4" />}
-            <span className="text-sm font-medium text-zinc-200">{team.name}</span>
+    <div className="space-y-1.5">
+      <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">{data.league}</p>
+      {data.matches.slice(0, 4).map((m: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 rounded-md bg-white/[0.04] px-2 py-1.5 text-xs">
+          <div className="flex-1 text-right text-zinc-300 truncate flex items-center justify-end gap-1">
+            <span>{m.homeTeam}</span>
+            {m.homeLogo && <img src={m.homeLogo} alt="" className="w-3.5 h-3.5" />}
           </div>
-          {team.nextMatch && (
-            <div className="rounded-md bg-white/[0.04] px-2.5 py-1.5 text-xs">
-              <p className="text-zinc-500 mb-0.5">
-                {['LIVE','IN_PLAY','PAUSED'].includes(team.nextMatch.status) ? 'LIVE' : 'Next'}
-              </p>
-              <p className="text-zinc-300">
-                {team.nextMatch.homeTeam} {team.nextMatch.homeScore !== null ? `${team.nextMatch.homeScore} - ${team.nextMatch.awayScore}` : 'vs'} {team.nextMatch.awayTeam}
-              </p>
-              <p className="text-[10px] text-zinc-600">{team.nextMatch.competition}</p>
-            </div>
-          )}
-          {!team.nextMatch && team.lastMatch && (
-            <div className="rounded-md bg-white/[0.04] px-2.5 py-1.5 text-xs">
-              <p className="text-zinc-500 mb-0.5">Last</p>
-              <p className="text-zinc-300">
-                {team.lastMatch.homeTeam} {team.lastMatch.homeScore} - {team.lastMatch.awayScore} {team.lastMatch.awayTeam}
-              </p>
-            </div>
+          <span className={cn(
+            'font-mono font-bold px-1.5 min-w-[36px] text-center',
+            m.status === 'in' ? 'text-emerald-400' : 'text-zinc-400'
+          )}>
+            {m.homeScore != null ? `${m.homeScore}-${m.awayScore}` : 'vs'}
+          </span>
+          <div className="flex-1 text-zinc-300 truncate flex items-center gap-1">
+            {m.awayLogo && <img src={m.awayLogo} alt="" className="w-3.5 h-3.5" />}
+            <span>{m.awayTeam}</span>
+          </div>
+          {m.status === 'in' && (
+            <span className="shrink-0 text-[9px] bg-emerald-500/20 text-emerald-400 rounded px-1">LIVE</span>
           )}
         </div>
       ))}
@@ -90,11 +86,14 @@ function FootballCardContent({ data }: { data: any }) {
 function NewsCardContent({ data }: { data: any }) {
   if (!data || !Array.isArray(data) || data.length === 0) return <p className="text-xs text-zinc-600">No data yet</p>
   return (
-    <div className="space-y-2.5">
-      {data.slice(0, 4).map((item: any, i: number) => (
-        <div key={i}>
-          <p className="text-xs font-medium text-zinc-200 leading-snug">{item.headline}</p>
-          <p className="text-[10px] text-zinc-500 mt-0.5">{item.summary}</p>
+    <div className="space-y-2">
+      {data.slice(0, 3).map((item: any, i: number) => (
+        <div key={i} className="flex items-start gap-2">
+          <span className="text-[10px] text-zinc-600 mt-0.5 shrink-0">{i + 1}.</span>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-zinc-200 leading-snug truncate cursor-default" title={item.title}>{item.title}</p>
+            <p className="text-[10px] text-zinc-600">{item.source} · {item.topic}</p>
+          </div>
         </div>
       ))}
     </div>
@@ -105,14 +104,11 @@ function NewsCardContent({ data }: { data: any }) {
 function FinanceCardContent({ data }: { data: any }) {
   if (!data || !Array.isArray(data) || data.length === 0) return <p className="text-xs text-zinc-600">No data yet</p>
   return (
-    <div className="space-y-2.5">
-      {data.slice(0, 4).map((tip: any, i: number) => (
-        <div key={i}>
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="rounded-full bg-violet-500/10 text-violet-400 px-1.5 py-0.5 text-[10px] capitalize">{tip.category}</span>
-          </div>
-          <p className="text-xs text-zinc-300">{tip.title}</p>
-          <p className="text-[10px] text-zinc-500">{tip.insight}</p>
+    <div className="space-y-2">
+      {data.slice(0, 3).map((tip: any, i: number) => (
+        <div key={i} className="flex items-start gap-2">
+          <span className="rounded-full bg-violet-500/10 text-violet-400 px-1.5 py-0.5 text-[9px] capitalize shrink-0 mt-0.5">{tip.category}</span>
+          <p className="text-xs text-zinc-300 leading-snug truncate cursor-default" title={tip.title}>{tip.title}</p>
         </div>
       ))}
     </div>
@@ -143,7 +139,7 @@ function WidgetCard({ widget }: { widget: Widget }) {
   })
 
   const subtitle = widget.type === 'weather' ? widget.settings.city
-    : widget.type === 'football' ? widget.settings.teams?.map((t: any) => t.name).join(', ')
+    : widget.type === 'football' ? widget.cached_data?.league
     : widget.type === 'news' ? widget.settings.topics?.join(', ')
     : widget.settings.focus?.join(', ')
 
