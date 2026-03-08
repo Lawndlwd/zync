@@ -16,6 +16,12 @@ function getDocsRoot(): string {
   return root
 }
 
+/** Extract path param — Express 5 wildcard {*path} returns an array */
+function getPathParam(params: Record<string, unknown>): string {
+  const p = params.path
+  return Array.isArray(p) ? p.join('/') : String(p)
+}
+
 /** Prevent path traversal — resolve and verify the path stays inside root */
 function safePath(root: string, ...segments: string[]): string {
   const resolved = join(root, ...segments)
@@ -160,7 +166,7 @@ documentsRouter.get('/', (req, res) => {
 documentsRouter.get('/file/{*path}', (req, res) => {
   try {
     const root = getDocsRoot()
-    const docPath = (req.params as Record<string, string>).path
+    const docPath = getPathParam(req.params as Record<string, unknown>)
     const filePath = safePath(root, docPath)
     if (!existsSync(filePath)) {
       res.status(404).json({ error: 'Document not found' })
@@ -212,7 +218,7 @@ documentsRouter.post('/', validate(DocumentCreateSchema), (req, res) => {
 documentsRouter.put('/file/{*path}', validate(DocumentUpdateSchema), (req, res) => {
   try {
     const root = getDocsRoot()
-    const docPath = (req.params as Record<string, string>).path
+    const docPath = getPathParam(req.params as Record<string, unknown>)
     const filePath = safePath(root, docPath)
     const { title, content, folder: newFolder, metadata } = req.body
 
@@ -274,7 +280,7 @@ documentsRouter.put('/file/{*path}', validate(DocumentUpdateSchema), (req, res) 
 documentsRouter.delete('/file/{*path}', (req, res) => {
   try {
     const root = getDocsRoot()
-    const docPath = (req.params as Record<string, string>).path
+    const docPath = getPathParam(req.params as Record<string, unknown>)
     const filePath = safePath(root, docPath)
     rmSync(filePath, { force: true })
     res.json({ success: true })
