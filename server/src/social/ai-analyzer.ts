@@ -199,9 +199,9 @@ export interface TrendResult {
 
 export async function searchTrends(topic: string, platform: string): Promise<TrendResult[]> {
   const platformHint = platform && platform !== 'all' ? ` specifically for ${platform}` : ' across social media platforms'
-  const prompt = `You are a social media trend analyst. Based on your knowledge, suggest 6 trending topics related to "${topic}"${platformHint}.
+  const prompt = `You are a social media trend analyst. Suggest 6 trending topics related to "${topic}"${platformHint}.
 
-Do NOT search the web or browse any websites. Use your existing knowledge only. Answer immediately.
+You may check up to 3 websites for recent data, but do not browse more than that. Be quick and focused.
 
 Return a JSON array of exactly 6 items. Each item must have:
 - trend_title: catchy title for the trend
