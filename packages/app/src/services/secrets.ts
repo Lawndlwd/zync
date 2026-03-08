@@ -37,3 +37,16 @@ export async function setSecret(name: string, value: string, category: string = 
 export async function deleteSecret(name: string): Promise<void> {
   await fetchJSON(`/api/secrets/${encodeURIComponent(name)}`, { method: 'DELETE' })
 }
+
+export async function revealSecret(name: string, secretKey: string): Promise<string> {
+  const res = await fetch(`/api/secrets/${encodeURIComponent(name)}/reveal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secretKey }),
+  })
+  if (res.status === 403) throw new Error('Invalid secret key')
+  if (res.status === 404) throw new Error('Secret not found')
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  const data = await res.json()
+  return data.value
+}
