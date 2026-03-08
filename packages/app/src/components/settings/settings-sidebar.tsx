@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 export type SettingsSection =
   | 'integrations' | 'jira' | 'gitlab' | 'github' | 'linear' | 'channels' | 'social'
   | 'agent' | 'memories' | 'schedules' | 'tools'
-  | 'security' | 'vault' | 'config' | 'tool-config'
+  | 'security' | 'config' | 'tool-config'
   | 'briefings'
   | 'opencode'
 
@@ -48,7 +48,6 @@ const groups: SidebarGroup[] = [
     label: 'Security',
     icon: <ShieldCheck size={15} />,
     children: [
-      { id: 'vault', label: 'Vault' },
       { id: 'config', label: 'Configuration' },
       { id: 'tool-config', label: 'Tool Config' },
     ],

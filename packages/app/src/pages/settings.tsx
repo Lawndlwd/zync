@@ -15,7 +15,6 @@ import { ChannelsSettingsCard } from '@/components/settings/channels-settings'
 import { MemoriesSettingsCard } from '@/components/settings/memories-settings'
 import { SchedulesSettingsCard } from '@/components/settings/schedules-settings'
 import { ToolsSettingsCard } from '@/components/settings/tools-settings'
-import { VaultSettingsCard } from '@/components/settings/vault-settings'
 import { ConfigSettingsCard } from '@/components/settings/config-settings'
 import { ToolConfigSettingsCard } from '@/components/settings/tool-config-settings'
 import { BriefingsSettingsCard } from '@/components/settings/briefings-settings'
@@ -34,7 +33,6 @@ const sectionToGroup: Record<string, SettingsSection> = {
   schedules: 'agent',
   tools: 'agent',
   skills: 'agent',
-  vault: 'security',
   config: 'security',
   'tool-config': 'security',
 }
@@ -43,7 +41,7 @@ const sectionToGroup: Record<string, SettingsSection> = {
 const groupSections: Record<string, SettingsSection[]> = {
   integrations: ['jira', 'gitlab', 'github', 'linear', 'channels', 'social'],
   agent: ['memories', 'schedules', 'tools'],
-  security: ['vault', 'config', 'tool-config'],
+  security: ['config', 'tool-config'],
   briefings: ['briefings'],
   opencode: ['opencode'],
 }
@@ -171,9 +169,6 @@ export function SettingsPage() {
           {/* Security */}
           {activeGroup === 'security' && (
             <>
-              <div ref={setRef('vault')}>
-                <VaultSettingsCard />
-              </div>
               <div ref={setRef('config')}>
                 <ConfigSettingsCard />
               </div>
