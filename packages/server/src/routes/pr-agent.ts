@@ -13,8 +13,8 @@ import { PrAgentRunSchema } from '@zync/shared/schemas'
 export const prAgentRouter = Router()
 
 const AGENT_MODELS_PATH = resolve(import.meta.dirname, '../../data/agent-models.json')
-const VENV_PYTHON = resolve(import.meta.dirname, '../../.venv/bin/python')
-const WRAPPER_SCRIPT = resolve(import.meta.dirname, '../../scripts/run_pr_agent.py')
+const VENV_PYTHON = resolve(import.meta.dirname, '../../../pr-agent/.venv/bin/python')
+const WRAPPER_SCRIPT = resolve(import.meta.dirname, '../../../pr-agent/run_pr_agent.py')
 const VALID_TOOLS = ['review', 'describe', 'improve', 'ask'] as const
 type PRAgentTool = (typeof VALID_TOOLS)[number]
 
