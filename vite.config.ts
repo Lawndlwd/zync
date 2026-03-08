@@ -1,10 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import path from 'path'
 
+const backendUrl = process.env.VITE_BACKEND_URL || 'http://localhost:3001'
+const wakewordUrl = process.env.VITE_WAKEWORD_URL || 'ws://localhost:9000'
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), basicSsl()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -30,13 +34,19 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: backendUrl,
         changeOrigin: true,
+        timeout: 180_000, // 3 min for LLM-powered endpoints
       },
       '/ws/wakeword': {
-        target: 'ws://localhost:9000',
+        target: wakewordUrl,
         ws: true,
         rewrite: (path) => path.replace('/ws/wakeword', '/ws'),
+      },
+      '/opencode': {
+        target: process.env.VITE_OPENCODE_URL || 'http://localhost:4096',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/opencode/, ''),
       },
     },
     watch: {
