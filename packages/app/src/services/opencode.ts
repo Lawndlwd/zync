@@ -6,7 +6,7 @@ import type {
   OpenCodeProvider,
   OpenCodeConnectionStatus,
   OpenCodeTokens,
-} from '../types/opencode'
+} from '@zync/shared/types'
 
 const DEFAULT_SERVER_URL = '/opencode'
 

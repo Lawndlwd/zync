@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { SocialPlatform } from '../types/social'
+import type { SocialPlatform } from '@zync/shared/types'
 
 interface SocialFilterState {
   platform: SocialPlatform | null

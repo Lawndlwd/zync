@@ -15,7 +15,7 @@ const platforms: Array<{ key: SocialPlatform; label: string; icon: typeof Instag
   { key: 'telegram', label: 'Telegram', icon: Send, gradient: 'from-blue-400 to-blue-600' },
 ]
 
-const featureToggles: Array<{ key: keyof typeof import('@/types/settings').defaultSettings.social.features; label: string; description: string }> = [
+const featureToggles: Array<{ key: keyof typeof import('@zync/shared/types').defaultSettings.social.features; label: string; description: string }> = [
   { key: 'contentComposer', label: 'Content Composer', description: 'Create, draft, and schedule posts with AI-powered media analysis' },
   { key: 'unifiedInbox', label: 'Unified Inbox', description: 'View and reply to comments across platforms in one place' },
   { key: 'analytics', label: 'Analytics Dashboard', description: 'Track engagement, growth, and posting performance' },

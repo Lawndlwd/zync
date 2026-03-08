@@ -3,7 +3,7 @@ import { LayoutDashboard, Calendar, Lightbulb, PenSquare, Inbox, Settings, Plus,
 import { useSocialFilter } from '../../store/social-filter'
 import { getAccounts } from '../../services/social'
 import { Suspense, useEffect, useState } from 'react'
-import type { SocialAccount, SocialPlatform } from '../../types/social'
+import type { SocialAccount, SocialPlatform } from '@zync/shared/types'
 
 const tabs = [
   { to: '/social/dashboard', label: 'Dashboard', icon: LayoutDashboard },
