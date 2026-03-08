@@ -1,13 +1,5 @@
-import type { SocialAccount, SocialPost, SocialComment, ReplyRule, ContentIdea, SocialPlatform, SocialMedia, MediaAnalysis, CaptionSuggestion, WorkshopBoard, WorkshopCard, WorkshopMessage } from '@/types/social'
-
-export interface SocialInsights {
-  engagementOverTime: Array<{ date: string; likes: number; comments: number }>
-  postFrequency: Array<{ week: string; count: number }>
-  topPosts: Array<{ external_id: string; content: string; permalink: string | null; engagement: number; like_count: number; comments_count: number }>
-  commentStatusBreakdown: Array<{ status: string; count: number }>
-  postingHeatmap: Array<{ day_of_week: number; hour: number; avg_engagement: number }>
-  growthOverTime: Array<{ date: string; cumulative_likes: number; cumulative_comments: number }>
-}
+import type { SocialAccount, SocialPost, SocialComment, ReplyRule, ContentIdea, SocialPlatform, SocialMedia, MediaAnalysis, CaptionSuggestion, SocialInsights, WorkshopBoard, WorkshopCard, WorkshopMessage } from '@/types/social'
+export type { SocialInsights }
 
 const API_BASE = '/api/social'
 
@@ -117,8 +109,9 @@ export async function deleteRuleApi(id: number): Promise<void> {
   await fetchJSON(`${API_BASE}/rules/${id}`, { method: 'DELETE' })
 }
 
-export async function getInsights(platform: SocialPlatform, days = 30, accountId?: number): Promise<SocialInsights> {
-  const query = new URLSearchParams({ platform, days: String(days) })
+export async function getInsights(platform: SocialPlatform | 'all' | null = null, days = 30, accountId?: number): Promise<SocialInsights> {
+  const query = new URLSearchParams({ days: String(days) })
+  if (platform && platform !== 'all') query.set('platform', platform)
   if (accountId != null) query.set('accountId', String(accountId))
   return fetchJSON(`${API_BASE}/insights?${query}`)
 }

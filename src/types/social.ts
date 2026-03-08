@@ -99,6 +99,41 @@ export interface CalendarPost extends SocialPost {
   dateKey: string
 }
 
+export interface SocialInsights {
+  summary: {
+    followers: number
+    followersDelta: number
+    engagementRate: number
+    engagementRateDelta: number
+    totalReach: number
+    reachDelta: number
+    totalImpressions: number
+    impressionsDelta: number
+    postsPublished: number
+    postsDelta: number
+  }
+  sparklines: {
+    followers: Array<{ date: string; value: number }>
+    engagementRate: Array<{ date: string; value: number }>
+    reach: Array<{ date: string; value: number }>
+    impressions: Array<{ date: string; value: number }>
+    posts: Array<{ date: string; value: number }>
+  }
+  reachAndImpressions: Array<{ date: string; reach: number; impressions: number }>
+  followerGrowth: Array<{ date: string; followers: number }>
+  followerGrowthPrev: Array<{ date: string; followers: number }>
+  engagementBreakdown: Array<{ type: string; value: number }>
+  engagementRateOverTime: Array<{ date: string; rate: number }>
+  postingHeatmap: Array<{ day_of_week: number; hour: number; avg_engagement: number }>
+  topPosts: Array<{
+    id: number; external_id: string; content: string; media_url: string | null; permalink: string | null
+    reach: number; impressions: number; engagement: number; engagement_rate: number
+    like_count: number; comments_count: number; shares_count: number; saves_count: number
+  }>
+  platformComparison: Array<{ platform: string; avg_engagement_rate: number; total_reach: number; total_posts: number }>
+  postFrequency: Array<{ week: string; count: number; avg_engagement_rate: number }>
+}
+
 export interface SocialFeatures {
   contentComposer: boolean
   unifiedInbox: boolean

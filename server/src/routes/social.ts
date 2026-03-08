@@ -239,15 +239,13 @@ socialRouter.delete('/rules/:id', (req, res) => {
   }
 })
 
-// GET /api/social/insights — analytics data for a platform
+// GET /api/social/insights — analytics data for a platform (or all)
 socialRouter.get('/insights', (req, res) => {
   try {
-    const platform = req.query.platform as string
+    const rawPlatform = req.query.platform as string | undefined
+    const platform = rawPlatform && rawPlatform !== 'all' ? rawPlatform : null
     const days = req.query.days ? Number(req.query.days) : 30
     const accountId = req.query.accountId ? Number(req.query.accountId) : undefined
-    if (!platform) {
-      return res.status(400).json({ error: 'platform query param is required' })
-    }
     const insights = getInsights(platform, days, accountId)
     res.json(insights)
   } catch (err) {
