@@ -130,6 +130,18 @@ export function initSocialDb(): void {
       UNIQUE(account_id, date)
     );
     CREATE INDEX IF NOT EXISTS idx_snapshots_account_date ON social_account_snapshots(account_id, date);
+
+    CREATE TABLE IF NOT EXISTS social_saved_trends (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      topic TEXT NOT NULL,
+      platform TEXT NOT NULL DEFAULT 'all',
+      trend_title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      hashtags TEXT NOT NULL DEFAULT '[]',
+      content_ideas TEXT NOT NULL DEFAULT '[]',
+      relevance TEXT NOT NULL DEFAULT 'trending',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `)
 
   // Migration: add sync_cursor column if missing
@@ -978,4 +990,26 @@ export function insertWorkshopMessage(boardId: number, role: string, content: st
     'INSERT INTO workshop_messages (board_id, role, content) VALUES (?, ?, ?)'
   ).run(boardId, role, content)
   return result.lastInsertRowid
+}
+
+// --- Trend bookmark helpers ---
+
+export function getSavedTrends() {
+  return getSocialDb().prepare('SELECT * FROM social_saved_trends ORDER BY created_at DESC').all()
+}
+
+export function saveTrend(trend: {
+  topic: string; platform: string; trend_title: string; description: string;
+  hashtags: string; content_ideas: string; relevance: string;
+}) {
+  const db = getSocialDb()
+  const result = db.prepare(`
+    INSERT INTO social_saved_trends (topic, platform, trend_title, description, hashtags, content_ideas, relevance)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(trend.topic, trend.platform, trend.trend_title, trend.description, trend.hashtags, trend.content_ideas, trend.relevance)
+  return result.lastInsertRowid
+}
+
+export function deleteSavedTrend(id: number) {
+  getSocialDb().prepare('DELETE FROM social_saved_trends WHERE id = ?').run(id)
 }
