@@ -159,6 +159,17 @@ export function SocialCreate() {
       .finally(() => setLoading(false))
   }, [id, navigate])
 
+  // Pre-fill from trend search
+  useEffect(() => {
+    const trendParam = searchParams.get('trend')
+    if (trendParam && !id) {
+      try {
+        const decoded = decodeURIComponent(atob(trendParam))
+        setContent(decoded)
+      } catch { /* ignore malformed */ }
+    }
+  }, [searchParams, id])
+
   const togglePlatform = (pid: SocialPlatform) => {
     setSelectedPlatforms((prev) => prev.includes(pid) ? prev.filter((p) => p !== pid) : [...prev, pid])
   }
