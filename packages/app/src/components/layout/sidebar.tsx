@@ -6,7 +6,6 @@ import {
   KanbanSquare,
   Settings,
   BarChart3,
-  Activity,
   FileText,
   Monitor,
   MessageCircle,
@@ -14,9 +13,9 @@ import {
   Mail,
   ChevronDown,
   ChevronRight,
-  Briefcase,
-  UserCircle,
+  GraduationCap,
   Share2,
+  Shield,
 } from 'lucide-react'
 import { useOpenCodeStore } from '@/store/opencode'
 
@@ -37,8 +36,8 @@ type NavGroup = {
 
 const navGroups: NavGroup[] = [
   {
-    id: 'core',
-    label: 'Core',
+    id: 'home',
+    label: 'Home',
     items: [
       { to: '/', icon: LayoutDashboard, label: 'Dashboard', color: 'text-indigo-400' },
       { to: '/productivity', icon: BarChart3, label: 'Productivity', color: 'text-orange-400' },
@@ -47,15 +46,20 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    id: 'tools',
-    label: 'Tools',
+    id: 'workspace',
+    label: 'Workspace',
     items: [
       { to: '/documents', icon: FileText, label: 'Documents', color: 'text-teal-400' },
-      { to: '/activity', icon: Activity, label: 'Activity', color: 'text-rose-400' },
       { to: '/canvas', icon: Monitor, label: 'Canvas', color: 'text-pink-400' },
-      { to: '/jobs', icon: Briefcase, label: 'Job Search', color: 'text-amber-400' },
-      { to: '/profile', icon: UserCircle, label: 'Profile & CV', color: 'text-teal-400' },
+      { to: '/vault', icon: Shield, label: 'Vault', color: 'text-amber-400' },
+    ],
+  },
+  {
+    id: 'connect',
+    label: 'Connect',
+    items: [
       { to: '/social', icon: Share2, label: 'Social Media', color: 'text-fuchsia-400' },
+      { to: '/career', icon: GraduationCap, label: 'Career', color: 'text-teal-400' },
     ],
   },
 ]
