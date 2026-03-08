@@ -1,14 +1,15 @@
 import express from 'express'
 import cors from 'cors'
-import cron from 'node-cron'
 import { config } from 'dotenv'
 import { jiraRouter } from './routes/jira.js'
+import { linearRouter } from './routes/linear.js'
 import { llmRouter } from './routes/llm.js'
 import { settingsRouter } from './routes/settings.js'
 import { botRouter } from './routes/bot.js'
 import { activityRouter } from './routes/activity.js'
 import { todosRouter } from './routes/todos.js'
 import { gitlabRouter } from './routes/gitlab.js'
+import { githubRouter } from './routes/github.js'
 import { gitLocalRouter } from './routes/git-local.js'
 import { prAgentRouter } from './routes/pr-agent.js'
 import { documentsRouter } from './routes/documents.js'
@@ -22,8 +23,19 @@ import { setupRouter } from './routes/setup.js'
 import { initDb, initHeartbeat } from './bot/index.js'
 import { getChannelManager } from './channels/manager.js'
 import { handleMessage } from './agent/loop.js'
+import { startUsageTracker } from './opencode/client.js'
+import { insertLLMCall, extractUsageFromSession } from './bot/memory/activity.js'
+import { getDb } from './bot/memory/db.js'
 import { initTodosTable } from './mcp-server/tools/todos.js'
-import { sendMorningBriefing, sendEveningRecap } from './proactive/briefing.js'
+import { scheduleBriefings } from './proactive/briefing.js'
+import { jobsRouter } from './routes/jobs.js'
+import { initJobsDb } from './jobs/db.js'
+import { scheduleJobScraping } from './jobs/scheduler.js'
+import { socialRouter } from './routes/social.js'
+import { telegramRouter } from './routes/telegram.js'
+import { initSocialDb } from './social/db.js'
+import { initTelegramDb } from './telegram/db.js'
+import { scheduleSocialSync } from './social/scheduler.js'
 import { initCanvasWebSocket } from './canvas/renderer.js'
 import { startWakeWordServer, stopWakeWordServer } from './voice/wakeword.js'
 import { WhatsAppAdapter } from './channels/whatsapp.js'
@@ -83,12 +95,14 @@ app.get('/api/health', (_req, res) => {
 
 // Routes
 app.use('/api/jira', jiraRouter)
+app.use('/api/linear', linearRouter)
 app.use('/api/llm', llmRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/bot', botRouter)
 app.use('/api/activity', activityRouter)
 app.use('/api/todos', todosRouter)
 app.use('/api/gitlab', gitlabRouter)
+app.use('/api/github', githubRouter)
 app.use('/api/git-local', gitLocalRouter)
 app.use('/api/pr-agent', prAgentRouter)
 app.use('/api/documents', documentsRouter)
@@ -99,6 +113,9 @@ app.use('/api/canvas', canvasRouter)
 app.use('/api/secrets', secretsRouter)
 app.use('/api/config', configRouter)
 app.use('/api/setup', setupRouter)
+app.use('/api/jobs', jobsRouter)
+app.use('/api/social', socialRouter)
+app.use('/api/telegram', telegramRouter)
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -123,6 +140,9 @@ process.on('SIGINT', () => stopWakeWordServer())
 initDb()
 initTodosTable()
 initHeartbeat()
+initJobsDb()
+initSocialDb()
+initTelegramDb()
 migrateJsonConfigs()
 
 // Initialize channel manager
@@ -157,16 +177,38 @@ channelManager.onMessage(handleMessage)
   // Gmail: no auto-polling — accessed on-demand via MCP tools and briefings
 })()
 
-// Schedule briefings
-if (getConfig('DEFAULT_CHAT_ID')) {
-  cron.schedule(getConfig('MORNING_BRIEFING_CRON', '0 8 * * 1-5') || '0 8 * * 1-5', () => {
-    sendMorningBriefing().catch(err => logger.error({ err }, 'Morning briefing failed'))
-  }, { timezone: getConfig('SCHEDULE_TIMEZONE', 'Europe/Paris') || 'Europe/Paris' })
+// Schedule briefings (reads config; re-called from PUT /briefing/config)
+scheduleBriefings()
 
-  cron.schedule(getConfig('EVENING_RECAP_CRON', '0 18 * * 1-5') || '0 18 * * 1-5', () => {
-    sendEveningRecap().catch(err => logger.error({ err }, 'Evening recap failed'))
-  }, { timezone: getConfig('SCHEDULE_TIMEZONE', 'Europe/Paris') || 'Europe/Paris' })
+// Schedule job scraping if there's an active hunting campaign
+scheduleJobScraping()
 
-  logger.info('Proactive briefings scheduled')
-}
+// Schedule social media sync
+scheduleSocialSync()
+
+// Server-side usage tracking — logs token usage for all OpenCode sessions (chat, bot, etc.)
+startUsageTracker(async (sessionId) => {
+  try {
+    const usage = await extractUsageFromSession(sessionId)
+    if (usage.total_tokens === 0) return
+    if (usage.message_id) {
+      const existing = getDb().prepare('SELECT 1 FROM llm_calls WHERE message_id = ? LIMIT 1').get(usage.message_id)
+      if (existing) return
+    }
+    insertLLMCall({
+      source: 'chat',
+      model: usage.model,
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      total_tokens: usage.total_tokens,
+      tool_names: [],
+      duration_ms: 0,
+      session_id: sessionId,
+      message_id: usage.message_id,
+      cost: usage.cost,
+    })
+  } catch {
+    // ignore
+  }
+})
 
