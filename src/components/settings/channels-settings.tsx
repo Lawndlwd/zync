@@ -63,7 +63,7 @@ function TelegramExtendedConfig() {
             placeholder="10"
             min={1}
           />
-          <p className="mt-0.5 text-[10px] text-zinc-600">Max auto-replies per user per hour.</p>
+          <p className="mt-0.5 text-[10px] text-zinc-600">Max auto-replies per user per minute.</p>
         </div>
       </div>
       <div className="flex items-center justify-between">

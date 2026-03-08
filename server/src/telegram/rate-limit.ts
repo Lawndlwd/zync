@@ -18,7 +18,7 @@ export function isRateLimited(userId: string): boolean {
 }
 
 // Clean up stale entries every 5 minutes
-setInterval(() => {
+const cleanup = setInterval(() => {
   const now = Date.now()
   for (const [userId, timestamps] of hits) {
     const recent = timestamps.filter((t) => now - t < 60_000)
@@ -26,3 +26,4 @@ setInterval(() => {
     else hits.set(userId, recent)
   }
 }, 5 * 60_000)
+cleanup.unref()

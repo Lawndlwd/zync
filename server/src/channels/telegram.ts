@@ -138,7 +138,12 @@ export class TelegramAdapter implements ChannelAdapter {
     // Handle Business Mode DMs (personal account messages forwarded to bot)
     bot.on('business_message' as any, async (ctx: any) => {
       const bm = ctx.businessMessage
-      if (!bm?.text) return
+      if (!bm) return
+
+      // Skip owner's own messages (prevent reply loops)
+      if (this.config.allowedUsers.includes(bm.from.id)) return
+
+      if (!bm.text) return
 
       const senderName = bm.from.first_name + (bm.from.last_name ? ` ${bm.from.last_name}` : '')
       await handleTelegramDM(

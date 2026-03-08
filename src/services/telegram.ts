@@ -63,7 +63,7 @@ export async function crossPostToTelegram(
   content: string,
   mediaUrl?: string
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
-  return fetchJSON(`${API_BASE}/cross-post`, {
+  return fetchJSON(`${API_BASE}/crosspost`, {
     method: 'POST',
     body: JSON.stringify({ content, mediaUrl }),
   })
@@ -81,5 +81,5 @@ export async function saveTelegramConfig(config: Partial<TelegramConfig>): Promi
 }
 
 export async function reloadTelegramPrompt(): Promise<void> {
-  await fetchJSON(`${API_BASE}/prompt/reload`, { method: 'POST' })
+  await fetchJSON(`${API_BASE}/reload-prompt`, { method: 'POST' })
 }

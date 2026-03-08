@@ -12,7 +12,7 @@ export const telegramRouter = Router()
 telegramRouter.get('/dms', (_req, res) => {
   try {
     const category = _req.query.category as string | undefined
-    const limit = Number(_req.query.limit) || 50
+    const limit = Math.min(Number(_req.query.limit) || 50, 200)
     const offset = Number(_req.query.offset) || 0
     const dms = getDMs({ category, limit, offset })
     res.json({ dms })
@@ -34,6 +34,9 @@ telegramRouter.post('/dms/:id/reply', async (req, res) => {
   try {
     const { text } = req.body
     if (!text) return res.status(400).json({ error: 'text is required' })
+    // TODO: Actually send the reply via Telegram. This requires access to the
+    // bot instance (and business_connection_id for business-mode DMs).
+    // For now we only persist the reply text in the DB.
     updateDMReply(Number(req.params.id), text)
     res.json({ ok: true })
   } catch (err) {
