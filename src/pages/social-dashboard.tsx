@@ -3,8 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useSocialFilter } from '@/store/social-filter'
 import * as socialService from '@/services/social'
-import { DMInbox as TelegramDMInbox } from '@/components/telegram/dm-inbox'
-import { SocialPlatformTabs, type SocialTab } from '@/components/social/social-platform-tabs'
 import { KpiCard } from '@/components/social/insights/kpi-card'
 import { ReachImpressionsChart } from '@/components/social/insights/reach-impressions-chart'
 import { FollowerGrowthChart } from '@/components/social/insights/follower-growth-chart'
@@ -25,7 +23,6 @@ const timeRanges = [
 export function SocialDashboard() {
   const { platform, accountIds } = useSocialFilter()
   const [days, setDays] = useState(30)
-  const [activeTab, setActiveTab] = useState<SocialTab>('feed')
 
   const accountId = accountIds.length === 1 ? accountIds[0] : undefined
 
@@ -37,12 +34,6 @@ export function SocialDashboard() {
 
   return (
     <div>
-      <SocialPlatformTabs active={activeTab} onChange={setActiveTab} />
-
-      {activeTab === 'telegram' && <TelegramDMInbox />}
-
-      {activeTab !== 'telegram' && (
-      <>
       {/* Header row */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-zinc-100">Analytics</h2>
@@ -133,8 +124,6 @@ export function SocialDashboard() {
           </div>
         </>
       ) : null}
-      </>
-      )}
     </div>
   )
 }

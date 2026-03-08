@@ -1,9 +1,12 @@
 import { Router } from 'express'
+import { z } from 'zod'
+import { exec } from 'child_process'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { AgentModelConfigSchema } from '../lib/schemas.js'
-import { getSecret } from '../secrets/index.js'
+import { getSecret, getSecrets } from '../secrets/index.js'
 import { getConfig, getConfigService } from '../config/index.js'
+import { getToolGroups, DEFAULT_ENABLED_GROUPS } from '../mcp-server/groups.js'
 
 export const settingsRouter = Router()
 
@@ -20,10 +23,84 @@ settingsRouter.get('/', (_req, res) => {
       baseUrl: getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL') || '',
       pat: getSecret('GITLAB_PAT') ? '••••••••' : '',
     },
+    github: {
+      baseUrl: getSecret('GITHUB_BASE_URL') || getConfig('GITHUB_BASE_URL') || '',
+      pat: getSecret('GITHUB_PAT') ? '••••••••' : '',
+    },
     messages: {
       customEndpoint: getSecret('MESSAGES_ENDPOINT') || '',
     },
+    linear: {
+      apiKey: getSecret('LINEAR_API_KEY') ? '••••••••' : '',
+      defaultTeamId: getSecret('LINEAR_DEFAULT_TEAM_ID') || '',
+    },
   })
+})
+
+// PUT /api/settings — save integration config to vault
+const IntegrationConfigSchema = z.object({
+  jira: z.object({
+    baseUrl: z.string().optional(),
+    email: z.string().optional(),
+    apiToken: z.string().optional(),
+    projectKey: z.string().optional(),
+  }).optional(),
+  gitlab: z.object({
+    baseUrl: z.string().optional(),
+    pat: z.string().optional(),
+  }).optional(),
+  github: z.object({
+    baseUrl: z.string().optional(),
+    pat: z.string().optional(),
+  }).optional(),
+  messages: z.object({
+    customEndpoint: z.string().optional(),
+  }).optional(),
+  linear: z.object({
+    apiKey: z.string().optional(),
+    defaultTeamId: z.string().optional(),
+  }).optional(),
+})
+
+settingsRouter.put('/', (req, res) => {
+  try {
+    const result = IntegrationConfigSchema.safeParse(req.body)
+    if (!result.success) {
+      return res.status(400).json({ error: 'Invalid config', details: result.error.flatten() })
+    }
+    const secretsSvc = getSecrets()
+    if (!secretsSvc) {
+      return res.status(503).json({ error: 'Vault not available' })
+    }
+    const d = result.data
+    const isMasked = (v?: string) => !v || v.startsWith('••••')
+
+    if (d.jira) {
+      if (d.jira.baseUrl) secretsSvc.set('JIRA_BASE_URL', d.jira.baseUrl, 'jira')
+      if (d.jira.email) secretsSvc.set('JIRA_EMAIL', d.jira.email, 'jira')
+      if (!isMasked(d.jira.apiToken)) secretsSvc.set('JIRA_API_TOKEN', d.jira.apiToken!, 'jira')
+      if (d.jira.projectKey) secretsSvc.set('JIRA_PROJECT_KEY', d.jira.projectKey, 'jira')
+    }
+    if (d.gitlab) {
+      if (d.gitlab.baseUrl) secretsSvc.set('GITLAB_BASE_URL', d.gitlab.baseUrl, 'gitlab')
+      if (!isMasked(d.gitlab.pat)) secretsSvc.set('GITLAB_PAT', d.gitlab.pat!, 'gitlab')
+    }
+    if (d.github) {
+      if (d.github.baseUrl) secretsSvc.set('GITHUB_BASE_URL', d.github.baseUrl, 'github')
+      if (!isMasked(d.github.pat)) secretsSvc.set('GITHUB_PAT', d.github.pat!, 'github')
+    }
+    if (d.messages) {
+      if (d.messages.customEndpoint) secretsSvc.set('MESSAGES_ENDPOINT', d.messages.customEndpoint, 'general')
+    }
+    if (d.linear) {
+      if (!isMasked(d.linear.apiKey)) secretsSvc.set('LINEAR_API_KEY', d.linear.apiKey!, 'linear')
+      if (d.linear.defaultTeamId) secretsSvc.set('LINEAR_DEFAULT_TEAM_ID', d.linear.defaultTeamId, 'linear')
+    }
+
+    res.json({ success: true })
+  } catch (err) {
+    errorResponse(res, err)
+  }
 })
 
 // GET /api/settings/agent-models — get per-feature model overrides
@@ -45,6 +122,50 @@ settingsRouter.put('/agent-models', validate(AgentModelConfigSchema), (req, res)
     if (data.prAgent?.model) svc.set('AGENT_MODEL_PR', data.prAgent.model, 'llm')
     if (data.opencode?.model) svc.set('AGENT_MODEL_OPENCODE', data.opencode.model, 'llm')
     if (data.bot?.model) svc.set('AGENT_MODEL_BOT', data.bot.model, 'llm')
+    res.json({ success: true })
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
+// GET /api/settings/mcp-tools — list tool groups with enabled status
+settingsRouter.get('/mcp-tools', (_req, res) => {
+  const raw = getConfig('MCP_ENABLED_GROUPS')
+  const enabledGroups: string[] = raw ? JSON.parse(raw) : DEFAULT_ENABLED_GROUPS
+  const allGroups = getToolGroups()
+
+  res.json({
+    groups: allGroups.map(g => ({
+      id: g.id,
+      label: g.label,
+      toolCount: g.tools.length,
+      alwaysOn: g.alwaysOn || false,
+      enabled: g.alwaysOn || enabledGroups.includes(g.id),
+    })),
+  })
+})
+
+// PUT /api/settings/mcp-tools — save enabled groups and restart MCP server
+const McpToolsSchema = z.object({
+  enabledGroups: z.array(z.string()),
+})
+
+settingsRouter.put('/mcp-tools', (req, res) => {
+  try {
+    const result = McpToolsSchema.safeParse(req.body)
+    if (!result.success) {
+      return res.status(400).json({ error: 'Invalid config', details: result.error.flatten() })
+    }
+    const svc = getConfigService()
+    if (!svc) return res.status(503).json({ error: 'Config service unavailable' })
+
+    svc.set('MCP_ENABLED_GROUPS', JSON.stringify(result.data.enabledGroups), 'mcp')
+
+    // Kill the MCP server process so OpenCode respawns it with new config
+    exec("pkill -f 'mcp-server/index.ts'", () => {
+      // Process might not be running, that's ok
+    })
+
     res.json({ success: true })
   } catch (err) {
     errorResponse(res, err)

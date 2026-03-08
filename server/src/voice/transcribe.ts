@@ -17,35 +17,43 @@ const FASTER_WHISPER_MODEL = getConfig('FASTER_WHISPER_MODEL', 'base.en') || 'ba
 
 const TEMP_DIR = getConfig('TEMP_DIR', '/tmp') || '/tmp'
 
-// Detected backend (resolved once at startup)
+// Detected backend — retries whisper service if previously unreachable
 let resolvedBackend: 'service' | 'faster-whisper' | null = null
+let lastServiceCheck = 0
+const SERVICE_RETRY_INTERVAL = 10_000 // retry service every 10s if previously failed
 
 async function detectBackend(): Promise<'service' | 'faster-whisper'> {
-  if (resolvedBackend) return resolvedBackend
+  // If cached as 'service', keep it
+  if (resolvedBackend === 'service') return resolvedBackend
 
-  // Try whisper microservice first
-  if (WHISPER_SERVICE_URL) {
+  // Always retry whisper service periodically (it may have come up)
+  const now = Date.now()
+  if (WHISPER_SERVICE_URL && now - lastServiceCheck >= SERVICE_RETRY_INTERVAL) {
+    lastServiceCheck = now
     try {
       const res = await fetch(`${WHISPER_SERVICE_URL}/health`, { signal: AbortSignal.timeout(3000) })
       if (res.ok) {
+        if (resolvedBackend !== 'service') {
+          logger.info({ url: WHISPER_SERVICE_URL }, '[transcribe] Using whisper microservice')
+        }
         resolvedBackend = 'service'
-        logger.info({ url: WHISPER_SERVICE_URL }, '[transcribe] Using whisper microservice')
         return resolvedBackend
       }
     } catch {
-      logger.warn('[transcribe] Whisper service configured but unreachable, falling back to local')
+      logger.warn('[transcribe] Whisper service unreachable at %s', WHISPER_SERVICE_URL)
     }
   }
 
-  // Verify faster-whisper is installed
+  if (resolvedBackend === 'faster-whisper') return resolvedBackend
+
+  // Verify faster-whisper is installed (local fallback)
   try {
     await execFileAsync(FASTER_WHISPER_PATH, ['--help'], { timeout: 5_000 })
     resolvedBackend = 'faster-whisper'
     logger.info('[transcribe] Using faster-whisper backend')
   } catch {
     throw new Error(
-      'faster-whisper (whisper-ctranslate2) is not installed. ' +
-      'Install it with: pip install whisper-ctranslate2'
+      'No transcription backend available. Whisper service unreachable and faster-whisper not installed.'
     )
   }
 
@@ -53,6 +61,8 @@ async function detectBackend(): Promise<'service' | 'faster-whisper'> {
 }
 
 async function transcribeViaService(audioBuffer: Buffer, format: string): Promise<string> {
+  logger.info({ size: audioBuffer.length, format }, '[transcribe] Sending audio to whisper service')
+
   const formData = new FormData()
   formData.append('audio', new Blob([new Uint8Array(audioBuffer)]), `audio.${format}`)
   formData.append('format', format)
@@ -65,10 +75,12 @@ async function transcribeViaService(audioBuffer: Buffer, format: string): Promis
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: 'Unknown error' }))
+    logger.error({ status: res.status, error: body.error }, '[transcribe] Whisper service returned error')
     throw new Error(`Whisper service error: ${body.error || res.statusText}`)
   }
 
   const data = await res.json() as { text: string }
+  logger.info({ text: data.text }, '[transcribe] Transcription result')
   return data.text
 }
 
@@ -107,7 +119,9 @@ async function transcribeWithFasterWhisper(wavPath: string): Promise<string> {
 }
 
 export async function transcribeAudio(audioBuffer: Buffer, format = 'ogg'): Promise<string> {
+  logger.info({ size: audioBuffer.length, format }, '[transcribe] transcribeAudio called')
   const backend = await detectBackend()
+  logger.info({ backend }, '[transcribe] Using backend')
 
   // Use whisper microservice if available — no temp files needed
   if (backend === 'service') {

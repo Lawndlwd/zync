@@ -6,6 +6,7 @@ import { getSecret } from '../secrets/index.js'
 import { getConfig } from '../config/index.js'
 import { getOpenCodeUrl } from '../opencode/client.js'
 import { getDb } from '../bot/memory/db.js'
+import { insertLLMCall } from '../bot/memory/activity.js'
 import { validate } from '../lib/validate.js'
 import { PrAgentRunSchema } from '../lib/schemas.js'
 
@@ -17,13 +18,13 @@ const WRAPPER_SCRIPT = resolve(import.meta.dirname, '../../scripts/run_pr_agent.
 const VALID_TOOLS = ['review', 'describe', 'improve', 'ask'] as const
 type PRAgentTool = (typeof VALID_TOOLS)[number]
 
-async function buildPRAgentEnv(tool: PRAgentTool, question?: string, extraInstructions?: string): Promise<Record<string, string>> {
+async function buildPRAgentEnv(tool: PRAgentTool, question?: string, extraInstructions?: string, provider?: 'gitlab' | 'github'): Promise<Record<string, string>> {
   const gitlabBaseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL') || ''
   const gitlabPat = getSecret('GITLAB_PAT') || ''
 
   const env: Record<string, string> = {
     ...process.env as Record<string, string>,
-    CONFIG__GIT_PROVIDER: 'gitlab',
+    CONFIG__GIT_PROVIDER: provider || 'gitlab',
     GITLAB__URL: gitlabBaseUrl.replace(/\/api\/v4\/?$/, ''),
     GITLAB__PERSONAL_ACCESS_TOKEN: gitlabPat,
     OPENCODE_URL: getOpenCodeUrl(),
@@ -56,6 +57,15 @@ async function buildPRAgentEnv(tool: PRAgentTool, question?: string, extraInstru
   env['PR_DESCRIPTION__ADD_ORIGINAL_USER_DESCRIPTION'] = 'true'
   env['PR_DESCRIPTION__USE_DESCRIPTION_MARKERS'] = 'false'
   env['PR_DESCRIPTION__ENABLE_LARGE_PR_HANDLING'] = 'false'
+
+  // GitHub provider support
+  if (provider === 'github') {
+    const githubPat = getSecret('GITHUB_PAT') || ''
+    env['CONFIG__GIT_PROVIDER'] = 'github'
+    env['GITHUB__USER_TOKEN'] = githubPat
+    delete env['GITLAB__URL']
+    delete env['GITLAB__PERSONAL_ACCESS_TOKEN']
+  }
 
   if (question) {
     env['PR_AGENT_QUESTION'] = question
@@ -132,7 +142,8 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
     send('debug', { modelConfigError: message })
   }
 
-  const env = await buildPRAgentEnv(tool as PRAgentTool, question, extraInstructions)
+  const provider = mrUrl.includes('github.com') ? 'github' as const : 'gitlab' as const
+  const env = await buildPRAgentEnv(tool as PRAgentTool, question, extraInstructions, provider)
 
   const effectiveUrl = projectId ? rewriteMrUrl(mrUrl, projectId) : mrUrl
   env['PR_URL'] = effectiveUrl
@@ -151,6 +162,8 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
   if (extraInstructions) {
     env['PR_AGENT_DEBUG_PROMPTS'] = '1'
   }
+
+  const prAgentStartTime = Date.now()
 
   const child = spawn(VENV_PYTHON, [WRAPPER_SCRIPT], {
     env,
@@ -208,12 +221,28 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
   }
 
   child.on('close', (code) => {
+    const durationMs = Date.now() - prAgentStartTime
+
     // Flush remaining buffer
     if (stdoutBuffer.trim()) {
       if (stdoutBuffer.startsWith('[CHUNK] ')) {
         chunks.push(stdoutBuffer.slice(8))
       }
     }
+
+    // Log usage regardless of success/failure
+    const fullText = chunks.join('\n\n')
+    const estimatedPromptTokens = Math.ceil((effectiveUrl.length + (extraInstructions?.length || 0)) / 4)
+    const estimatedCompletionTokens = Math.ceil(fullText.length / 4)
+    insertLLMCall({
+      source: 'code-review',
+      model: prAgentModel || 'opencode',
+      prompt_tokens: estimatedPromptTokens,
+      completion_tokens: estimatedCompletionTokens,
+      total_tokens: estimatedPromptTokens + estimatedCompletionTokens,
+      tool_names: [tool],
+      duration_ms: durationMs,
+    })
 
     if (code !== 0 && chunks.length === 0) {
       const lastLines = stderrLog.trim().split('\n').slice(-10).join('\n')

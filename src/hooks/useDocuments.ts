@@ -10,10 +10,10 @@ import {
   deleteDocument,
 } from '@/services/documents'
 
-export function useFolders() {
+export function useFolders(parent?: string) {
   return useQuery({
-    queryKey: ['doc-folders'],
-    queryFn: fetchFolders,
+    queryKey: ['doc-folders', parent],
+    queryFn: () => fetchFolders(parent),
   })
 }
 

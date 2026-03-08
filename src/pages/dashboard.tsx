@@ -1,9 +1,7 @@
-import { useJiraIssues, useActiveSprint } from '@/hooks/useJiraIssues'
-import { useGitlabMRs } from '@/hooks/useGitlab'
-import { useTodos } from '@/hooks/useTodos'
-import { useBotStatus, useBotChannels } from '@/hooks/useBot'
-import { useOpenCodeSessions, useAllSessionsTokens } from '@/hooks/useOpenCode'
-import { useSettingsStore } from '@/store/settings'
+import { useState } from 'react'
+import { useAllTasks } from '@/hooks/useTasks'
+import { useProjects } from '@/hooks/useProjects'
+import { useBotStatus, useBotChannels, useBriefingConfig } from '@/hooks/useBot'
 import { useHabitsStore } from '@/store/habits'
 import { useJournalStore } from '@/store/journal'
 import { useQuery } from '@tanstack/react-query'
@@ -14,11 +12,8 @@ import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import {
-  Ticket,
-  ListTodo,
-  GitMerge,
+  KanbanSquare,
   Activity,
-  BookOpen,
   BarChart3,
   Bot,
   ArrowRight,
@@ -27,11 +22,10 @@ import {
   Target,
   AlertTriangle,
   Clock,
-  CheckCircle2,
   Zap,
-  MessageSquare,
-  Cpu,
+  CheckCircle2,
   DollarSign,
+  Settings,
 } from 'lucide-react'
 import { HabitIcon } from '@/components/productivity/habit-icon'
 import { PieChart, Pie, Cell } from 'recharts'
@@ -50,16 +44,18 @@ function Section({
   iconColor,
   title,
   to,
+  className,
   children,
 }: {
   icon: React.ElementType
   iconColor: string
   title: string
   to: string
+  className?: string
   children: React.ReactNode
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
+    <div className={cn('rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden', className)}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
         <div className="flex items-center gap-3">
           <Icon size={24} className={iconColor} />
@@ -88,24 +84,118 @@ function StatBlock({ label, value, color }: { label: string; value: number | und
   )
 }
 
-// ── Jira Section ──────────────────────────────────────────────────
-function JiraSection() {
-  const { data: jiraData, isLoading } = useJiraIssues()
-  const boardId = useSettingsStore((s) => s.settings.jira.boardId)
-  const { data: sprint } = useActiveSprint(boardId)
+// ── Cron helper ───────────────────────────────────────────────────
+function cronToTime(cron: string): string | null {
+  const parts = cron.trim().split(/\s+/)
+  if (parts.length < 5) return null
+  const minute = parseInt(parts[0], 10)
+  const hour = parseInt(parts[1], 10)
+  if (isNaN(minute) || isNaN(hour)) return null
+  const h = hour % 12 || 12
+  const ampm = hour < 12 ? 'AM' : 'PM'
+  return `${h}:${String(minute).padStart(2, '0')} ${ampm}`
+}
 
-  const issues = jiraData?.issues ?? []
-  const todo = issues.filter((i) => i.status.category === 'new').length
-  const inProgress = issues.filter((i) => i.status.category === 'indeterminate').length
-  const done = issues.filter((i) => i.status.category === 'done').length
-  const highPriority = issues.filter((i) =>
-    ['highest', 'high'].includes(i.priority.name.toLowerCase())
-  )
+// ── Today Strip ──────────────────────────────────────────────────
+function TodayStrip() {
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const journalEntry = useJournalStore((s) => s.getEntry(today))
+  const { data: briefingConfig } = useBriefingConfig()
+  const { isSuccess: connected } = useBotStatus()
+  const { data: channels } = useBotChannels()
+  const { data: stats } = useQuery({
+    queryKey: ['activity-stats', 1],
+    queryFn: () => fetchActivityStats(1),
+    staleTime: 60_000,
+    retry: 1,
+  })
 
-  const pct = issues.length > 0 ? Math.round((done / issues.length) * 100) : 0
+  const onlineChannels = channels?.filter((ch) => ch.connected) ?? []
+
+  const nextBriefing = briefingConfig?.enabled
+    ? cronToTime(briefingConfig.morningCron) ?? cronToTime(briefingConfig.eveningCron)
+    : null
 
   return (
-    <Section icon={Ticket} iconColor="text-blue-400" title="Jira" to="/jira">
+    <div className="col-span-4 lg:col-span-12 rounded-xl border border-white/[0.06] bg-white/[0.03] py-3 px-5">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        {/* Journal */}
+        <div className="flex items-center gap-2 text-sm">
+          {journalEntry ? (
+            <>
+              <CheckCircle2 size={16} className="text-emerald-400" />
+              <span className="text-zinc-300">Entry written</span>
+            </>
+          ) : (
+            <>
+              <Circle size={16} className="text-zinc-600" />
+              <span className="text-zinc-500">No entry yet</span>
+            </>
+          )}
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.08] hidden sm:block" />
+
+        {/* Briefing */}
+        <div className="flex items-center gap-2 text-sm">
+          <Clock size={16} className="text-zinc-500" />
+          <span className="text-zinc-400">
+            {nextBriefing ? `Next briefing ${nextBriefing}` : 'Briefings off'}
+          </span>
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.08] hidden sm:block" />
+
+        {/* LLM cost */}
+        <div className="flex items-center gap-2 text-sm">
+          <DollarSign size={16} className="text-zinc-500" />
+          <span className="text-zinc-400">
+            ${stats?.totals.total_cost?.toFixed(2) ?? '0.00'} today
+          </span>
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.08] hidden sm:block" />
+
+        {/* Calls today */}
+        <div className="flex items-center gap-2 text-sm">
+          <Zap size={16} className="text-amber-400" />
+          <span className="text-zinc-400">{stats?.callsToday ?? 0} calls</span>
+        </div>
+
+        <div className="w-px h-4 bg-white/[0.08] hidden sm:block" />
+
+        {/* Agent status */}
+        <div className="flex items-center gap-2 text-sm">
+          <Circle size={10} className={cn(
+            'fill-current',
+            connected ? 'text-emerald-400' : 'text-zinc-600'
+          )} />
+          <span className={cn(connected ? 'text-emerald-400' : 'text-zinc-500')}>
+            {connected ? 'Online' : 'Offline'}
+          </span>
+          {onlineChannels.map((ch) => (
+            <span key={ch.channel} className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-xs font-medium text-emerald-400 capitalize">
+              {ch.channel}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Tasks Section ─────────────────────────────────────────────────
+function TasksSection({ span }: { span?: string }) {
+  const { data: allTasks = [], isLoading } = useAllTasks()
+  const { data: projects = [] } = useProjects()
+
+  const todo = allTasks.filter((t) => t.metadata.status === 'todo').length
+  const inProgress = allTasks.filter((t) => t.metadata.status === 'in-progress').length
+  const done = allTasks.filter((t) => t.metadata.status === 'completed').length
+  const highPriority = allTasks.filter((t) => t.metadata.priority === 'high')
+
+  return (
+    <Section icon={KanbanSquare} iconColor="text-emerald-400" title="Tasks & Projects" to="/tasks" className={cn('col-span-4', span ?? 'lg:col-span-4')}>
       {isLoading ? (
         <div className="space-y-3">
           <Skeleton className="h-8 w-full" />
@@ -113,18 +203,6 @@ function JiraSection() {
         </div>
       ) : (
         <>
-          {sprint && (
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-base font-medium text-indigo-400">{sprint.name}</span>
-              {sprint.endDate && (
-                <span className="text-sm text-zinc-500">
-                  ends {format(new Date(sprint.endDate), 'MMM d')}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Big numbers */}
           <div className="flex items-center gap-3 mb-5 rounded-lg bg-white/[0.04] py-4">
             <StatBlock label="To Do" value={todo} color="text-zinc-300" />
             <div className="w-px h-8 bg-white/[0.06]" />
@@ -133,160 +211,40 @@ function JiraSection() {
             <StatBlock label="Done" value={done} color="text-emerald-400" />
           </div>
 
-          {/* Progress bar */}
-          <div className="mb-5">
-            <div className="flex justify-between text-base text-zinc-400 mb-2">
-              <span>{done}/{issues.length} completed</span>
-              <span className="font-semibold">{pct}%</span>
+          {projects.length > 0 && (
+            <div className="mb-4 flex items-center gap-2 text-sm text-zinc-500">
+              <span className="font-semibold text-zinc-200">{projects.length}</span> project{projects.length !== 1 ? 's' : ''}
             </div>
-            <div className="h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </div>
+          )}
 
-          {/* High priority issues */}
           {highPriority.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">High Priority</p>
-              {highPriority.slice(0, 5).map((issue) => (
+              {highPriority.slice(0, 5).map((task) => (
                 <Link
-                  key={issue.key}
-                  to="/jira"
+                  key={`${task.project}/${task.fileName}`}
+                  to={`/tasks?task=${task.project}/${task.fileName}`}
                   className="flex items-center gap-3 rounded-lg px-4 py-2.5 hover:bg-white/[0.05] transition-colors"
                 >
-                  <span className="text-sm font-mono text-zinc-500 shrink-0">{issue.key}</span>
-                  <span className="text-base text-zinc-200 truncate">{issue.summary}</span>
+                  <span className="text-sm font-mono text-zinc-500 shrink-0">{task.project}</span>
+                  <span className="text-base text-zinc-200 truncate">{task.metadata.title}</span>
                   <span className={cn(
                     'ml-auto shrink-0 rounded-md px-3 py-1 text-sm font-medium',
-                    issue.status.category === 'new' && 'bg-white/[0.06] text-zinc-400',
-                    issue.status.category === 'indeterminate' && 'bg-blue-500/10 text-blue-400',
-                    issue.status.category === 'done' && 'bg-emerald-500/10 text-emerald-400',
+                    task.metadata.status === 'todo' && 'bg-white/[0.06] text-zinc-400',
+                    task.metadata.status === 'in-progress' && 'bg-blue-500/10 text-blue-400',
+                    task.metadata.status === 'completed' && 'bg-emerald-500/10 text-emerald-400',
                   )}>
-                    {issue.status.name}
+                    {task.metadata.status}
                   </span>
                 </Link>
               ))}
             </div>
           )}
-          {issues.length === 0 && (
-            <p className="text-base text-zinc-600">No issues in current sprint</p>
+          {allTasks.length === 0 && (
+            <p className="text-base text-zinc-600">No tasks yet</p>
           )}
         </>
       )}
-    </Section>
-  )
-}
-
-// ── GitLab Section ────────────────────────────────────────────────
-function GitLabSection() {
-  const gitlabSettings = useSettingsStore((s) => s.settings.gitlab)
-  const projectId = gitlabSettings.defaultProjectId
-  const username = gitlabSettings.username
-
-  const { data: toReview } = useGitlabMRs(projectId, username ? { reviewer_username: username, scope: 'all' } : undefined)
-  const { data: authored } = useGitlabMRs(projectId, username ? { author_username: username, scope: 'all' } : undefined)
-
-  if (!projectId) {
-    return (
-      <Section icon={GitMerge} iconColor="text-violet-400" title="GitLab" to="/gitlab">
-        <p className="text-base text-zinc-600">Configure a project in settings</p>
-      </Section>
-    )
-  }
-
-  const toReviewCount = toReview?.length ?? 0
-  const authoredCount = authored?.length ?? 0
-  const withConflicts = authored?.filter((mr) => mr.has_conflicts) ?? []
-  const recentMRs = [...(toReview ?? [])].sort((a, b) =>
-    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  ).slice(0, 5)
-
-  return (
-    <Section icon={GitMerge} iconColor="text-violet-400" title="GitLab" to="/gitlab">
-      {/* Big numbers */}
-      <div className="flex items-center gap-3 mb-5 rounded-lg bg-white/[0.04] py-4">
-        <StatBlock label="To Review" value={toReviewCount} color="text-amber-400" />
-        <div className="w-px h-8 bg-white/[0.06]" />
-        <StatBlock label="My MRs" value={authoredCount} color="text-violet-400" />
-        {withConflicts.length > 0 && (
-          <>
-            <div className="w-px h-8 bg-white/[0.06]" />
-            <StatBlock label="Conflicts" value={withConflicts.length} color="text-red-400" />
-          </>
-        )}
-      </div>
-
-      {recentMRs.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Needs Review</p>
-          {recentMRs.map((mr) => (
-            <Link
-              key={mr.id}
-              to={`/gitlab/mr/${projectId}/${mr.iid}`}
-              className="flex items-center gap-3 rounded-lg px-4 py-2.5 hover:bg-white/[0.05] transition-colors"
-            >
-              <span className="text-sm font-mono text-zinc-500 shrink-0">!{mr.iid}</span>
-              <span className={cn('text-base truncate', mr.draft ? 'text-zinc-500 italic' : 'text-zinc-200')}>
-                {mr.draft && 'Draft: '}{mr.title}
-              </span>
-              {mr.user_notes_count > 0 && (
-                <span className="ml-auto flex items-center gap-2 shrink-0 text-sm text-zinc-500">
-                  <MessageSquare size={16} /> {mr.user_notes_count}
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
-      )}
-    </Section>
-  )
-}
-
-// ── Todos Section ─────────────────────────────────────────────────
-function TodosSection() {
-  const { data: todos = [] } = useTodos()
-  const open = todos.filter((t) => t.status === 'open')
-  const inProgress = todos.filter((t) => t.status === 'in-progress')
-  const done = todos.filter((t) => t.status === 'done')
-
-  const urgent = [...open, ...inProgress].filter((t) => t.priority === 'P1' || t.priority === 'P2')
-
-  return (
-    <Section icon={ListTodo} iconColor="text-emerald-400" title="To-Dos" to="/todos">
-      {/* Big numbers */}
-      <div className="flex items-center gap-3 mb-5 rounded-lg bg-white/[0.04] py-4">
-        <StatBlock label="Open" value={open.length} color="text-zinc-300" />
-        <div className="w-px h-8 bg-white/[0.06]" />
-        <StatBlock label="In Progress" value={inProgress.length} color="text-blue-400" />
-        <div className="w-px h-8 bg-white/[0.06]" />
-        <StatBlock label="Done" value={done.length} color="text-emerald-400" />
-      </div>
-
-      {urgent.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Urgent</p>
-          {urgent.slice(0, 5).map((todo) => (
-            <div key={todo.id} className="flex items-center gap-3 rounded-lg px-4 py-2.5">
-              <span className={cn(
-                'shrink-0 rounded-md px-3 py-0.5 text-sm font-bold',
-                todo.priority === 'P1' ? 'bg-red-500/10 text-red-400' : 'bg-orange-500/10 text-orange-400'
-              )}>
-                {todo.priority}
-              </span>
-              <span className="text-base text-zinc-200 truncate">{todo.title}</span>
-              {todo.dueDate && (
-                <span className="ml-auto shrink-0 text-sm text-zinc-500">
-                  {format(new Date(todo.dueDate), 'MMM d')}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {todos.length === 0 && <p className="text-base text-zinc-600">No to-dos yet</p>}
     </Section>
   )
 }
@@ -316,7 +274,7 @@ function ProductivitySection() {
   ]
 
   return (
-    <Section icon={BarChart3} iconColor="text-orange-400" title="Productivity" to="/productivity">
+    <Section icon={BarChart3} iconColor="text-orange-400" title="Productivity" to="/productivity" className="col-span-4 lg:col-span-4">
       <div className="flex items-center gap-6">
         {/* Donut */}
         {habits.length > 0 && (
@@ -377,16 +335,46 @@ function ProductivitySection() {
 }
 
 // ── Activity Section ──────────────────────────────────────────────
-function ActivitySection() {
+const periodOptions = [
+  { label: '7d', days: 7 },
+  { label: '30d', days: 30 },
+  { label: '90d', days: 90 },
+  { label: 'All', days: 9999 },
+] as const
+
+function ActivitySection({ span }: { span?: string }) {
+  const [days, setDays] = useState(7)
+  const periodLabel = periodOptions.find((p) => p.days === days)?.label ?? `${days}d`
+
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['activity-stats', 7],
-    queryFn: () => fetchActivityStats(7),
+    queryKey: ['activity-stats', days],
+    queryFn: () => fetchActivityStats(days),
     staleTime: 60_000,
     retry: 1,
   })
 
+  const barData = days <= 90 ? stats?.byDay : stats?.byDay.slice(-90)
+
   return (
-    <Section icon={Activity} iconColor="text-rose-400" title="AI Activity" to="/activity">
+    <Section icon={Activity} iconColor="text-rose-400" title="AI Activity" to="/activity" className={cn('col-span-4', span ?? 'lg:col-span-4')}>
+      {/* Period selector */}
+      <div className="flex gap-1 mb-3">
+        {periodOptions.map((p) => (
+          <button
+            key={p.days}
+            onClick={() => setDays(p.days)}
+            className={cn(
+              'px-2.5 py-0.5 text-xs rounded-full transition-colors',
+              days === p.days
+                ? 'bg-rose-500/20 text-rose-400'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
         <Skeleton className="h-8 w-full" />
       ) : stats ? (
@@ -395,30 +383,24 @@ function ActivitySection() {
           <div className="flex items-center gap-3 mb-5 rounded-lg bg-white/[0.04] py-4">
             <StatBlock label="Today" value={stats.callsToday} color="text-rose-400" />
             <div className="w-px h-8 bg-white/[0.06]" />
-            <StatBlock label="7d Calls" value={stats.totals.total_calls} color="text-zinc-300" />
-          </div>
-
-          <div className="flex items-center gap-6 mb-4">
-            <div className="flex items-center gap-3 text-base text-zinc-400">
-              <Zap size={18} className="text-amber-400" />
-              {(stats.totals.total_tokens / 1000).toFixed(1)}k tokens
-            </div>
-            <div className="flex items-center gap-3 text-base text-zinc-400">
-              <Clock size={18} className="text-zinc-500" />
-              avg {Math.round(stats.totals.avg_duration_ms)}ms
+            <StatBlock label={`${periodLabel} Calls`} value={stats.totals.total_calls} color="text-zinc-300" />
+            <div className="w-px h-8 bg-white/[0.06]" />
+            <div className="flex flex-col items-center gap-2 flex-1">
+              <span className="text-2xl font-bold text-zinc-300">${stats.totals.total_cost?.toFixed(2) ?? '0'}</span>
+              <span className="text-sm text-zinc-500">{periodLabel} Cost</span>
             </div>
           </div>
 
           {/* Sparkline bars */}
-          {stats.byDay.length > 1 && (
-            <div className="flex items-end gap-2 h-12">
-              {stats.byDay.slice(-7).map((d, i) => {
-                const max = Math.max(...stats.byDay.slice(-7).map((x) => x.calls), 1)
-                const h = Math.max(6, (d.calls / max) * 48)
+          {barData && barData.length > 1 && (
+            <div className="flex items-end gap-px h-12">
+              {barData.map((d, i) => {
+                const max = Math.max(...barData.map((x) => x.calls), 1)
+                const h = Math.max(4, (d.calls / max) * 48)
                 return (
                   <div
                     key={i}
-                    className="flex-1 rounded bg-rose-500/30 hover:bg-rose-500/50 transition-colors"
+                    className="flex-1 rounded-sm bg-rose-500/30 hover:bg-rose-500/50 transition-colors"
                     style={{ height: `${h}px` }}
                     title={`${d.day}: ${d.calls} calls`}
                   />
@@ -434,160 +416,83 @@ function ActivitySection() {
   )
 }
 
-// ── Journal Section ───────────────────────────────────────────────
-function JournalSection() {
-  const today = format(new Date(), 'yyyy-MM-dd')
-  const getEntry = useJournalStore((s) => s.getEntry)
-  const allDates = useJournalStore((s) => s.getAllDates)()
-
-  const todayEntry = getEntry(today)
-  const recentDates = allDates.slice(0, 7)
-  const totalEntries = allDates.length
-
-  return (
-    <Section icon={BookOpen} iconColor="text-amber-400" title="Journal" to="/journal">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          {todayEntry ? (
-            <CheckCircle2 size={20} className="text-emerald-400" />
-          ) : (
-            <Circle size={20} className="text-zinc-600" />
-          )}
-          <span className="text-base text-zinc-300">
-            {todayEntry ? "Today's entry written" : "No entry today"}
-          </span>
-        </div>
-        <span className="text-base text-zinc-500">{totalEntries} entries</span>
-      </div>
-      {recentDates.length > 0 && (
-        <div className="flex flex-wrap gap-3">
-          {recentDates.map((date) => (
-            <Link
-              key={date}
-              to="/journal"
-              className={cn(
-                'rounded-lg px-4 py-2 text-sm font-mono transition-colors',
-                date === today
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  : 'bg-white/[0.05] text-zinc-400 hover:bg-white/[0.06]'
-              )}
-            >
-              {format(new Date(date), 'MMM d')}
-            </Link>
-          ))}
-        </div>
-      )}
-    </Section>
-  )
-}
-
-// ── Agent Status Section ──────────────────────────────────────────
-function AgentSection() {
+// ── System Section (Agent details, full-width) ───────────────────
+function SystemSection() {
   const { data: botStatus, isSuccess: connected } = useBotStatus()
   const { data: channels } = useBotChannels()
 
   const onlineChannels = channels?.filter((ch) => ch.connected) ?? []
 
   return (
-    <Section icon={Bot} iconColor="text-violet-400" title="AI Agent" to="/settings">
-      <div className="flex items-center gap-4">
+    <div className="col-span-4 lg:col-span-12 rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
         <div className="flex items-center gap-3">
-          <Circle size={12} className={cn(
-            'fill-current',
-            connected ? 'text-emerald-400' : 'text-zinc-600'
-          )} />
-          <span className={cn('text-base font-semibold', connected ? 'text-emerald-400' : 'text-zinc-500')}>
-            {connected ? 'Online' : 'Offline'}
-          </span>
+          <Bot size={24} className="text-violet-400" />
+          <h2 className="text-base font-semibold text-zinc-100">Agent & System</h2>
         </div>
-        {onlineChannels.length > 0 && (
-          <div className="flex items-center gap-2">
-            {onlineChannels.map((ch) => (
-              <span key={ch.channel} className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400 capitalize">
-                {ch.channel}
-              </span>
-            ))}
-          </div>
-        )}
+        <Link to="/settings" className="flex items-center gap-2 text-base text-zinc-500 hover:text-zinc-300 transition-colors">
+          <Settings size={18} />
+        </Link>
       </div>
-      {connected && botStatus && (
-        <>
-          <div className="flex items-center gap-5 mt-4 text-base text-zinc-400">
-            <span><span className="font-semibold text-zinc-200">{botStatus.memoryCount}</span> memories</span>
-            <span><span className="font-semibold text-zinc-200">{botStatus.toolCount}</span> tools</span>
-            <span><span className="font-semibold text-zinc-200">{botStatus.activeSchedules}</span> schedules</span>
-            {(botStatus.skillsCount ?? 0) > 0 && (
-              <span><span className="font-semibold text-zinc-200">{botStatus.skillsCount}</span> skills</span>
+      <div className="px-5 py-4">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+          {/* Status + model */}
+          <div className="flex items-center gap-3">
+            <Circle size={12} className={cn(
+              'fill-current',
+              connected ? 'text-emerald-400' : 'text-zinc-600'
+            )} />
+            <span className={cn('text-base font-semibold', connected ? 'text-emerald-400' : 'text-zinc-500')}>
+              {connected ? 'Online' : 'Offline'}
+            </span>
+            {connected && botStatus?.modelName && (
+              <span className="text-sm text-zinc-500">{botStatus.modelName}</span>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-3">
-            <Link to="/canvas" className="text-sm text-pink-400 hover:text-pink-300 transition-colors">
-              Canvas
-            </Link>
-            <span className="text-zinc-700">·</span>
-            <Link to="/settings" className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors">
-              Briefings
-            </Link>
-          </div>
-        </>
-      )}
-    </Section>
-  )
-}
 
-// ── OpenCode Section ──────────────────────────────────────────────
-function OpenCodeSection() {
-  const { data: sessions = [] } = useOpenCodeSessions()
-  const tokenStats = useAllSessionsTokens()
+          {/* Stats */}
+          {connected && botStatus && (
+            <div className="flex items-center gap-5 text-base text-zinc-400">
+              <span><span className="font-semibold text-zinc-200">{botStatus.memoryCount}</span> memories</span>
+              <span><span className="font-semibold text-zinc-200">{botStatus.toolCount}</span> tools</span>
+              <span><span className="font-semibold text-zinc-200">{botStatus.activeSchedules}</span> schedules</span>
+            </div>
+          )}
 
-  const formatTokens = (n: number): string => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-    return String(n)
-  }
+          {/* Channel badges */}
+          {onlineChannels.length > 0 && (
+            <div className="flex items-center gap-2">
+              {onlineChannels.map((ch) => (
+                <span key={ch.channel} className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400 capitalize">
+                  {ch.channel}
+                </span>
+              ))}
+            </div>
+          )}
 
-  return (
-    <Section icon={Cpu} iconColor="text-indigo-400" title="OpenCode" to="/opencode">
-      <div className="flex items-center gap-3 mb-5 rounded-lg bg-white/[0.04] py-4">
-        <StatBlock label="Sessions" value={sessions.length} color="text-indigo-400" />
-        <div className="w-px h-8 bg-white/[0.06]" />
-        <StatBlock label="Tokens" value={undefined} color="text-zinc-300" />
-        <div className="w-px h-8 bg-white/[0.06]" />
-        <StatBlock label="Cost" value={undefined} color="text-amber-400" />
-      </div>
-
-      {tokenStats.total > 0 && (
-        <div className="flex items-center gap-6 mb-4">
-          <div className="flex items-center gap-3 text-base text-zinc-400">
-            <Zap size={18} className="text-indigo-400" />
-            {formatTokens(tokenStats.total)} tokens
-          </div>
-          {tokenStats.cost > 0 && (
-            <div className="flex items-center gap-3 text-base text-zinc-400">
-              <DollarSign size={18} className="text-amber-400" />
-              ${tokenStats.cost.toFixed(4)}
+          {/* Links */}
+          {connected && (
+            <div className="flex items-center gap-3 ml-auto">
+              <Link to="/canvas" className="text-sm text-pink-400 hover:text-pink-300 transition-colors">
+                Canvas
+              </Link>
+              <span className="text-zinc-700">·</span>
+              <Link to="/settings" className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors">
+                Settings
+              </Link>
             </div>
           )}
         </div>
-      )}
-
-      {tokenStats.models.length > 0 && (
-        <div className="flex items-center gap-2 text-base text-zinc-500">
-          <Cpu size={16} className="text-zinc-600" />
-          {tokenStats.models.slice(0, 2).join(', ')}
-        </div>
-      )}
-
-      {sessions.length === 0 && (
-        <p className="text-base text-zinc-600">No sessions yet</p>
-      )}
-    </Section>
+      </div>
+    </div>
   )
 }
 
 // ── Main Dashboard ────────────────────────────────────────────────
 export function DashboardPage() {
   const today = format(new Date(), 'EEEE, MMMM d')
+  const habits = useHabitsStore((s) => s.habits).filter((h) => !h.archived)
+  const hasHabits = habits.length > 0
 
   return (
     <div>
@@ -597,15 +502,17 @@ export function DashboardPage() {
       </div>
 
       <ErrorBoundary>
-        <div className="grid gap-5 lg:grid-cols-2">
-          <JiraSection />
-          <GitLabSection />
-          <TodosSection />
-          <ProductivitySection />
-          <ActivitySection />
-          <OpenCodeSection />
-          <JournalSection />
-          <AgentSection />
+        <div className="grid grid-cols-4 gap-5 lg:grid-cols-12">
+          {/* Row 1 — Today Strip */}
+          <TodayStrip />
+
+          {/* Row 2 — Tasks / Productivity / Activity */}
+          <TasksSection span={hasHabits ? 'lg:col-span-4' : 'lg:col-span-6'} />
+          {hasHabits && <ProductivitySection />}
+          <ActivitySection span={hasHabits ? 'lg:col-span-4' : 'lg:col-span-6'} />
+
+          {/* Row 4 — Agent & System */}
+          <SystemSection />
         </div>
       </ErrorBoundary>
     </div>

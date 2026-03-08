@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchActivityStats, syncOpenCode } from '@/services/activity'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchActivityStats } from '@/services/activity'
 import { StatsCards } from '@/components/activity/stats-cards'
 import { UsageChart } from '@/components/activity/usage-chart'
 import { SourceBreakdown } from '@/components/activity/source-breakdown'
@@ -9,28 +9,16 @@ import { BarChart3 } from 'lucide-react'
 
 const TIME_RANGES = [7, 14, 30] as const
 
-type SourceFilter = 'all' | 'dashboard' | 'opencode'
+type SourceFilter = 'all' | 'chat' | 'code-review'
 const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'dashboard', label: 'Dashboard' },
-  { value: 'opencode', label: 'OpenCode' },
+  { value: 'chat', label: 'Chat' },
+  { value: 'code-review', label: 'Code Review' },
 ]
 
 export function ActivityPage() {
   const [days, setDays] = useState<number>(7)
   const [source, setSource] = useState<SourceFilter>('all')
-  const queryClient = useQueryClient()
-
-  // Sync OpenCode sessions on mount
-  useEffect(() => {
-    syncOpenCode()
-      .then((result) => {
-        if (result.synced > 0) {
-          queryClient.invalidateQueries({ queryKey: ['activity-stats'] })
-        }
-      })
-      .catch(() => {}) // silent — OpenCode may be offline
-  }, [queryClient])
 
   const { data: stats } = useQuery({
     queryKey: ['activity-stats', days],

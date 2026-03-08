@@ -4,6 +4,7 @@ import { getDb } from '../bot/memory/db.js'
 import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
+import { loadPromptContent, interpolate } from '../skills/prompts.js'
 import { CanvasRenderSchema, CanvasPromptSchema } from '../lib/schemas.js'
 
 export const canvasRouter = Router()
@@ -150,18 +151,10 @@ Modify the above based on the user's request. Keep the same title unless the cha
     // If editing, store the canvas ID so the render endpoint updates instead of creating new
     editingCanvasId = canvasId ? Number(canvasId) : null
 
-    const instruction = `CRITICAL: You MUST call the zync_render_canvas tool. Do NOT just reply with text. Your ONLY job is to call that tool with title, html, and optionally css and js.
-
-A base dark design system is already injected into the canvas (dark background #09090b, zinc text colors, .card, .grid-2/.grid-3/.grid-4, .badge, .badge-blue/.badge-green/.badge-red/.badge-yellow/.badge-purple, table/thead/tbody auto-styled, .stat+.stat-value+.stat-label, .progress+.progress-bar, h1/h2/h3/p/small pre-styled).
-
-Write clean semantic HTML using these classes. Do NOT add background colors or font-family — it's handled.
-For charts: use Chart.js via <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>.
-For complex interactive apps: write full HTML+CSS+JS. Body padding is 1.5rem by default — override with css param if you need edge-to-edge.
-
-${canvasContext}
-
-USER REQUEST:
-${prompt}`
+    const instruction = interpolate(loadPromptContent('canvas-render'), {
+      canvasContext,
+      prompt,
+    })
 
     // Use a fresh session each time to avoid stale context
     const sessionKey = `canvas-${Date.now()}`

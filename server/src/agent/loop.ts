@@ -1,39 +1,26 @@
-import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
-import { insertLLMCall } from '../bot/memory/activity.js'
-import { assembleContext, buildSystemPrompt } from './context.js'
+import { getOrCreateSession } from '../opencode/client.js'
+import { waitForResponse } from '../opencode/wait-for-response.js'
+import { insertLLMCall, extractUsageFromSession } from '../bot/memory/activity.js'
 import type { InboundMessage } from '../channels/types.js'
 import { getChannelManager } from '../channels/manager.js'
 import { getConfig } from '../config/index.js'
 import { logger } from '../lib/logger.js'
 
-async function waitForReply(sessionId: string, msgCountBefore: number, timeoutMs = 120_000): Promise<string> {
-  const deadline = Date.now() + timeoutMs
-  let pollMs = 500 // Start fast, slow down after a few checks
-  let checks = 0
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, pollMs))
-    checks++
-    if (checks > 5) pollMs = 1500 // Slow down after initial burst
-
-    const idle = await isSessionIdle(sessionId)
-    if (!idle) continue
-
-    const msgs = await getSessionMessages(sessionId)
-    if (msgs.length <= msgCountBefore) continue
-
-    const newMsgs = msgs.slice(msgCountBefore)
-    const last = [...newMsgs].reverse().find((m: any) => m.role === 'assistant' || m.info?.role === 'assistant')
-    if (last?.parts) {
-      const texts = last.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text)
-      if (texts.length > 0 && texts.some((t: string) => t.length > 0)) {
-        return texts.join('')
+export async function handleMessage(msg: InboundMessage): Promise<void> {
+  // Auto-capture chat ID for briefings on first Telegram message
+  if (msg.channelType === 'telegram' && msg.chatId) {
+    const { getConfigService } = await import('../config/index.js')
+    const cfgSvc = getConfigService()
+    if (cfgSvc) {
+      const existing = cfgSvc.get('BRIEFING_CHAT_ID')
+      if (!existing) {
+        cfgSvc.set('BRIEFING_CHAT_ID', msg.chatId, 'briefing')
+        cfgSvc.set('DEFAULT_CHAT_ID', msg.chatId, 'briefing')
+        logger.info({ chatId: msg.chatId }, 'Auto-captured Telegram chat ID for briefings')
       }
     }
   }
-  throw new Error('Timeout waiting for OpenCode response')
-}
 
-export async function handleMessage(msg: InboundMessage): Promise<void> {
   // Check if auto-reply is enabled for this channel
   if (msg.channelType === 'whatsapp') {
     if (getConfig('WHATSAPP_AUTO_REPLY') !== 'true') {
@@ -65,35 +52,21 @@ export async function handleMessage(msg: InboundMessage): Promise<void> {
   try {
     const startTime = Date.now()
 
-    const ctx = assembleContext(processedText, msg.channelType, msg.chatId)
+    const sessionId = await getOrCreateSession('chat')
+    const reply = await waitForResponse(sessionId, processedText)
 
-    // Inject custom auto-reply instructions if configured
-    if (msg.channelType === 'whatsapp') {
-      const waAutoReplyInstructions = getConfig('WHATSAPP_AUTO_REPLY_INSTRUCTIONS')
-      if (waAutoReplyInstructions) {
-        ctx.skills.unshift(`### Auto-Reply Instructions\n${waAutoReplyInstructions}`)
-      }
-    }
-
-    const systemPrompt = buildSystemPrompt(ctx)
-
-    const sessionKey = `${msg.channelType}-${msg.chatId}`
-    const sessionId = await getOrCreateSession(sessionKey)
-    const msgsBefore = await getSessionMessages(sessionId)
-
-    const prompt = `${systemPrompt}\n\n---\n\nUser message:\n${processedText}`
-    await sendPromptAsync(sessionId, prompt)
-
-    const reply = await waitForReply(sessionId, msgsBefore.length)
-
+    const usage = await extractUsageFromSession(sessionId)
     insertLLMCall({
       source: 'bot',
-      model: 'opencode',
-      prompt_tokens: 0,
-      completion_tokens: 0,
-      total_tokens: 0,
+      model: usage.model,
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      total_tokens: usage.total_tokens,
       tool_names: [],
       duration_ms: Date.now() - startTime,
+      session_id: sessionId,
+      message_id: usage.message_id,
+      cost: usage.cost,
     })
 
     await manager.send(msg.channelType, msg.chatId, { text: reply || 'No response generated.' })

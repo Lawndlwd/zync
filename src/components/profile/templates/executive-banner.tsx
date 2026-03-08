@@ -53,7 +53,7 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
         }
         .cv-executive-banner .eb-contact-strip {
           margin-top: 14px;
-          background: rgba(255,255,255,0.15);
+          background: rgba(0,0,0,0.2);
           padding: 8px 24mm;
           margin-left: -24mm;
           margin-right: -24mm;
@@ -106,7 +106,7 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
         .cv-executive-banner .eb-entry {
           margin-bottom: 14px;
           padding-bottom: 14px;
-          border-bottom: 1px solid #e5e5e5;
+          border-bottom: 1px solid color-mix(in srgb, var(--cv-primary) 15%, transparent);
         }
         .cv-executive-banner .eb-entry:last-child {
           border-bottom: none;
@@ -129,6 +129,7 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
         .cv-executive-banner .eb-bullets {
           margin: 5px 0 0 16px;
           padding: 0;
+          list-style-type: disc;
         }
         .cv-executive-banner .eb-bullets li {
           margin-bottom: 2px;
@@ -197,7 +198,7 @@ export function ExecutiveBannerTemplate({ profile, theme }: TemplateProps) {
           border-radius: 1px;
         }
         .cv-executive-banner [data-field]:hover {
-          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
           outline-offset: 2px;
         }
       `}} />

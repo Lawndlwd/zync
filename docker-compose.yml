@@ -3,17 +3,31 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        MODE: development
     ports:
-      - "${ZYNC_PORT:-8080}:80"
+      - "${ZYNC_PORT:-8080}:5173"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - VITE_BACKEND_URL=http://backend:3001
+      - VITE_WAKEWORD_URL=ws://wakeword:9000
+      - VITE_OPENCODE_URL=http://host.docker.internal:4096
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     restart: unless-stopped
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+      args:
+        MODE: development
     ports:
       - "3001:3001"
     env_file:
@@ -22,12 +36,16 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
+      - NODE_ENV=development
       - OPENCODE_URL=http://host.docker.internal:4096
       - WHISPER_SERVICE_URL=http://whisper:9100
     volumes:
-      - zync-data:/app/data
-      - zync-documents:/app/documents
+      - ./server/src:/app/src
+      - ./server/data:/app/data
+      - ./data/documents:/app/documents
+    depends_on:
+      whisper:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)process.exit(1)})"]
       interval: 15s
@@ -52,24 +70,14 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
-    profiles:
-      - voice
     restart: unless-stopped
 
   wakeword:
     build:
       context: ./server/wakeword
       dockerfile: Dockerfile
-    ports:
-      - "9000:9000"
     environment:
       - WAKEWORD_PORT=9000
       - WAKEWORD_MODEL=${WAKEWORD_MODEL:-hey_jarvis}
       - WAKEWORD_THRESHOLD=${WAKEWORD_THRESHOLD:-0.5}
-    profiles:
-      - voice
     restart: unless-stopped
-
-volumes:
-  zync-data:
-  zync-documents:

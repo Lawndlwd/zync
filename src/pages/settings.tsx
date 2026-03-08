@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useSettingsStore } from '@/store/settings'
-import { fetchServerSettings } from '@/services/jira'
+import { fetchServerSettings } from '@/services/settings'
 import { Button } from '@/components/ui/button'
 import { RotateCcw, Download, Wand2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -9,22 +9,27 @@ import { useNavigate } from 'react-router-dom'
 import { SettingsSidebar, type SettingsSection } from '@/components/settings/settings-sidebar'
 import { JiraSettingsCard } from '@/components/settings/jira-settings'
 import { GitLabSettingsCard } from '@/components/settings/gitlab-settings'
+import { GitHubSettingsCard } from '@/components/settings/github-settings'
+import { LinearSettingsCard } from '@/components/settings/linear-settings'
 import { ChannelsSettingsCard } from '@/components/settings/channels-settings'
 import { MemoriesSettingsCard } from '@/components/settings/memories-settings'
 import { SchedulesSettingsCard } from '@/components/settings/schedules-settings'
 import { ToolsSettingsCard } from '@/components/settings/tools-settings'
-import { SkillsSettingsCard } from '@/components/settings/skills-settings'
 import { VaultSettingsCard } from '@/components/settings/vault-settings'
 import { ConfigSettingsCard } from '@/components/settings/config-settings'
 import { ToolConfigSettingsCard } from '@/components/settings/tool-config-settings'
 import { BriefingsSettingsCard } from '@/components/settings/briefings-settings'
 import { OpenCodeSettings } from '@/components/opencode/OpenCodeSettings'
+import { SocialSettingsCard } from '@/components/settings/social-settings'
 
 // Map sections to their parent groups for group-level navigation
 const sectionToGroup: Record<string, SettingsSection> = {
   jira: 'integrations',
   gitlab: 'integrations',
+  github: 'integrations',
+  linear: 'integrations',
   channels: 'integrations',
+  social: 'integrations',
   memories: 'agent',
   schedules: 'agent',
   tools: 'agent',
@@ -36,8 +41,8 @@ const sectionToGroup: Record<string, SettingsSection> = {
 
 // Group sections define which cards to show
 const groupSections: Record<string, SettingsSection[]> = {
-  integrations: ['jira', 'gitlab', 'channels'],
-  agent: ['memories', 'schedules', 'tools', 'skills'],
+  integrations: ['jira', 'gitlab', 'github', 'linear', 'channels', 'social'],
+  agent: ['memories', 'schedules', 'tools'],
   security: ['vault', 'config', 'tool-config'],
   briefings: ['briefings'],
   opencode: ['opencode'],
@@ -133,8 +138,17 @@ export function SettingsPage() {
               <div ref={setRef('gitlab')}>
                 <GitLabSettingsCard envConfig={envConfig} />
               </div>
+              <div ref={setRef('github')}>
+                <GitHubSettingsCard envConfig={envConfig} />
+              </div>
+              <div ref={setRef('linear')}>
+                <LinearSettingsCard envConfig={envConfig} />
+              </div>
               <div ref={setRef('channels')}>
                 <ChannelsSettingsCard />
+              </div>
+              <div ref={setRef('social')}>
+                <SocialSettingsCard />
               </div>
             </>
           )}
@@ -150,9 +164,6 @@ export function SettingsPage() {
               </div>
               <div ref={setRef('tools')}>
                 <ToolsSettingsCard />
-              </div>
-              <div ref={setRef('skills')}>
-                <SkillsSettingsCard />
               </div>
             </>
           )}

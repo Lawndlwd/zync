@@ -18,10 +18,10 @@ const chartConfig: ChartConfig = {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })
+  if (!dateStr) return ''
+  // Handle both "YYYY-MM-DD" and full ISO strings
+  const d = dateStr.length === 10 ? new Date(dateStr + 'T00:00:00') : new Date(dateStr)
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function formatCompact(n: number) {
@@ -60,6 +60,8 @@ export function ReachImpressionsChart({ data }: ReachImpressionsChartProps) {
             tick={{ fontSize: 12 }}
             tickLine={false}
             axisLine={false}
+            interval="equidistantPreserveStart"
+            minTickGap={30}
           />
           <YAxis
             tickFormatter={formatCompact}

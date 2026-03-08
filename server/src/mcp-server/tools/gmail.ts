@@ -1,19 +1,6 @@
 import { z } from 'zod'
-import { google } from 'googleapis'
 import { getDb } from '../../bot/memory/db.js'
-import { getSecret } from '../../secrets/index.js'
-
-function getGmailClient() {
-  const clientId = getSecret('CHANNEL_GMAIL_CLIENT_ID')
-  const clientSecret = getSecret('CHANNEL_GMAIL_CLIENT_SECRET')
-  const refreshToken = getSecret('CHANNEL_GMAIL_REFRESH_TOKEN')
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('Gmail not configured. Connect Gmail in Settings first.')
-  }
-  const auth = new google.auth.OAuth2(clientId, clientSecret)
-  auth.setCredentials({ refresh_token: refreshToken })
-  return google.gmail({ version: 'v1', auth })
-}
+import { getGmailClient } from './google-auth.js'
 
 function decodeBody(payload: any): string {
   if (payload?.body?.data) {

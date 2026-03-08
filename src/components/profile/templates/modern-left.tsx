@@ -139,13 +139,40 @@ export function ModernLeftTemplate({ profile, theme }: TemplateProps) {
           border-radius: 2px;
           font-weight: 500;
         }
+        .cv-modern-left .ml-gpa {
+          font-size: 8.5pt;
+          color: var(--cv-secondary);
+          margin-top: 2px;
+        }
+        .cv-modern-left .ml-proj-url {
+          font-size: 8.5pt;
+          color: var(--cv-accent);
+          margin-left: 8px;
+        }
+        .cv-modern-left .ml-proj-desc {
+          color: var(--cv-secondary);
+          margin-top: 2px;
+        }
+        .cv-modern-left .ml-proj-tech-row {
+          margin-top: 4px;
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .cv-modern-left .ml-proj-tech-tag {
+          font-size: 8pt;
+          color: var(--cv-accent);
+          border: 1px solid var(--cv-accent);
+          padding: 1px 8px;
+          border-radius: 2px;
+        }
         .cv-modern-left [data-field] {
           cursor: text;
           transition: outline 0.15s;
           border-radius: 1px;
         }
         .cv-modern-left [data-field]:hover {
-          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
           outline-offset: 2px;
         }
       `}} />
@@ -204,7 +231,7 @@ export function ModernLeftTemplate({ profile, theme }: TemplateProps) {
                   </div>
                   <span className="ml-dates">{edu.startDate} &ndash; {edu.endDate || 'Present'}</span>
                 </div>
-                {edu.gpa && <div style={{ fontSize: '8.5pt', color: 'var(--cv-secondary)', marginTop: 2 }}>GPA: {edu.gpa}</div>}
+                {edu.gpa && <div className="ml-gpa">GPA: {edu.gpa}</div>}
               </div>
             ))}
           </div>
@@ -227,12 +254,12 @@ export function ModernLeftTemplate({ profile, theme }: TemplateProps) {
             {profile.projects.map((proj, i) => (
               <div key={proj.id} className="ml-entry">
                 <span className="ml-company" data-field={`projects.${i}.name`}>{proj.name}</span>
-                {proj.url && <span style={{ fontSize: '8.5pt', color: 'var(--cv-accent)', marginLeft: 8 }}>{proj.url}</span>}
-                <div style={{ color: 'var(--cv-secondary)', marginTop: 2 }} data-field={`projects.${i}.description`}>{proj.description}</div>
+                {proj.url && <span className="ml-proj-url">{proj.url}</span>}
+                <div className="ml-proj-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
                 {proj.technologies.length > 0 && (
-                  <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div className="ml-proj-tech-row">
                     {proj.technologies.map((t, i) => (
-                      <span key={i} style={{ fontSize: '8pt', color: 'var(--cv-accent)', border: '1px solid var(--cv-accent)', padding: '1px 8px', borderRadius: 2 }}>{t}</span>
+                      <span key={i} className="ml-proj-tech-tag">{t}</span>
                     ))}
                   </div>
                 )}

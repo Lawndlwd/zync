@@ -1,5 +1,5 @@
 import { useSettingsStore } from '@/store/settings'
-import { fetchServerSettings } from '@/services/jira'
+import { fetchServerSettings } from '@/services/settings'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { BoardPicker } from '@/components/jira/board-picker'
 import { SettingField } from './setting-field'

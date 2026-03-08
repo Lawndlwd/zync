@@ -176,7 +176,7 @@ export const CV_THEMES: CvTheme[] = [
     name: 'Minimal Accent',
     template: 'minimal-two-col',
     primaryColor: '#222222',
-    secondaryColor: '#777777',
+    secondaryColor: '#666666',
     accentColor: '#e74c3c',
     backgroundColor: '#ffffff',
     fontHeading: 'Inter, sans-serif',
@@ -251,7 +251,7 @@ export const CV_THEMES: CvTheme[] = [
     showPhoto: false,
   },
 
-  // ── Magazine template ──
+  // ── Magazine template (accent should be dark — header text is white) ──
   {
     id: 'magazine-orange',
     name: 'Magazine Warm',

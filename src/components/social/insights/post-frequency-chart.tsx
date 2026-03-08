@@ -36,6 +36,8 @@ export function PostFrequencyChart({ data }: Props) {
             tick={{ fill: '#a1a1aa', fontSize: 12 }}
             tickLine={false}
             axisLine={false}
+            interval="equidistantPreserveStart"
+            minTickGap={30}
           />
           <YAxis
             yAxisId="left"

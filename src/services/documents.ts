@@ -4,8 +4,9 @@ const API = '/api/documents'
 
 // ── Folders ──
 
-export async function fetchFolders(): Promise<DocFolder[]> {
-  const res = await fetch(`${API}/folders`)
+export async function fetchFolders(parent?: string): Promise<DocFolder[]> {
+  const url = parent ? `${API}/folders?parent=${encodeURIComponent(parent)}` : `${API}/folders`
+  const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to fetch folders')
   return res.json()
 }

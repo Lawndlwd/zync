@@ -200,6 +200,10 @@ export function initSocialDb(): void {
     logger.info('Added account_id to social_comments')
   }
 
+  // Backfill: set created_at for rows that predate the column
+  db.exec("UPDATE social_posts SET created_at = datetime('now') WHERE created_at IS NULL AND posted_at IS NULL")
+  db.exec("UPDATE social_posts SET created_at = posted_at WHERE created_at IS NULL AND posted_at IS NOT NULL")
+
   logger.info('Social database initialized')
 }
 
@@ -215,6 +219,17 @@ export function upsertAccount(platform: string, username: string) {
 
 export function getAccounts() {
   return getSocialDb().prepare('SELECT * FROM social_accounts ORDER BY platform').all()
+}
+
+export function deleteAccount(id: number) {
+  const db = getSocialDb()
+  const account = db.prepare('SELECT platform FROM social_accounts WHERE id = ?').get(id) as { platform: string } | undefined
+  if (account) {
+    db.prepare('DELETE FROM social_comments WHERE account_id = ? OR (platform = ? AND account_id IS NULL)').run(id, account.platform)
+    db.prepare('DELETE FROM social_posts WHERE account_id = ? OR (platform = ? AND account_id IS NULL)').run(id, account.platform)
+  }
+  db.prepare('DELETE FROM social_account_snapshots WHERE account_id = ?').run(id)
+  db.prepare('DELETE FROM social_accounts WHERE id = ?').run(id)
 }
 
 export function updateAccountSync(platform: string, username: string) {
@@ -615,7 +630,7 @@ export function getInsights(platform: string | null, days: number, accountId?: n
   const db = getSocialDb()
   const cutoff = new Date(Date.now() - days * 86400_000).toISOString()
   const prevCutoff = new Date(Date.now() - days * 2 * 86400_000).toISOString()
-  const dateFn = "date(COALESCE(posted_at, created_at))"
+  const dateFn = "substr(COALESCE(posted_at, created_at), 1, 10)"
 
   // Build dynamic filters
   const conditions: string[] = []
@@ -623,6 +638,8 @@ export function getInsights(platform: string | null, days: number, accountId?: n
   if (platform) { conditions.push('platform = ?'); params.push(platform) }
   if (accountId != null) { conditions.push('account_id = ?'); params.push(accountId) }
   const baseWhere = conditions.length > 0 ? conditions.join(' AND ') : '1=1'
+  // For grouped queries: exclude rows with no date
+  const baseWhereWithDate = `${baseWhere} AND COALESCE(posted_at, created_at) IS NOT NULL`
 
   // --- Summary: current period totals ---
   const curTotals = db.prepare(`
@@ -676,26 +693,25 @@ export function getInsights(platform: string | null, days: number, accountId?: n
   `).all(...(accountId ? [accountId, prevStartDate, startDate] : [prevStartDate, startDate])) as Array<{ date: string; followers: number }>
 
   const latestFollowers = followerSnapshots.length > 0 ? followerSnapshots[followerSnapshots.length - 1].followers : 0
-  const earliestFollowers = followerSnapshots.length > 0 ? followerSnapshots[0].followers : 0
-  const prevEarliestFollowers = prevFollowerSnapshots.length > 0 ? prevFollowerSnapshots[0].followers : 0
-  const followersDelta = delta(latestFollowers - earliestFollowers, earliestFollowers - prevEarliestFollowers)
+  const earliestFollowers = followerSnapshots.length > 0 ? followerSnapshots[0].followers : latestFollowers
+  const followersDelta = earliestFollowers > 0 ? ((latestFollowers - earliestFollowers) / earliestFollowers) * 100 : 0
 
   // --- Sparklines: daily aggregates ---
   const dailyPosts = db.prepare(`
     SELECT ${dateFn} as date, COUNT(*) as value
-    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    FROM social_posts WHERE ${baseWhereWithDate} AND COALESCE(posted_at, created_at) >= ?
     GROUP BY date ORDER BY date
   `).all(...params, cutoff) as Array<{ date: string; value: number }>
 
   const dailyReach = db.prepare(`
     SELECT ${dateFn} as date, COALESCE(SUM(reach), 0) as value
-    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    FROM social_posts WHERE ${baseWhereWithDate} AND COALESCE(posted_at, created_at) >= ?
     GROUP BY date ORDER BY date
   `).all(...params, cutoff) as Array<{ date: string; value: number }>
 
   const dailyImpressions = db.prepare(`
     SELECT ${dateFn} as date, COALESCE(SUM(impressions), 0) as value
-    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    FROM social_posts WHERE ${baseWhereWithDate} AND COALESCE(posted_at, created_at) >= ?
     GROUP BY date ORDER BY date
   `).all(...params, cutoff) as Array<{ date: string; value: number }>
 
@@ -704,7 +720,7 @@ export function getInsights(platform: string | null, days: number, accountId?: n
            CASE WHEN SUM(reach) > 0 THEN
              (SUM(COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0))) * 100.0 / SUM(reach)
            ELSE 0 END as value
-    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    FROM social_posts WHERE ${baseWhereWithDate} AND COALESCE(posted_at, created_at) >= ?
     GROUP BY date ORDER BY date
   `).all(...params, cutoff) as Array<{ date: string; value: number }>
 
@@ -713,7 +729,7 @@ export function getInsights(platform: string | null, days: number, accountId?: n
     SELECT ${dateFn} as date,
            COALESCE(SUM(reach), 0) as reach,
            COALESCE(SUM(impressions), 0) as impressions
-    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    FROM social_posts WHERE ${baseWhereWithDate} AND COALESCE(posted_at, created_at) >= ?
     GROUP BY date ORDER BY date
   `).all(...params, cutoff) as Array<{ date: string; reach: number; impressions: number }>
 
@@ -739,14 +755,14 @@ export function getInsights(platform: string | null, days: number, accountId?: n
            CASE WHEN SUM(reach) > 0 THEN
              (SUM(COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0))) * 100.0 / SUM(reach)
            ELSE 0 END as rate
-    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    FROM social_posts WHERE ${baseWhereWithDate} AND COALESCE(posted_at, created_at) >= ?
     GROUP BY date ORDER BY date
   `).all(...params, cutoff) as Array<{ date: string; rate: number }>
 
   // --- Posting heatmap ---
   const postingHeatmap = db.prepare(`
-    SELECT CAST(strftime('%w', COALESCE(posted_at, created_at)) AS INTEGER) as day_of_week,
-           CAST(strftime('%H', COALESCE(posted_at, created_at)) AS INTEGER) as hour,
+    SELECT CAST(strftime('%w', replace(COALESCE(posted_at, created_at), '+0000', '+00:00')) AS INTEGER) as day_of_week,
+           CAST(substr(COALESCE(posted_at, created_at), 12, 2) AS INTEGER) as hour,
            AVG(COALESCE(like_count, 0) + COALESCE(comments_count, 0) + COALESCE(shares_count, 0) + COALESCE(saves_count, 0)) as avg_engagement
     FROM social_posts
     WHERE ${baseWhere} AND posted_at IS NOT NULL
@@ -790,13 +806,13 @@ export function getInsights(platform: string | null, days: number, accountId?: n
 
   // --- Post frequency by week ---
   const postFrequency = db.prepare(`
-    SELECT strftime('%Y-W%W', COALESCE(posted_at, created_at)) as week,
+    SELECT strftime('%Y-W%W', replace(COALESCE(posted_at, created_at), '+0000', '+00:00')) as week,
            COUNT(*) as count,
            CASE WHEN SUM(reach) > 0 THEN
              (SUM(COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0))) * 100.0 / SUM(reach)
            ELSE 0 END as avg_engagement_rate
     FROM social_posts
-    WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    WHERE ${baseWhereWithDate} AND COALESCE(posted_at, created_at) >= ?
     GROUP BY week ORDER BY week
   `).all(...params, cutoff) as SocialInsightsData['postFrequency']
 

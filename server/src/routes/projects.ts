@@ -5,14 +5,15 @@ import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { ProjectCreateSchema, ProjectUpdateSchema, TaskCreateSchema, TaskUpdateSchema } from '../lib/schemas.js'
+import { getConfig } from '../config/index.js'
 
 export const projectsRouter = Router()
 
 // ── Helper functions ──
 
 function getProjectsRoot(): string {
-  const docsPath = process.env.DOCUMENTS_PATH
-  if (!docsPath) throw new Error('DOCUMENTS_PATH env var is not set')
+  const docsPath = getConfig('DOCUMENTS_PATH')
+  if (!docsPath) throw new Error('DOCUMENTS_PATH is not configured')
   const root = join(docsPath, 'projects')
   mkdirSync(root, { recursive: true })
   return root

@@ -1,29 +1,11 @@
-import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
+import { getOrCreateSession } from '../opencode/client.js'
+import { waitForResponse } from '../opencode/wait-for-response.js'
 import { updateJobScore, updateJobCuration, updateJobStatus } from './db.js'
 import { logger } from '../lib/logger.js'
+import { loadPromptContent, interpolate } from '../skills/prompts.js'
 import type { Job, Profile, Campaign } from './types.js'
 
 const SESSION_PURPOSE = 'jobs-ai'
-
-async function getResponse(sessionId: string, msgCountBefore: number, timeoutMs = 120_000): Promise<string> {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 1500))
-    const idle = await isSessionIdle(sessionId)
-    if (!idle) continue
-    const msgs = await getSessionMessages(sessionId)
-    if (msgs.length <= msgCountBefore) continue
-    const newMsgs = msgs.slice(msgCountBefore)
-    const last = [...newMsgs].reverse().find((m: any) => m.role === 'assistant' || m.info?.role === 'assistant')
-    if (last?.parts) {
-      const texts = last.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text)
-      if (texts.length > 0 && texts.some((t: string) => t.length > 0)) {
-        return texts.join('')
-      }
-    }
-  }
-  throw new Error('LLM response timed out')
-}
 
 function extractJSON(text: string): any {
   // Try to find JSON in markdown fences first
@@ -34,71 +16,12 @@ function extractJSON(text: string): any {
 
 export async function parseResume(rawText: string): Promise<Omit<Profile, 'id' | 'updated_at' | 'raw_text'>> {
   const sessionId = await getOrCreateSession(SESSION_PURPOSE)
-  const msgsBefore = (await getSessionMessages(sessionId)).length
 
-  const prompt = `Parse this resume into structured JSON. Return ONLY a JSON object (in a markdown code fence) matching this exact schema:
+  const prompt = interpolate(loadPromptContent('resume-parser'), {
+    resumeText: rawText.slice(0, 8000),
+  })
 
-{
-  "name": string,
-  "title": string (current or desired job title),
-  "summary": string (2-3 sentence professional summary),
-  "email": string (or "" if not found),
-  "phone": string (or "" if not found),
-  "location": string (city/region or "" if not found),
-  "linkedin": string (LinkedIn URL or "" if not found),
-  "website": string (personal website/portfolio URL or "" if not found),
-  "skills": string[] (list of technical and soft skills),
-  "experience": string (concise markdown summary of all work history for backward compatibility),
-  "experiences": [
-    {
-      "id": string (generate a unique UUID v4 for each entry, e.g. "a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
-      "title": string (job title),
-      "company": string,
-      "location": string (or ""),
-      "startDate": string (e.g. "Jan 2020" or "2020"),
-      "endDate": string (e.g. "Present" or "Dec 2023"),
-      "bullets": string[] (key responsibilities and achievements as bullet points)
-    }
-  ],
-  "education": string (concise summary of all education for backward compatibility),
-  "educations": [
-    {
-      "id": string (generate a unique UUID v4 for each entry),
-      "school": string,
-      "degree": string (e.g. "Bachelor of Science"),
-      "field": string (e.g. "Computer Science"),
-      "startDate": string (or ""),
-      "endDate": string (or ""),
-      "gpa": string (or "")
-    }
-  ],
-  "projects": [
-    {
-      "id": string (generate a unique UUID v4 for each entry),
-      "name": string,
-      "description": string,
-      "url": string (or ""),
-      "technologies": string[]
-    }
-  ],
-  "languages": string[] (spoken/written languages)
-}
-
-Important:
-- Every "id" field MUST be a unique UUID v4 string (e.g. "f47ac10b-58cc-4372-a567-0d02b2c3d479"). Generate a different one for each entry.
-- "experience" should be a concise markdown text summarizing all work history.
-- "experiences" should be the detailed structured array of each position.
-- "education" should be a concise text summary of all education.
-- "educations" should be the detailed structured array of each degree/certification.
-- If a field is not found in the resume, use "" for strings, [] for arrays.
-
-Resume text:
----
-${rawText.slice(0, 8000)}
----`
-
-  await sendPromptAsync(sessionId, prompt)
-  const response = await getResponse(sessionId, msgsBefore)
+  const response = await waitForResponse(sessionId, prompt)
 
   try {
     return extractJSON(response)
@@ -119,7 +42,6 @@ export async function scoreJobs(jobs: Job[], profile: Profile): Promise<void> {
   for (let i = 0; i < jobs.length; i += batchSize) {
     const batch = jobs.slice(i, i + batchSize)
     const sessionId = await getOrCreateSession(SESSION_PURPOSE)
-    const msgsBefore = (await getSessionMessages(sessionId)).length
 
     const jobSummaries = batch.map((j, idx) => (
       `[${idx}] "${j.title}" at ${j.company} — ${j.location}${j.salary ? ` — ${j.salary}` : ''}\nDescription: ${j.description.slice(0, 300)}`
@@ -132,21 +54,13 @@ Skills: ${profile.skills.join(', ')}
 Summary: ${profile.summary}
 Experience: ${profile.experience.slice(0, 500)}`
 
-    const prompt = `Score these ${batch.length} jobs for this candidate on a scale of 0-10. Consider skill match, title alignment, and experience level.
+    const prompt = interpolate(loadPromptContent('job-scoring'), {
+      count: String(batch.length),
+      profileSummary,
+      jobSummaries,
+    })
 
-Return ONLY a JSON array (in a markdown code fence) where each element has:
-- index (number, matching the [index] above)
-- score (number 0-10)
-- reasons (string, brief 1-2 sentence explanation)
-
-Candidate Profile:
-${profileSummary}
-
-Jobs:
-${jobSummaries}`
-
-    await sendPromptAsync(sessionId, prompt)
-    const response = await getResponse(sessionId, msgsBefore)
+    const response = await waitForResponse(sessionId, prompt)
 
     try {
       const scores = extractJSON(response) as Array<{ index: number; score: number; reasons: string }>
@@ -167,7 +81,6 @@ export async function curateJobs(jobs: Job[], campaign: Campaign, profile: Profi
   if (jobs.length === 0) return
 
   const sessionId = await getOrCreateSession(SESSION_PURPOSE)
-  const msgsBefore = (await getSessionMessages(sessionId)).length
 
   const jobSummaries = jobs.map((j, idx) => {
     const desc = j.description?.trim() ? `\nDescription: ${j.description.slice(0, 400)}` : ''
@@ -188,36 +101,16 @@ Remote preference: ${campaign.remote}
 Experience level: ${campaign.experience_level}
 ${campaign.salary_min || campaign.salary_max ? `Salary range: ${campaign.salary_min ?? '?'}–${campaign.salary_max ?? '?'} EUR` : ''}`
 
-  const prompt = `You are a job search curator. You MUST analyze the jobs below and return a JSON result. NEVER ask questions or request more information — work with what you have.
+  const prompt = interpolate(loadPromptContent('job-curation'), {
+    count: String(jobs.length),
+    maxResults: String(campaign.max_results),
+    role: campaign.role,
+    criteria,
+    profileSummary,
+    jobSummaries,
+  })
 
-Analyze these ${jobs.length} jobs for this candidate and pick the top ${campaign.max_results} best matches.
-
-For each job:
-1. Verify it actually matches the role "${campaign.role}" based on the job title
-2. Use your knowledge of each company to assess quality — reputation, industry, size, employee satisfaction, typical salaries
-3. Score 0-10 based on overall fit (role match, company reputation, salary, location)
-
-Some jobs may not have descriptions — that's fine, evaluate based on title, company, and location.
-
-You MUST return ONLY a JSON array (in a markdown code fence) of the top ${campaign.max_results} jobs. Each element:
-- index (number, matching [index] above)
-- score (number 0-10)
-- reasons (string, 1-2 sentences why this is a good match)
-- company_insight (string, a rich 4-6 sentence paragraph: what the company does, their reputation and culture from what you know, typical salary range for this kind of role there, company size and industry, and why it could be a good or bad fit for the candidate)
-
-Jobs NOT in your top ${campaign.max_results} should be excluded from the array. Do NOT output anything other than the JSON code fence.
-
-Campaign Criteria:
-${criteria}
-
-Candidate Profile:
-${profileSummary}
-
-Jobs:
-${jobSummaries}`
-
-  await sendPromptAsync(sessionId, prompt)
-  const response = await getResponse(sessionId, msgsBefore)
+  const response = await waitForResponse(sessionId, prompt)
 
   try {
     const curated = extractJSON(response) as Array<{
@@ -249,55 +142,34 @@ ${jobSummaries}`
 
 export async function generateCoverLetter(job: Job, profile: Profile): Promise<string> {
   const sessionId = await getOrCreateSession(SESSION_PURPOSE)
-  const msgsBefore = (await getSessionMessages(sessionId)).length
 
-  const prompt = `Write a professional, tailored cover letter for this job application.
+  const prompt = interpolate(loadPromptContent('cover-letter'), {
+    name: profile.name,
+    title: profile.title,
+    skills: profile.skills.join(', '),
+    summary: profile.summary,
+    experience: profile.experience.slice(0, 800),
+    jobTitle: job.title,
+    company: job.company,
+    location: job.location,
+    jobDescription: job.description.slice(0, 1500),
+  })
 
-Candidate:
-- Name: ${profile.name}
-- Title: ${profile.title}
-- Skills: ${profile.skills.join(', ')}
-- Summary: ${profile.summary}
-- Experience: ${profile.experience.slice(0, 800)}
-
-Job:
-- Title: ${job.title}
-- Company: ${job.company}
-- Location: ${job.location}
-- Description: ${job.description.slice(0, 1500)}
-
-Write a compelling, concise cover letter (3-4 paragraphs). Be specific about how the candidate's skills match the role. Do not use generic filler.`
-
-  await sendPromptAsync(sessionId, prompt)
-  return getResponse(sessionId, msgsBefore)
+  return waitForResponse(sessionId, prompt)
 }
 
 export async function generateInterviewPrep(job: Job, profile: Profile): Promise<string> {
   const sessionId = await getOrCreateSession(SESSION_PURPOSE)
-  const msgsBefore = (await getSessionMessages(sessionId)).length
 
-  const prompt = `Prepare interview preparation material for this job application.
+  const prompt = interpolate(loadPromptContent('interview-prep'), {
+    name: profile.name,
+    title: profile.title,
+    skills: profile.skills.join(', '),
+    experience: profile.experience.slice(0, 800),
+    jobTitle: job.title,
+    company: job.company,
+    jobDescription: job.description.slice(0, 1500),
+  })
 
-Candidate:
-- Name: ${profile.name}
-- Title: ${profile.title}
-- Skills: ${profile.skills.join(', ')}
-- Experience: ${profile.experience.slice(0, 800)}
-
-Job:
-- Title: ${job.title}
-- Company: ${job.company}
-- Description: ${job.description.slice(0, 1500)}
-
-Provide:
-1. **Likely Interview Questions** (8-10 questions with suggested talking points)
-2. **Technical Topics to Review** (based on job requirements)
-3. **Questions to Ask the Interviewer** (5 thoughtful questions)
-4. **Company Research Notes** (what to look up about ${job.company})
-5. **Key Strengths to Highlight** (based on profile-job match)
-
-Be specific and actionable.`
-
-  await sendPromptAsync(sessionId, prompt)
-  return getResponse(sessionId, msgsBefore)
+  return waitForResponse(sessionId, prompt)
 }

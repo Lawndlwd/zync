@@ -1,9 +1,11 @@
 import cron, { type ScheduledTask } from 'node-cron'
-import { getOrCreateSession, sendPromptAsync, getSessionMessages } from '../../opencode/client.js'
+import { getOrCreateSession } from '../../opencode/client.js'
+import { waitForResponse } from '../../opencode/wait-for-response.js'
 import { insertLLMCall } from '../memory/activity.js'
-import { getBotInstance } from '../bot.js'
+import { getChannelManager } from '../../channels/manager.js'
 import { logger } from '../../lib/logger.js'
 import { getConfig } from '../../config/index.js'
+import { loadPromptContent, interpolate } from '../../skills/prompts.js'
 import {
   addSchedule as dbAddSchedule,
   removeSchedule as dbRemoveSchedule,
@@ -32,26 +34,12 @@ async function executeBriefing(schedule: Schedule): Promise<void> {
   try {
     const startTime = Date.now()
 
-    const sessionId = await getOrCreateSession(`schedule-${schedule.chat_id}`)
-    const systemPrompt = `You are a personal AI assistant, running a scheduled briefing. The user set this up to receive proactive updates. Execute the task thoroughly using your tools. Be concise but complete.\n\nCurrent Telegram chat_id: ${schedule.chat_id}`
+    const sessionId = await getOrCreateSession('chat')
+    const systemPrompt = interpolate(loadPromptContent('scheduled-briefing'), {
+      chatId: String(schedule.chat_id),
+    })
 
-    await sendPromptAsync(sessionId, `${systemPrompt}\n\n---\n\n${schedule.prompt}`)
-
-    // Poll for reply
-    let text = 'No response generated.'
-    const deadline = Date.now() + 60_000
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 1500))
-      const msgs = await getSessionMessages(sessionId)
-      const last = [...msgs].reverse().find((m: any) => m.info?.role === 'assistant')
-      if (last?.parts) {
-        const texts = last.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text)
-        if (texts.length > 0 && texts.some((t: string) => t.length > 0)) {
-          text = texts.join('')
-          break
-        }
-      }
-    }
+    const text = await waitForResponse(sessionId, `${systemPrompt}\n\n---\n\n${schedule.prompt}`, { timeoutMs: 60_000 }) || 'No response generated.'
 
     insertLLMCall({
       source: 'schedule',
@@ -63,10 +51,10 @@ async function executeBriefing(schedule: Schedule): Promise<void> {
       duration_ms: Date.now() - startTime,
     })
 
-    const bot = getBotInstance()
+    const manager = getChannelManager()
     const chunks = splitMessage(text)
     for (const chunk of chunks) {
-      await bot.api.sendMessage(schedule.chat_id, chunk)
+      await manager.send('telegram', String(schedule.chat_id), { text: chunk })
     }
   } catch (err) {
     logger.error({ err, scheduleId: schedule.id }, 'Heartbeat: failed to execute schedule')

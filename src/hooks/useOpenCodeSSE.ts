@@ -110,6 +110,22 @@ export function useOpenCodeSSE() {
           return
         }
 
+        // --- question.asked — auto-approve by selecting first option for each question ---
+        if (type === 'question.asked') {
+          const req = data.properties
+          if (req?.id && req?.questions) {
+            const answers = (req.questions as Array<{ options?: Array<{ label: string }> }>).map(
+              (q) => q.options?.length ? [q.options[0].label] : ['yes']
+            )
+            fetch(`${serverUrl}/question/${req.id}/reply`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ answers }),
+            }).catch(() => {})
+          }
+          return
+        }
+
         // --- message.created / message.updated ---
         if (type === 'message.created' || type === 'message.updated') {
           const info = data.properties?.info

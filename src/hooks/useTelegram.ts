@@ -61,3 +61,22 @@ export function useReloadTelegramPrompt() {
     mutationFn: telegramService.reloadTelegramPrompt,
   })
 }
+
+export function useSupportPrompt() {
+  return useQuery({
+    queryKey: ['telegram-support-prompt'],
+    queryFn: telegramService.fetchSupportPrompt,
+    staleTime: 60_000,
+    retry: 1,
+  })
+}
+
+export function useSaveSupportPrompt() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (content: string) => telegramService.saveSupportPrompt(content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['telegram-support-prompt'] })
+    },
+  })
+}

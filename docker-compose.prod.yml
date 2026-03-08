@@ -21,6 +21,9 @@ services:
     volumes:
       - zync-data:/app/data
       - zync-documents:/app/documents
+    depends_on:
+      whisper:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)process.exit(1)})"]
       interval: 15s
@@ -43,20 +46,14 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
-    profiles:
-      - voice
     restart: unless-stopped
 
   wakeword:
     image: ghcr.io/lawndlwd/zync-wakeword:latest
-    ports:
-      - "9000:9000"
     environment:
       - WAKEWORD_PORT=9000
       - WAKEWORD_MODEL=${WAKEWORD_MODEL:-hey_jarvis}
       - WAKEWORD_THRESHOLD=${WAKEWORD_THRESHOLD:-0.5}
-    profiles:
-      - voice
     restart: unless-stopped
 
 volumes:

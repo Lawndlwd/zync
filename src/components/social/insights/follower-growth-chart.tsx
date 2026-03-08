@@ -12,7 +12,9 @@ interface FollowerGrowthChartProps {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+  if (!dateStr) return ''
+  const d = dateStr.length === 10 ? new Date(dateStr + 'T00:00:00') : new Date(dateStr)
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
   })
@@ -61,6 +63,8 @@ export function FollowerGrowthChart({ data, prevData }: FollowerGrowthChartProps
             tick={{ fontSize: 12 }}
             tickLine={false}
             axisLine={false}
+            interval="equidistantPreserveStart"
+            minTickGap={30}
           />
           <YAxis
             tickFormatter={formatCompact}

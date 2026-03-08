@@ -1,4 +1,5 @@
 import { getConfig } from '../config/index.js'
+import { EventSource } from 'eventsource'
 
 const OPENCODE_URL = getConfig('OPENCODE_URL', 'http://localhost:4096') || 'http://localhost:4096'
 
@@ -26,25 +27,55 @@ async function oc(path: string, options?: RequestInit) {
 // Session cache: purpose → sessionId
 const sessionMap = new Map<string, string>()
 
-export async function getOrCreateSession(purpose: string): Promise<string> {
-  const existing = sessionMap.get(purpose)
-  if (existing) {
+// Active dashboard session — set by frontend, used by channels
+let _activeDashboardSessionId: string | null = null
+
+export function setActiveDashboardSession(id: string | null) {
+  _activeDashboardSessionId = id
+}
+
+export function getActiveDashboardSession(): string | null {
+  return _activeDashboardSessionId
+}
+
+export async function getOrCreateSession(purpose: string, agent?: string): Promise<string> {
+  // 1. Check in-memory cache
+  const cached = sessionMap.get(purpose)
+  if (cached) {
     try {
-      await oc(`/session/${existing}`)
-      return existing
+      await oc(`/session/${cached}`)
+      return cached
     } catch {
       sessionMap.delete(purpose)
     }
   }
 
+  // 2. Search existing OpenCode sessions for a matching title (survives server restarts)
+  const title = `[dashboard] ${purpose}`
+  try {
+    const sessions = await listSessions()
+    const match = sessions.find((s: any) => s.title === title)
+    if (match?.id) {
+      sessionMap.set(purpose, match.id)
+      return match.id
+    }
+  } catch {
+    // ignore — fall through to create
+  }
+
+  // 3. Create new session
   const session = await oc('/session', {
     method: 'POST',
-    body: JSON.stringify({ title: `[dashboard] ${purpose}` }),
+    body: JSON.stringify({
+      title,
+      ...(agent ? { agent } : {})
+    }),
   })
   if (!session?.id) throw new Error('Failed to create OpenCode session')
   sessionMap.set(purpose, session.id)
   return session.id
 }
+
 
 export async function sendPromptAsync(
   sessionId: string,
@@ -80,6 +111,44 @@ export async function isSessionIdle(sessionId: string): Promise<boolean> {
 
 export function getOpenCodeUrl(): string {
   return OPENCODE_URL
+}
+
+/** Start a persistent SSE listener on OpenCode to track session completions server-side */
+export function startUsageTracker(onSessionComplete: (sessionId: string) => void): void {
+  const connect = () => {
+    const es = new EventSource(`${OPENCODE_URL}/global/event`)
+
+    es.onmessage = (e: any) => {
+      try {
+        const raw = JSON.parse(e.data)
+        const payload = raw.payload || raw
+        const type = payload.type
+
+        if (type === 'session.status') {
+          const status = payload.properties?.status?.type || payload.properties?.status
+          if (status === 'idle' || status === 'completed') {
+            onSessionComplete(payload.properties.sessionID)
+          }
+        } else if (type === 'session.idle') {
+          onSessionComplete(payload.properties?.sessionID)
+        } else if (type === 'session.updated') {
+          const info = payload.properties?.info
+          if (info && (info.status === 'idle' || info.status === 'completed')) {
+            onSessionComplete(info.id)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    es.onerror = () => {
+      es.close()
+      setTimeout(connect, 5000)
+    }
+  }
+
+  setTimeout(connect, 3000)
 }
 
 export async function checkConnection(): Promise<boolean> {
@@ -132,10 +201,14 @@ export async function getTokenStats(days?: number): Promise<TokenStatsResult> {
 
   for (const result of results) {
     if (result.status !== 'fulfilled') continue
+    // Per session: input tokens represent the full context window and are NOT additive
+    // across messages — only the last message's input counts for this session.
+    // Output, reasoning, cache, and cost ARE additive (each turn generates new tokens).
+    let sessionInput = 0
     for (const item of result.value) {
       const info = item.info || item
       if (info.tokens) {
-        input += info.tokens.input || 0
+        if (info.tokens.input > 0) sessionInput = info.tokens.input
         output += info.tokens.output || 0
         reasoning += info.tokens.reasoning || 0
         cacheRead += info.tokens.cache?.read || 0
@@ -144,6 +217,7 @@ export async function getTokenStats(days?: number): Promise<TokenStatsResult> {
       if (info.cost) cost += info.cost
       if (info.modelID) models.add(info.modelID)
     }
+    input += sessionInput
   }
 
   const data: TokenStatsResult = {

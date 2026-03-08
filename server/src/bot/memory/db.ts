@@ -79,6 +79,10 @@ export function initDb(): void {
   if (!columns.includes('cost')) {
     db.exec(`ALTER TABLE llm_calls ADD COLUMN cost REAL`)
   }
+  if (!columns.includes('message_id')) {
+    db.exec(`ALTER TABLE llm_calls ADD COLUMN message_id TEXT`)
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_llm_calls_message_id ON llm_calls(message_id)`)
+  }
 
   // Migrate: drop old table with UNIQUE constraint, recreate without it (allows history)
   const hasUniqueConstraint = db.prepare(`

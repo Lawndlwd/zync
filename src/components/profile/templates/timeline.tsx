@@ -135,6 +135,7 @@ export function TimelineTemplate({ profile, theme }: TemplateProps) {
         .cv-timeline .tl-bullets {
           margin: 4px 0 0 16px;
           padding: 0;
+          list-style-type: disc;
         }
         .cv-timeline .tl-bullets li {
           margin-bottom: 2px;
@@ -156,7 +157,7 @@ export function TimelineTemplate({ profile, theme }: TemplateProps) {
           font-size: 8.5pt;
           border-radius: 12px;
           background: var(--cv-accent);
-          color: var(--cv-bg);
+          color: #fff;
           font-weight: 500;
         }
         .cv-timeline .tl-chip-outline {
@@ -198,7 +199,7 @@ export function TimelineTemplate({ profile, theme }: TemplateProps) {
           border-radius: 1px;
         }
         .cv-timeline [data-field]:hover {
-          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
           outline-offset: 2px;
         }
       `}} />

@@ -4,7 +4,7 @@ import multer from 'multer'
 import { errorResponse } from '../lib/errors.js'
 import { getSecret, getSecrets } from '../secrets/index.js'
 import {
-  getAccounts, getPosts, countPosts, getComments, countComments, getRules, getIdeas,
+  getAccounts, deleteAccount, getPosts, countPosts, getComments, countComments, getRules, getIdeas,
   createDraftPost, updateCommentReply, createRule, updateRule, deleteRule,
   upsertAccount, getInsights,
   getMediaById, updateMediaAnalysis, updatePost, deletePost, getPostById, getCalendarPosts,
@@ -13,7 +13,7 @@ import { syncAllPlatforms, syncPlatform, syncComments } from '../social/scrapers
 import { processNewComments } from '../social/auto-reply.js'
 import { generateContentIdeas, draftFromIdea } from '../social/ideas.js'
 import { getSocialCredentials } from '../social/scrapers/base.js'
-import { getOAuthUrl, exchangeCodeForToken, exchangeForLongLivedToken, refreshLongLivedToken, fetchUserProfile, publishPhoto, publishReel, publishCarousel } from '../social/instagram-graph.js'
+import { getOAuthUrl, exchangeCodeForToken, exchangeForLongLivedToken, refreshLongLivedToken, fetchUserProfile, fetchAccountInsights, publishPhoto, publishReel, publishCarousel } from '../social/instagram-graph.js'
 import { replyInstagramComment } from '../social/scrapers/instagram.js'
 import { postTweet } from '../social/scrapers/x.js'
 import { saveUploadedFile, deleteMediaFile, getMediaDir } from '../social/media.js'
@@ -38,6 +38,16 @@ socialRouter.get('/accounts', (_req, res) => {
   try {
     const accounts = getAccounts()
     res.json({ accounts })
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
+// DELETE /api/social/accounts/:id — remove a connected account
+socialRouter.delete('/accounts/:id', (req, res) => {
+  try {
+    deleteAccount(Number(req.params.id))
+    res.json({ ok: true })
   } catch (err) {
     errorResponse(res, err)
   }
@@ -261,6 +271,19 @@ socialRouter.get('/instagram/profile', (_req, res) => {
   res.json({ profile_picture_url: profilePic || null, username: username || null })
 })
 
+// GET /api/social/instagram/account-insights — raw account-level engagement data
+socialRouter.get('/instagram/account-insights', async (req, res) => {
+  try {
+    const accessToken = getSecret('SOCIAL_INSTAGRAM_ACCESS_TOKEN')
+    if (!accessToken) return res.status(400).json({ error: 'Instagram not connected' })
+    const days = Number(req.query.days) || 30
+    const data = await fetchAccountInsights(accessToken, 'day', days)
+    res.json(data)
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
 // GET /api/social/instagram/auth — redirect to Instagram OAuth
 socialRouter.get('/instagram/auth', (req, res) => {
   try {
@@ -326,7 +349,7 @@ socialRouter.get('/instagram/callback', async (req, res) => {
     const expiresAt = new Date(Date.now() + longResult.expires_in * 1000).toISOString()
     secretsSvc.set('SOCIAL_INSTAGRAM_TOKEN_EXPIRES', expiresAt, 'social')
 
-    upsertAccount('instagram', igUserId)
+    upsertAccount('instagram', profile.username)
     secretsSvc.set('SOCIAL_INSTAGRAM_USERNAME', profile.username, 'social')
     if (profile.profile_picture_url) {
       secretsSvc.set('SOCIAL_INSTAGRAM_PROFILE_PIC', profile.profile_picture_url, 'social')

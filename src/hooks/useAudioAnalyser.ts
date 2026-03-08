@@ -16,7 +16,7 @@ export interface UseAudioAnalyserReturn {
 const EMPTY_DATA = new Uint8Array(0)
 
 export function useAudioAnalyser({
-  silenceThreshold = 35,
+  silenceThreshold = 45,
   silenceDuration = 1800,
   fftSize = 64,
 }: UseAudioAnalyserOptions = {}): UseAudioAnalyserReturn {

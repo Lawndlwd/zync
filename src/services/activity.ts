@@ -2,7 +2,7 @@ const API_BASE = '/api/activity'
 
 export interface LLMCall {
   id: number
-  source: 'chat' | 'bot' | 'schedule' | 'opencode' | 'dashboard'
+  source: 'chat' | 'bot' | 'schedule' | 'opencode' | 'dashboard' | 'code-review'
   model: string
   prompt_tokens: number
   completion_tokens: number

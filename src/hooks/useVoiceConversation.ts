@@ -36,12 +36,14 @@ const HALLUCINATION_PATTERNS = [
   /^[\s\p{P}]*$/u,              // only whitespace / punctuation
 ]
 
-// Filler words that aren't real questions (single-word noise artifacts)
-const FILLER_ONLY = new Set([
-  'you', 'the', 'a', 'an', 'i', 'it', 'is', 'um', 'uh', 'hmm', 'hm',
-  'oh', 'ah', 'okay', 'ok', 'yeah', 'yes', 'no', 'so', 'well', 'like',
-  'right', 'sure', 'thanks', 'thank', 'please', 'hey', 'hi', 'hello',
+// Single-word noise artifacts (NOT used for multi-word — user needs "done", "go", etc.)
+const SINGLE_WORD_NOISE = new Set([
+  'um', 'uh', 'hmm', 'hm', 'mm', 'mhm', 'ah', 'ahh', 'oh', 'ohh', 'eh',
 ])
+
+// Minimum audio blob size in bytes — below this it's almost certainly silence.
+// ~2 KB is about 0.1s of webm audio; real speech is typically 10KB+.
+const MIN_AUDIO_BYTES = 4000
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,9 +57,17 @@ function isNoiseTranscription(text: string): boolean {
   // Known hallucination patterns
   if (HALLUCINATION_PATTERNS.some((p) => p.test(trimmed))) return true
 
-  // Single filler word
+  // Single noise word ("um", "ahh", etc.)
   const lower = trimmed.toLowerCase().replace(/[.!?,;:…]+$/, '')
-  if (FILLER_ONLY.has(lower)) return true
+  if (SINGLE_WORD_NOISE.has(lower)) return true
+
+  // Highly repetitive text — same short phrase looped (Whisper looping artifact)
+  // e.g. "Okay. Okay. Okay. Okay." or "Thank you. Thank you. Thank you."
+  const sentences = trimmed.split(/[.!?]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)
+  if (sentences.length >= 4) {
+    const unique = new Set(sentences)
+    if (unique.size <= 2) return true
+  }
 
   return false
 }
@@ -99,15 +109,15 @@ export function useVoiceConversation() {
   // Wake word detection: openWakeWord WS -> Web Speech API fallback
   const openWakeWord = useOpenWakeWord({
     onDetected: () => {
-      if (state === 'hidden') openConversationRef.current?.()
+      if (state === 'hidden') openConversationRef.current?.(true)
     },
   })
   const webSpeechWakeWord = useWakeWord({
     onDetected: () => {
-      if (state === 'hidden') openConversationRef.current?.()
+      if (state === 'hidden') openConversationRef.current?.(true)
     },
   })
-  const openConversationRef = useRef<(() => void) | null>(null)
+  const openConversationRef = useRef<((fromWakeWord?: boolean) => void) | null>(null)
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -164,6 +174,15 @@ export function useVoiceConversation() {
   const processAudio = useCallback(
     async (blob: Blob) => {
       if (closedRef.current) return
+
+      // Skip tiny blobs — almost certainly noise/silence, not worth sending to Whisper
+      if (blob.size < MIN_AUDIO_BYTES) {
+        if (audioQueueRef.current.length > 0) {
+          processAudio(audioQueueRef.current.shift()!)
+        }
+        return
+      }
+
       isProcessingRef.current = true
       setState('transcribing')
 
@@ -186,11 +205,13 @@ export function useVoiceConversation() {
 
         // Empty — skip
         if (!trimmedText) {
+          console.debug('[voice] Empty transcription, skipping')
           isProcessingRef.current = false
           if (audioQueueRef.current.length > 0) {
             processAudio(audioQueueRef.current.shift()!)
-          } else if (conversationRef.current.length > 0) {
-            setState('responding')
+          } else {
+            // Go back to recording so user can speak again
+            setState(conversationRef.current.length > 0 ? 'responding' : 'recording')
           }
           return
         }
@@ -281,13 +302,23 @@ export function useVoiceConversation() {
             }
           },
         })
-      } catch {
+      } catch (err) {
         if (closedRef.current) return
+        console.error('[voice] processAudio error:', err)
         isProcessingRef.current = false
+
+        // Show error to user so the conversation doesn't silently hang
+        const errMsg = err instanceof Error ? err.message : 'Transcription failed'
+        if (errMsg.includes('500') || errMsg.includes('Transcribe error')) {
+          setMessages((prev) => [...prev, { role: 'assistant', content: `⚠ Could not transcribe audio. Please try again.` }])
+        }
+
         if (audioQueueRef.current.length > 0) {
           processAudio(audioQueueRef.current.shift()!)
         } else if (conversationRef.current.length > 0) {
           setState('responding')
+        } else {
+          setState('recording')
         }
       }
     },
@@ -349,22 +380,35 @@ export function useVoiceConversation() {
   }, [clearTimers, processAudio])
 
   // ---------------------------------------------------------------------------
-  // Open conversation — opens persistent mic + starts first capture
+  // Open conversation — opens persistent mic
+  // When triggered by wake word: wait for silence then next speech (avoids
+  //   transcribing "Hey Jarvis" itself).
+  // When triggered manually (mic click): start recording immediately.
   // ---------------------------------------------------------------------------
-  const openConversation = useCallback(async () => {
+  const openConversation = useCallback(async (fromWakeWord = false) => {
     closedRef.current = false
     setState('recording')
     setElapsed(0)
     setMessages([])
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      })
       if (closedRef.current) return
       persistentStreamRef.current = stream
       analyser.start(stream)
-      calibratedRef.current = true
 
-      // Start first capture inline
+      if (fromWakeWord) {
+        // Wake word uses a separate mic stream, so "Hey Jarvis" audio never
+        // reaches this MediaRecorder. Mark calibrated immediately so the
+        // speech detection effect starts capture as soon as sound is detected.
+        calibratedRef.current = true
+        return
+      }
+
+      // Manual activation: start recording immediately
+      calibratedRef.current = true
       chunksRef.current = []
       isCapturingRef.current = true
 
@@ -440,20 +484,24 @@ export function useVoiceConversation() {
   }, [analyser.isSilent, state])
 
   // ---------------------------------------------------------------------------
-  // Speech detection -> auto-start new capture immediately
-  // Noise filtering handled at transcription level via isNoiseTranscription()
+  // Speech detection -> auto-start new capture when not busy
+  // Only capture during 'recording' (idle-waiting) or 'responding' when done streaming.
+  // Prevents mic from picking up ambient audio / TTS feedback during LLM response.
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (
       calibratedRef.current &&
       !isCapturingRef.current &&
+      !isProcessingRef.current &&
+      !isStreaming &&
       !analyser.isSilent &&
       state !== 'hidden' &&
+      state !== 'transcribing' &&
       persistentStreamRef.current
     ) {
       startCapture()
     }
-  }, [analyser.isSilent, state, startCapture])
+  }, [analyser.isSilent, state, isStreaming, startCapture])
 
   // ---------------------------------------------------------------------------
   // Handlers

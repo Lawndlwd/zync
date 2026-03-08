@@ -65,13 +65,13 @@ export function SocialWorkshop() {
       {selectedBoardId ? (
         <div className="flex-1 min-h-0">
           <ResizablePanelGroup orientation="horizontal">
-            <ResizablePanel defaultSize={70} minSize={30}>
+            <ResizablePanel defaultSize="70%" minSize="30%">
               <div className="h-full pr-2">
                 <WorkshopBoard boardId={selectedBoardId} refreshKey={workshopRefreshKey} />
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+            <ResizablePanel defaultSize="30%" minSize="300px" maxSize="50%">
               <div className="h-full pl-2 rounded-xl border border-white/[0.06] bg-white/[0.02] flex flex-col overflow-hidden">
                 <OpenCodeChat />
               </div>

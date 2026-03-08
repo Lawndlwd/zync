@@ -12,6 +12,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY server.py .
 
+# Download wake word models at build time so no internet is needed at startup
+RUN python -c "import openwakeword; openwakeword.utils.download_models()"
+
 EXPOSE 9000
 
 CMD ["python", "server.py"]

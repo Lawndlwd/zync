@@ -16,10 +16,17 @@ export interface TelegramDMStats {
   byCategory: Record<string, number>
 }
 
+export interface TelegramChannelInfo {
+  title: string
+  memberCount: number
+  channelId: string
+}
+
 export interface TelegramConfig {
   channelId: string
   dmAutoReply: boolean
   supportRateLimit: number
+  channel?: TelegramChannelInfo
 }
 
 const API_BASE = '/api/telegram'
@@ -30,8 +37,8 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Telegram API error: ${res.status} - ${text}`)
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || `Telegram API error: ${res.status}`)
   }
   return res.json()
 }
@@ -73,8 +80,8 @@ export async function fetchTelegramConfig(): Promise<TelegramConfig> {
   return fetchJSON(`${API_BASE}/config`)
 }
 
-export async function saveTelegramConfig(config: Partial<TelegramConfig>): Promise<void> {
-  await fetchJSON(`${API_BASE}/config`, {
+export async function saveTelegramConfig(config: Partial<TelegramConfig>): Promise<{ success: boolean; channel?: TelegramChannelInfo }> {
+  return fetchJSON(`${API_BASE}/config`, {
     method: 'PUT',
     body: JSON.stringify(config),
   })
@@ -82,4 +89,22 @@ export async function saveTelegramConfig(config: Partial<TelegramConfig>): Promi
 
 export async function reloadTelegramPrompt(): Promise<void> {
   await fetchJSON(`${API_BASE}/reload-prompt`, { method: 'POST' })
+}
+
+const SKILL_PATH = 'skills/system/telegram-support.md'
+
+export async function fetchSupportPrompt(): Promise<string> {
+  const res = await fetch(`/api/documents/file/${SKILL_PATH}`)
+  if (!res.ok) throw new Error('Support prompt not found')
+  const doc = await res.json()
+  return doc.content ?? ''
+}
+
+export async function saveSupportPrompt(content: string): Promise<void> {
+  await fetchJSON(`/api/documents/file/${SKILL_PATH}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
+  })
+  // Reload the cached prompt on the server
+  await reloadTelegramPrompt()
 }

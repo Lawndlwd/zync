@@ -6,8 +6,8 @@ import {
 import { cn } from '@/lib/utils'
 
 export type SettingsSection =
-  | 'integrations' | 'jira' | 'gitlab' | 'channels'
-  | 'agent' | 'memories' | 'schedules' | 'tools' | 'skills'
+  | 'integrations' | 'jira' | 'gitlab' | 'github' | 'linear' | 'channels' | 'social'
+  | 'agent' | 'memories' | 'schedules' | 'tools'
   | 'security' | 'vault' | 'config' | 'tool-config'
   | 'briefings'
   | 'opencode'
@@ -27,7 +27,10 @@ const groups: SidebarGroup[] = [
     children: [
       { id: 'jira', label: 'Jira' },
       { id: 'gitlab', label: 'GitLab' },
+      { id: 'github', label: 'GitHub' },
+      { id: 'linear', label: 'Linear' },
       { id: 'channels', label: 'Channels' },
+      { id: 'social', label: 'Social Media' },
     ],
   },
   {
@@ -38,7 +41,6 @@ const groups: SidebarGroup[] = [
       { id: 'memories', label: 'Memories' },
       { id: 'schedules', label: 'Schedules' },
       { id: 'tools', label: 'Tools' },
-      { id: 'skills', label: 'Skills' },
     ],
   },
   {

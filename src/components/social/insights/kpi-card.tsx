@@ -26,6 +26,10 @@ export function KpiCard({ title, value, delta, sparklineData, format = 'number' 
   const isPositive = delta > 0
   const isNegative = delta < 0
   const sparkColor = delta >= 0 ? '#34d399' : '#fb7185'
+  // Pad single data point to render a flat line instead of a dot
+  const chartData = sparklineData.length === 1
+    ? [sparklineData[0], { ...sparklineData[0], date: sparklineData[0].date + '_' }]
+    : sparklineData
 
   const chartConfig: ChartConfig = {
     value: { label: title, color: sparkColor },
@@ -60,7 +64,7 @@ export function KpiCard({ title, value, delta, sparklineData, format = 'number' 
         {sparklineData.length > 0 && (
           <div className="h-[60px] w-[100px] shrink-0">
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <AreaChart data={sparklineData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id={`sparkGrad-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={sparkColor} stopOpacity={0.4} />

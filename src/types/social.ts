@@ -1,4 +1,4 @@
-export type SocialPlatform = 'instagram' | 'x' | 'youtube'
+export type SocialPlatform = 'instagram' | 'x' | 'youtube' | 'telegram'
 
 export type AccountStatus = 'active' | 'paused'
 export type PostStatus = 'draft' | 'scheduled' | 'published'

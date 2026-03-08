@@ -5,11 +5,8 @@ import {
   LayoutDashboard,
   KanbanSquare,
   Settings,
-  Ticket,
   BarChart3,
   Activity,
-  GitMerge,
-  Github,
   FileText,
   Monitor,
   MessageCircle,
@@ -19,6 +16,7 @@ import {
   ChevronRight,
   Briefcase,
   UserCircle,
+  Share2,
 } from 'lucide-react'
 import { useOpenCodeStore } from '@/store/opencode'
 
@@ -49,15 +47,6 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    id: 'work',
-    label: 'Work',
-    items: [
-      { to: '/jira', icon: Ticket, label: 'Jira', color: 'text-blue-400' },
-      { to: '/gitlab', icon: GitMerge, label: 'GitLab', color: 'text-violet-400' },
-      { to: '/github', icon: Github, label: 'GitHub', color: 'text-zinc-100' },
-    ],
-  },
-  {
     id: 'tools',
     label: 'Tools',
     items: [
@@ -66,6 +55,7 @@ const navGroups: NavGroup[] = [
       { to: '/canvas', icon: Monitor, label: 'Canvas', color: 'text-pink-400' },
       { to: '/jobs', icon: Briefcase, label: 'Job Search', color: 'text-amber-400' },
       { to: '/profile', icon: UserCircle, label: 'Profile & CV', color: 'text-teal-400' },
+      { to: '/social', icon: Share2, label: 'Social Media', color: 'text-fuchsia-400' },
     ],
   },
 ]

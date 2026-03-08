@@ -105,6 +105,7 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
         .cv-classic .classic-bullets {
           margin: 4px 0 0 18px;
           padding: 0;
+          list-style-type: disc;
         }
         .cv-classic .classic-bullets li {
           margin-bottom: 2px;
@@ -117,13 +118,27 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
         .cv-classic .classic-skills-line {
           color: var(--cv-primary);
         }
+        .cv-classic .classic-gpa {
+          margin-top: 2px;
+          font-size: 9pt;
+          color: var(--cv-secondary);
+        }
+        .cv-classic .classic-proj-desc {
+          margin-top: 2px;
+          color: var(--cv-secondary);
+        }
+        .cv-classic .classic-proj-tech {
+          margin-top: 2px;
+          font-size: 9pt;
+          color: var(--cv-accent);
+        }
         .cv-classic [data-field] {
           cursor: text;
           transition: outline 0.15s;
           border-radius: 1px;
         }
         .cv-classic [data-field]:hover {
-          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
           outline-offset: 2px;
         }
       `}} />
@@ -186,7 +201,7 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
                     {edu.startDate} &ndash; {edu.endDate || 'Present'}
                   </span>
                 </div>
-                {edu.gpa && <div style={{ marginTop: 2, fontSize: '9pt', color: 'var(--cv-secondary)' }}>GPA: {edu.gpa}</div>}
+                {edu.gpa && <div className="classic-gpa">GPA: {edu.gpa}</div>}
               </div>
             ))}
           </div>
@@ -209,9 +224,9 @@ export function ClassicTemplate({ profile, theme }: TemplateProps) {
                 <div className="classic-entry-header">
                   <span className="classic-entry-title" data-field={`projects.${i}.name`}>{proj.name}</span>
                 </div>
-                <div style={{ marginTop: 2, color: 'var(--cv-secondary)' }} data-field={`projects.${i}.description`}>{proj.description}</div>
+                <div className="classic-proj-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
                 {proj.technologies.length > 0 && (
-                  <div style={{ marginTop: 2, fontSize: '9pt', color: 'var(--cv-accent)' }}>{proj.technologies.join(', ')}</div>
+                  <div className="classic-proj-tech">{proj.technologies.join(', ')}</div>
                 )}
               </div>
             ))}

@@ -12,6 +12,7 @@ const SOURCE_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
   opencode: 'OpenCode',
   'pr-agent': 'PR Agent',
+  'code-review': 'Code Review',
 }
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -21,6 +22,7 @@ const SOURCE_COLORS: Record<string, string> = {
   dashboard: 'bg-indigo-500',
   opencode: 'bg-emerald-500',
   'pr-agent': 'bg-sky-500',
+  'code-review': 'bg-rose-500',
 }
 
 function formatTokens(n: number): string {

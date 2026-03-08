@@ -164,25 +164,6 @@ export function useWhatsAppQR(enabled: boolean) {
   })
 }
 
-export function useBotSkills() {
-  return useQuery({
-    queryKey: ['bot-skills'],
-    queryFn: botService.getBotSkills,
-    staleTime: 5 * 60_000,
-    retry: 1,
-  })
-}
-
-export function useReloadSkills() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: botService.reloadBotSkills,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bot-skills'] })
-      queryClient.invalidateQueries({ queryKey: ['bot-status'] })
-    },
-  })
-}
 
 export function useBriefingConfig() {
   return useQuery({

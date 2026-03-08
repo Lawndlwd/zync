@@ -1,8 +1,14 @@
-import { readFileSync, readdirSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, readdirSync, existsSync } from 'fs'
 import { resolve, join } from 'path'
 import { logger } from '../lib/logger.js'
+import { getConfig } from '../config/index.js'
 
-const SKILLS_DIR = resolve(import.meta.dirname, '../../skills')
+const BUNDLED_SKILLS_DIR = resolve(import.meta.dirname, '../../skills')
+
+function getDocumentsSkillsDir(): string | null {
+  const docsPath = getConfig('DOCUMENTS_PATH')
+  return docsPath ? join(docsPath, 'skills') : null
+}
 
 export interface Skill {
   name: string
@@ -45,18 +51,24 @@ function parseSkillFile(filePath: string): Skill | null {
 export function loadSkills(): Skill[] {
   if (skillsCache) return skillsCache
 
-  if (!existsSync(SKILLS_DIR)) {
-    mkdirSync(SKILLS_DIR, { recursive: true })
-    skillsCache = []
-    return skillsCache
-  }
-
-  const files = readdirSync(SKILLS_DIR).filter(f => f.endsWith('.md'))
+  const seen = new Set<string>()
   const skills: Skill[] = []
 
-  for (const file of files) {
-    const skill = parseSkillFile(join(SKILLS_DIR, file))
-    if (skill) skills.push(skill)
+  // Documents skills take precedence: system subfolder, then user skills, then bundled
+  const docsSkills = getDocumentsSkillsDir()
+  const dirs = [
+    docsSkills ? join(docsSkills, 'system') : null,
+    docsSkills,
+    BUNDLED_SKILLS_DIR,
+  ].filter(Boolean) as string[]
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue
+    for (const file of readdirSync(dir).filter(f => f.endsWith('.md'))) {
+      if (seen.has(file)) continue
+      seen.add(file)
+      const skill = parseSkillFile(join(dir, file))
+      if (skill) skills.push(skill)
+    }
   }
 
   skillsCache = skills
@@ -69,10 +81,3 @@ export function reloadSkills(): Skill[] {
   return loadSkills()
 }
 
-export function matchSkills(message: string): Skill[] {
-  const skills = loadSkills()
-  const lower = message.toLowerCase()
-  return skills.filter(skill =>
-    skill.triggers.some(trigger => lower.includes(trigger))
-  )
-}

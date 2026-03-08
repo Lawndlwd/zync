@@ -13,10 +13,13 @@ voiceRouter.post('/transcribe', upload.single('audio'), async (req, res) => {
       res.status(400).json({ error: 'No audio file provided' })
       return
     }
-    const text = await transcribeAudio(req.file.buffer, req.body?.format || 'ogg')
+    const format = req.body?.format || 'ogg'
+    logger.info({ size: req.file.size, format, mimetype: req.file.mimetype }, '[voice] Transcribe request')
+    const text = await transcribeAudio(req.file.buffer, format)
+    logger.info({ text: text.slice(0, 100) }, '[voice] Transcribe result')
     res.json({ text })
   } catch (err) {
-    logger.error({ err }, 'Transcription error')
+    logger.error({ err }, '[voice] Transcription error')
     res.status(500).json({ error: 'Transcription failed' })
   }
 })

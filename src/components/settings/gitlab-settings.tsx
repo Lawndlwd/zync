@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSettingsStore } from '@/store/settings'
-import { fetchServerSettings } from '@/services/jira'
+import { fetchServerSettings } from '@/services/settings'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,8 @@ export function GitLabSettingsCard({ envConfig }: { envConfig: Awaited<ReturnTyp
 
   useEffect(() => {
     if (envConfig?.gitlab?.baseUrl && !baseUrl) setBaseUrl(envConfig.gitlab.baseUrl)
-  }, [envConfig])
+    if (envConfig?.gitlab?.pat && !pat) setPat(envConfig.gitlab.pat)
+  }, [envConfig]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveConfig = async () => {
     if (!baseUrl || !pat) {

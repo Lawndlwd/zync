@@ -1,75 +1,159 @@
-import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
+import cron from 'node-cron'
+import { getOrCreateSession } from '../opencode/client.js'
+import { waitForResponse } from '../opencode/wait-for-response.js'
 import { getChannelManager } from '../channels/manager.js'
+import { getConfig } from '../config/index.js'
+import { logger } from '../lib/logger.js'
 import type { ChannelType } from '../channels/types.js'
+import { loadPromptContent } from '../skills/prompts.js'
 
-const DEFAULT_CHANNEL = (process.env.DEFAULT_CHANNEL || 'telegram') as ChannelType
-const DEFAULT_CHAT_ID = process.env.DEFAULT_CHAT_ID || ''
+let briefingTasks: cron.ScheduledTask[] = []
 
-async function getResponse(sessionId: string, msgCountBefore: number): Promise<string> {
-  const deadline = Date.now() + 60_000
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 1500))
-    const idle = await isSessionIdle(sessionId)
-    if (!idle) continue
-    const msgs = await getSessionMessages(sessionId)
-    if (msgs.length <= msgCountBefore) continue
-    const newMsgs = msgs.slice(msgCountBefore)
-    const last = [...newMsgs].reverse().find((m: any) => m.role === 'assistant' || m.info?.role === 'assistant')
-    if (last?.parts) {
-      const texts = last.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text)
-      if (texts.length > 0 && texts.some((t: string) => t.length > 0)) {
-        return texts.join('')
-      }
+interface BriefingCheckItem {
+  id: string
+  label: string
+  enabled: boolean
+}
+
+function parseFragments(raw: string): Record<string, string> {
+  const fragments: Record<string, string> = {}
+  const lines = raw.split('\n')
+  let currentKey = ''
+  let currentValue = ''
+
+  for (const line of lines) {
+    const match = line.match(/^(\w+):\s(.+)$/)
+    if (match && !line.startsWith('  ')) {
+      if (currentKey) fragments[currentKey] = currentValue.trim()
+      currentKey = match[1]
+      currentValue = match[2]
+    } else if (currentKey) {
+      currentValue += '\n' + line
     }
   }
-  return 'Could not generate briefing.'
+  if (currentKey) fragments[currentKey] = currentValue.trim()
+  return fragments
+}
+
+function loadFragments(type: 'morning' | 'evening'): Record<string, string> {
+  try {
+    return parseFragments(loadPromptContent(type === 'morning' ? 'morning-briefing' : 'evening-briefing'))
+  } catch {
+    return {}
+  }
+}
+
+function buildPrompt(type: 'morning' | 'evening', items: BriefingCheckItem[], instructions: string): string {
+  const fragments = loadFragments(type)
+  const enabledItems = items.filter(i => i.enabled)
+  const header = type === 'morning'
+    ? 'Generate a morning briefing for today.'
+    : 'Generate an evening recap for today.'
+
+  let prompt = header
+  if (enabledItems.length > 0) {
+    prompt += ' Include:\n' + enabledItems.map(i => `- ${fragments[i.id] || i.label}`).join('\n')
+  }
+  prompt += '\nKeep it concise but useful.'
+  if (instructions.trim()) {
+    prompt += `\n\nAdditional instructions: ${instructions.trim()}`
+  }
+  return prompt
+}
+
+function getItems(configKey: string, defaults: BriefingCheckItem[]): BriefingCheckItem[] {
+  const raw = getConfig(configKey)
+  if (!raw) return defaults
+  try { return JSON.parse(raw) } catch { return defaults }
+}
+
+export function scheduleBriefings(): void {
+  // Stop existing tasks
+  for (const task of briefingTasks) task.stop()
+  briefingTasks = []
+
+  const chatId = getChatId()
+  const enabled = getConfig('BRIEFING_ENABLED')
+  if (!chatId || enabled === 'false') return
+
+  const morningCron = getConfig('BRIEFING_MORNING_CRON') || '0 8 * * 1-5'
+  const eveningCron = getConfig('BRIEFING_EVENING_CRON') || '0 18 * * 1-5'
+  const tz = getConfig('SCHEDULE_TIMEZONE', 'Europe/Paris') || 'Europe/Paris'
+
+  briefingTasks.push(
+    cron.schedule(morningCron, () => {
+      sendMorningBriefing().catch(err => logger.error({ err }, 'Morning briefing failed'))
+    }, { timezone: tz }),
+    cron.schedule(eveningCron, () => {
+      sendEveningRecap().catch(err => logger.error({ err }, 'Evening recap failed'))
+    }, { timezone: tz }),
+  )
+
+  logger.info({ morningCron, eveningCron, tz }, 'Proactive briefings scheduled')
+}
+
+function getChannel(): ChannelType {
+  return (getConfig('BRIEFING_CHANNEL') || getConfig('DEFAULT_CHANNEL') || 'telegram') as ChannelType
+}
+
+function getChatId(): string {
+  return getConfig('BRIEFING_CHAT_ID') || getConfig('DEFAULT_CHAT_ID') || ''
 }
 
 export async function sendMorningBriefing(): Promise<void> {
-  if (!DEFAULT_CHAT_ID) return
+  const chatId = getChatId()
+  if (!chatId) return
+
+  const defaultItems: BriefingCheckItem[] = [
+    { id: 'jira', label: 'Jira issues', enabled: true },
+    { id: 'todos', label: 'To-do items', enabled: true },
+    { id: 'calendar', label: 'Calendar events', enabled: true },
+    { id: 'emails', label: 'Email digest', enabled: true },
+    { id: 'gtasks', label: 'Google Tasks', enabled: true },
+    { id: 'motivation', label: 'Motivational message', enabled: true },
+  ]
+
+  const items = getItems('BRIEFING_MORNING_ITEMS', defaultItems)
+  const instructions = getConfig('BRIEFING_MORNING_INSTRUCTIONS') || ''
+  const prompt = buildPrompt('morning', items, instructions)
 
   const sessionId = await getOrCreateSession('daily-briefing')
-  const msgsBefore = await getSessionMessages(sessionId)
-
-  const prompt = `Generate a morning briefing for today. Include:
-- Summary of pending Jira issues (use your tools to check)
-- Open to-do items
-- Any scheduled events for today
-- Email digest: use the zync_gmail_get_unread tool to fetch unread emails from the last 2 days. Summarize as:
-  - Total unread count
-  - Action items requiring response (with sender and subject)
-  - Important senders: job/recruiter emails first, then financial, then personal contacts
-  - Group newsletters as "X newsletters" with one-line summaries
-- A motivational start to the day
-Keep it concise but useful.`
-
-  await sendPromptAsync(sessionId, prompt)
-  const response = await getResponse(sessionId, msgsBefore.length)
+  let response: string
+  try {
+    response = await waitForResponse(sessionId, prompt, { timeoutMs: 60_000 })
+  } catch {
+    response = 'Could not generate briefing.'
+  }
 
   const manager = getChannelManager()
-  await manager.send(DEFAULT_CHANNEL, DEFAULT_CHAT_ID, { text: `Morning Briefing\n\n${response}` })
+  await manager.send(getChannel(), chatId, { text: `Morning Briefing\n\n${response}` })
 }
 
 export async function sendEveningRecap(): Promise<void> {
-  if (!DEFAULT_CHAT_ID) return
+  const chatId = getChatId()
+  if (!chatId) return
+
+  const defaultItems: BriefingCheckItem[] = [
+    { id: 'completed', label: 'Completed tasks', enabled: true },
+    { id: 'messages', label: 'Messages handled', enabled: true },
+    { id: 'pending', label: 'Pending items', enabled: true },
+    { id: 'blockers', label: 'Blockers', enabled: true },
+    { id: 'emails', label: 'Email update', enabled: true },
+    { id: 'gtasks', label: 'Google Tasks', enabled: true },
+  ]
+
+  const items = getItems('BRIEFING_EVENING_ITEMS', defaultItems)
+  const instructions = getConfig('BRIEFING_EVENING_INSTRUCTIONS') || ''
+  const prompt = buildPrompt('evening', items, instructions)
 
   const sessionId = await getOrCreateSession('daily-recap')
-  const msgsBefore = await getSessionMessages(sessionId)
-
-  const prompt = `Generate an evening recap for today. Include:
-- Tasks completed today
-- Messages handled
-- Pending items carrying over to tomorrow
-- Any blockers that need attention
-- Email update: use the zync_gmail_get_unread tool to check for new emails since this morning. Flag:
-  - Unanswered threads older than 24 hours
-  - Anything needing attention before tomorrow
-  - Summary of emails you helped reply to today
-Keep it concise.`
-
-  await sendPromptAsync(sessionId, prompt)
-  const response = await getResponse(sessionId, msgsBefore.length)
+  let response: string
+  try {
+    response = await waitForResponse(sessionId, prompt, { timeoutMs: 60_000 })
+  } catch {
+    response = 'Could not generate recap.'
+  }
 
   const manager = getChannelManager()
-  await manager.send(DEFAULT_CHANNEL, DEFAULT_CHAT_ID, { text: `Evening Recap\n\n${response}` })
+  await manager.send(getChannel(), chatId, { text: `Evening Recap\n\n${response}` })
 }

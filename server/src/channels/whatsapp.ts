@@ -44,6 +44,12 @@ export class WhatsAppAdapter implements ChannelAdapter {
     this.config = config
   }
 
+  /** Update the allowed numbers filter on a running adapter */
+  setAllowedNumbers(numbers: string[] | undefined): void {
+    this.config = { ...this.config, allowedNumbers: numbers }
+    logger.info({ allowedNumbers: numbers }, 'WhatsApp: updated allowed numbers')
+  }
+
   /** Current QR code as a data URL (png base64), or null if not waiting for scan */
   get qrDataUrl(): string | null {
     return this._qrDataUrl
@@ -220,10 +226,21 @@ export class WhatsAppAdapter implements ChannelAdapter {
         if (
           this.config.allowedNumbers &&
           this.config.allowedNumbers.length > 0 &&
-          !isSelfChat &&
-          !this.config.allowedNumbers.includes(chatId)
+          !isSelfChat
         ) {
-          continue
+          logger.info({ chatId, allowedNumbers: this.config.allowedNumbers }, 'WhatsApp: checking allowed numbers filter')
+          // Extract bare number from both sides for comparison
+          // chatId can be "33604475713@s.whatsapp.net" or "33604475713:0@s.whatsapp.net"
+          // allowedNumbers can be "33604475713@s.whatsapp.net" or just "33604475713"
+          const extractNumber = (s: string) => s.split(':')[0].split('@')[0].replace(/^\+/, '')
+          const chatNum = extractNumber(chatId)
+          const allowed = this.config.allowedNumbers.some(
+            (n) => extractNumber(n) === chatNum
+          )
+          if (!allowed) {
+            logger.info({ chatId, chatNum, allowedNumbers: this.config.allowedNumbers }, 'WhatsApp: message from non-allowed number, ignoring')
+            continue
+          }
         }
 
         const messageContent = msg.message

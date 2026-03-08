@@ -15,10 +15,9 @@ const chartConfig: ChartConfig = {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })
+  if (!dateStr) return ''
+  const d = dateStr.length === 10 ? new Date(dateStr + 'T00:00:00') : new Date(dateStr)
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export function EngagementRateChart({ data }: EngagementRateChartProps) {
@@ -49,6 +48,8 @@ export function EngagementRateChart({ data }: EngagementRateChartProps) {
             tick={{ fontSize: 12 }}
             tickLine={false}
             axisLine={false}
+            interval="equidistantPreserveStart"
+            minTickGap={30}
           />
           <YAxis
             tickFormatter={(v: number) => `${v}%`}

@@ -153,6 +153,7 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
         .cv-magazine .mag-card-bullets {
           margin: 6px 0 0 14px;
           padding: 0;
+          list-style-type: disc;
         }
         .cv-magazine .mag-card-bullets li {
           margin-bottom: 2px;
@@ -216,7 +217,7 @@ export function MagazineTemplate({ profile, theme }: TemplateProps) {
           border-radius: 1px;
         }
         .cv-magazine [data-field]:hover {
-          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
           outline-offset: 2px;
         }
       `}} />

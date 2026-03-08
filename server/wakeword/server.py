@@ -24,16 +24,28 @@ WAKEWORD_THRESHOLD = float(os.environ.get("WAKEWORD_THRESHOLD", "0.5"))
 DETECTION_COOLDOWN = 2.0
 
 
+def load_model() -> Model:
+    """Download models (if needed) and load once at startup."""
+    openwakeword.utils.download_models()
+    return Model(
+        wakeword_models=[WAKEWORD_MODEL],
+        inference_framework="onnx",
+    )
+
+
+# Load model once at module level
+print(f"[wakeword] Loading model '{WAKEWORD_MODEL}'...")
+oww_model = load_model()
+print(f"[wakeword] Model loaded.")
+
+
 async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
-    # Download default models if needed, then load
-    openwakeword.utils.download_models()
-    oww_model = Model(
-        wakeword_models=[WAKEWORD_MODEL],
-        inference_framework="onnx",
-    )
+    # Reset prediction buffer for each new connection
+    for name in oww_model.prediction_buffer:
+        oww_model.prediction_buffer[name] = []
 
     last_detection = 0.0
 

@@ -15,7 +15,7 @@ export const useVoiceSettings = create<VoiceSettingsState>()(
     (set) => ({
       ttsEnabled: false,
       ttsVoice: 'af_heart',
-      wakeWordEnabled: false,
+      wakeWordEnabled: true,
       toggleTTS: () => set((s) => ({ ttsEnabled: !s.ttsEnabled })),
       setTTSVoice: (voice: string) => set({ ttsVoice: voice }),
       toggleWakeWord: () => set((s) => ({ wakeWordEnabled: !s.wakeWordEnabled })),

@@ -1,8 +1,23 @@
 import { create } from 'zustand'
 import toast from 'react-hot-toast'
-import type { PRAgentResult } from '@/types/gitlab'
 
 type PRAgentTool = 'review' | 'describe' | 'improve' | 'ask'
+
+export interface PRAgentItem {
+  severity: 'critical' | 'warning' | 'suggestion' | 'info'
+  title: string
+  file?: string
+  line?: number
+  body: string
+  suggestion?: string
+}
+
+export interface PRAgentResult {
+  tool: PRAgentTool
+  summary: string
+  items: PRAgentItem[]
+  rawOutput?: string
+}
 
 interface PromptInfo {
   model: string

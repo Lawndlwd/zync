@@ -2,14 +2,15 @@ import { Bot } from 'grammy'
 import { logger } from '../lib/logger.js'
 import { getConfig } from '../config/index.js'
 import { getSecret } from '../secrets/index.js'
-import { upsertPost } from '../social/db.js'
+import { getSocialDb } from '../social/db.js'
+import { upsertPost, upsertAccount, updateAccountSync, upsertAccountSnapshot } from '../social/db.js'
 
 function getChannelId(): string | null {
   return getConfig('TELEGRAM_CHANNEL_ID') || null
 }
 
 function getBotToken(): string | null {
-  return getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || null
+  return getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN') || null
 }
 
 export async function fetchTelegramChannelPosts(): Promise<void> {
@@ -25,7 +26,18 @@ export async function fetchTelegramChannelPosts(): Promise<void> {
   try {
     const chat = await bot.api.getChat(channelId)
     const memberCount = await bot.api.getChatMemberCount(channelId)
-    const channelTitle = 'title' in chat ? chat.title : 'Telegram Channel'
+    const channelTitle = ('title' in chat ? chat.title : undefined) ?? 'Telegram Channel'
+
+    // Register as social account
+    upsertAccount('telegram', channelTitle)
+    updateAccountSync('telegram', channelTitle)
+
+    // Save follower snapshot
+    const db = getSocialDb()
+    const account = db.prepare('SELECT id FROM social_accounts WHERE platform = ?').get('telegram') as { id: number } | undefined
+    if (account) {
+      upsertAccountSnapshot(account.id, { followers: memberCount })
+    }
 
     logger.info({ channelId, memberCount, title: channelTitle }, 'Telegram channel info fetched')
   } catch (err) {

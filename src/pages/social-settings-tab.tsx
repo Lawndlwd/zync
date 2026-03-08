@@ -1,16 +1,87 @@
 import { useState, useEffect } from 'react'
-import { Save, LogIn, RefreshCw, Check, Instagram, Twitter, Youtube } from 'lucide-react'
+import { Save, LogIn, RefreshCw, Instagram, Twitter, Youtube, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { SettingField } from '@/components/settings/setting-field'
 import { useSettingsStore } from '@/store/settings'
 import type { SocialAccount } from '@/types/social'
 import * as socialService from '@/services/social'
+import { useTelegramConfig, useSaveTelegramConfig } from '@/hooks/useTelegram'
 import toast from 'react-hot-toast'
 
 const platformIcons: Record<string, { icon: typeof Instagram; className: string }> = {
   instagram: { icon: Instagram, className: 'text-pink-400' },
   x: { icon: Twitter, className: 'text-sky-400' },
   youtube: { icon: Youtube, className: 'text-red-400' },
+  telegram: { icon: Send, className: 'text-blue-400' },
+}
+
+function TelegramChannelConnect({ onConnected }: { onConnected: () => void }) {
+  const { data: tgCfg } = useTelegramConfig()
+  const saveTgConfig = useSaveTelegramConfig()
+  const [channelId, setChannelId] = useState('')
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    if (tgCfg && !loaded) {
+      setChannelId(tgCfg.channelId || '')
+      setLoaded(true)
+    }
+  }, [tgCfg])
+
+  const channelInfo = tgCfg?.channel
+
+  const handleConnect = async () => {
+    if (!channelId.trim()) {
+      toast.error('Enter a channel ID')
+      return
+    }
+    saveTgConfig.mutate({ channelId: channelId.trim() }, {
+      onSuccess: () => {
+        toast.success('Telegram channel connected')
+        onConnected()
+      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to connect channel'),
+    })
+  }
+
+  return (
+    <div className="pt-3 border-t border-white/[0.06] space-y-3">
+      <h4 className="text-xs font-medium text-zinc-400">Connect Telegram Channel</h4>
+
+      {/* Show connected channel info */}
+      {channelInfo && (
+        <div className="flex items-center gap-3 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-400 to-blue-600">
+            <Send size={16} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-zinc-200">{channelInfo.title}</p>
+            <p className="text-xs text-zinc-500">{channelInfo.memberCount.toLocaleString()} members</p>
+          </div>
+          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">Connected</span>
+        </div>
+      )}
+
+      <p className="text-[10px] text-zinc-600">
+        Add your bot to the channel (admin if you want cross-posting), then forward any channel message to @userinfobot to get the channel ID.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-zinc-400">Channel ID</label>
+          <Input
+            value={channelId}
+            onChange={(e) => setChannelId(e.target.value)}
+            placeholder="-1001234567890"
+          />
+        </div>
+      </div>
+      <Button size="sm" onClick={handleConnect} disabled={saveTgConfig.isPending}>
+        <Send size={14} className="mr-1.5" />
+        {saveTgConfig.isPending ? 'Connecting...' : channelInfo ? 'Update Channel' : 'Connect Channel'}
+      </Button>
+    </div>
+  )
 }
 
 export function SocialSettingsTab() {
@@ -18,6 +89,7 @@ export function SocialSettingsTab() {
   const [accounts, setAccounts] = useState<SocialAccount[]>([])
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     socialService.getAccounts().then(setAccounts).catch(() => {})
@@ -33,6 +105,8 @@ export function SocialSettingsTab() {
       toast.success(`Instagram connected as @${igConnected}`)
       window.history.replaceState({}, '', window.location.pathname)
       socialService.getAccounts().then(setAccounts).catch(() => {})
+      // Auto-sync after connecting
+      socialService.triggerSync('instagram').catch(() => {})
     } else if (igError) {
       toast.error(`Instagram: ${igError}`)
       window.history.replaceState({}, '', window.location.pathname)
@@ -149,6 +223,21 @@ export function SocialSettingsTab() {
       <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium text-zinc-200">Connected Accounts</h3>
+          {accounts.length > 0 && (
+            <Button size="sm" variant="outline" disabled={syncing} onClick={async () => {
+              setSyncing(true)
+              try {
+                await socialService.triggerSync()
+                const updated = await socialService.getAccounts()
+                setAccounts(updated)
+                toast.success('Sync complete')
+              } catch { toast.error('Sync failed') }
+              finally { setSyncing(false) }
+            }}>
+              <RefreshCw size={14} className={`mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync Now'}
+            </Button>
+          )}
         </div>
 
         {accounts.length === 0 ? (
@@ -169,6 +258,37 @@ export function SocialSettingsTab() {
                     {account.last_synced && (
                       <p className="text-[10px] text-zinc-600">Last synced: {new Date(account.last_synced).toLocaleString()}</p>
                     )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-zinc-500 hover:text-zinc-300"
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        try {
+                          await socialService.triggerSync(account.platform)
+                          const updated = await socialService.getAccounts()
+                          setAccounts(updated)
+                          toast.success(`${account.platform} synced`)
+                        } catch { toast.error('Sync failed') }
+                      }}
+                      title={`Sync ${account.platform}`}
+                    >
+                      <RefreshCw size={12} />
+                    </Button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Remove @${account.username} (${account.platform})?`)) return
+                        try {
+                          await socialService.deleteAccount(account.id)
+                          setAccounts((prev) => prev.filter((a) => a.id !== account.id))
+                          toast.success(`Removed @${account.username}`)
+                        } catch { toast.error('Failed to remove account') }
+                      }}
+                      className="ml-2 p-1 rounded text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      title="Remove account"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
               )
@@ -185,26 +305,18 @@ export function SocialSettingsTab() {
             <SettingField label="Facebook App Secret" value={settings.social.instagram.appSecret}
               onChange={(v) => updateSocial({ instagram: { ...settings.social.instagram, appSecret: v } })} type="password" placeholder="From Facebook Developer Console" />
           </div>
-          <div className="flex gap-2">
-            {!settings.social.instagram.connected ? (
-              <Button size="sm" onClick={loginWithInstagram}><LogIn size={14} className="mr-1.5" />Login with Instagram</Button>
-            ) : (
-              <>
-                <div className="flex items-center gap-1.5 text-sm text-emerald-400"><Check size={14} />Connected as @{settings.social.instagram.username}</div>
-                <Button size="sm" variant="outline" onClick={refreshToken} disabled={refreshing}>
-                  <RefreshCw size={14} className={`mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />{refreshing ? 'Refreshing...' : 'Refresh Token'}
-                </Button>
-                <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                  onClick={() => {
-                    updateSocial({ instagram: { appId: settings.social.instagram.appId, appSecret: settings.social.instagram.appSecret, accessToken: '', connected: false, username: '', enabled: settings.social.instagram.enabled } })
-                    toast.success('Instagram disconnected')
-                  }}>
-                  Disconnect
-                </Button>
-              </>
+          <div className="flex gap-2 items-center">
+            <Button size="sm" onClick={loginWithInstagram}><LogIn size={14} className="mr-1.5" />Connect Instagram Account</Button>
+            {settings.social.instagram.connected && (
+              <Button size="sm" variant="outline" onClick={refreshToken} disabled={refreshing}>
+                <RefreshCw size={14} className={`mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />{refreshing ? 'Refreshing...' : 'Refresh Token'}
+              </Button>
             )}
           </div>
         </div>
+
+        {/* Connect Telegram Channel */}
+        <TelegramChannelConnect onConnected={() => socialService.getAccounts().then(setAccounts).catch(() => {})} />
       </div>
 
       <Button size="sm" onClick={saveConfig} disabled={saving}>

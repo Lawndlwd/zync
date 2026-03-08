@@ -8,10 +8,14 @@ import os
 import tempfile
 import subprocess
 import asyncio
+import logging
 from pathlib import Path
 
 from aiohttp import web
 from faster_whisper import WhisperModel
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [whisper] %(message)s")
+log = logging.getLogger("whisper")
 
 HOST = os.environ.get("WHISPER_HOST", "0.0.0.0")
 PORT = int(os.environ.get("WHISPER_PORT", "9100"))
@@ -34,11 +38,12 @@ async def convert_to_wav(input_path: str, output_path: str) -> None:
     proc = await asyncio.create_subprocess_exec(
         "ffmpeg", "-i", input_path, "-ar", "16000", "-ac", "1", "-y", output_path,
         stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
     )
-    await asyncio.wait_for(proc.wait(), timeout=30)
+    _, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
     if proc.returncode != 0:
-        raise RuntimeError("ffmpeg conversion failed")
+        log.error(f"ffmpeg failed: {stderr.decode()[:500]}")
+        raise RuntimeError(f"ffmpeg conversion failed (exit {proc.returncode})")
 
 
 async def handle_transcribe(request: web.Request) -> web.Response:
@@ -57,10 +62,13 @@ async def handle_transcribe(request: web.Request) -> web.Response:
             audio_format = (await part.text()).strip() or "ogg"
 
     if not audio_data:
+        log.warning("No audio data in request")
         return web.json_response({"error": "No audio file provided"}, status=400)
 
     if len(audio_data) > MAX_FILE_SIZE:
         return web.json_response({"error": "File too large"}, status=413)
+
+    log.info(f"Received audio: {len(audio_data)} bytes, format={audio_format}")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = os.path.join(tmpdir, f"input.{audio_format}")
@@ -72,15 +80,20 @@ async def handle_transcribe(request: web.Request) -> web.Response:
         # Convert to WAV
         try:
             await convert_to_wav(input_path, wav_path)
-        except Exception:
+            wav_size = os.path.getsize(wav_path)
+            log.info(f"Converted to WAV: {wav_size} bytes")
+        except Exception as e:
+            log.error(f"ffmpeg conversion failed: {e}")
             return web.json_response({"error": "Audio conversion failed"}, status=422)
 
         # Transcribe
         try:
             whisper = get_model()
-            segments, _ = whisper.transcribe(wav_path, beam_size=1, language="en")
+            segments, info = whisper.transcribe(wav_path, beam_size=1, language="en")
             text = " ".join(seg.text.strip() for seg in segments).strip()
+            log.info(f"Transcription result ({info.duration:.1f}s audio): '{text}'")
         except Exception as e:
+            log.error(f"Transcription failed: {e}")
             return web.json_response({"error": f"Transcription failed: {e}"}, status=500)
 
     return web.json_response({"text": text})

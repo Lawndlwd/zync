@@ -2,13 +2,87 @@ import { useEffect, useMemo, useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { Combobox } from '@/components/ui/combobox'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { SchedulePicker } from '@/components/settings/schedule-picker'
-import { CalendarClock, Save, Play } from 'lucide-react'
+import { CalendarClock, Save, Play, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useBriefingConfig, useUpdateBriefingConfig, useTriggerBriefing } from '@/hooks/useBot'
 import { listConfig, setConfig } from '@/services/config'
-import type { BriefingConfig } from '@/types/bot'
+import type { BriefingConfig, BriefingCheckItem } from '@/types/bot'
+
+function ItemChecklist({
+  items,
+  onChange,
+}: {
+  items: BriefingCheckItem[]
+  onChange: (items: BriefingCheckItem[]) => void
+}) {
+  const toggle = (id: string) => {
+    onChange(items.map(i => i.id === id ? { ...i, enabled: !i.enabled } : i))
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.map(item => (
+        <div key={item.id} className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => toggle(item.id)}
+            className={`h-4 w-4 shrink-0 rounded border ${item.enabled ? 'border-indigo-500 bg-indigo-500' : 'border-zinc-600'}`}
+          />
+          <span className="text-sm text-zinc-300">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BriefingSection({
+  title,
+  items,
+  instructions,
+  onItemsChange,
+  onInstructionsChange,
+}: {
+  title: string
+  items: BriefingCheckItem[]
+  instructions: string
+  onItemsChange: (items: BriefingCheckItem[]) => void
+  onInstructionsChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-white/[0.04] transition-colors">
+        <ChevronRight size={14} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
+        {title}
+        <span className="ml-auto text-xs text-zinc-500">
+          {items.filter(i => i.enabled).length}/{items.length} items
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 space-y-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Include in briefing</label>
+            <ItemChecklist items={items} onChange={onItemsChange} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Custom instructions</label>
+            <Textarea
+              value={instructions}
+              onChange={(e) => onInstructionsChange(e.target.value)}
+              placeholder="e.g. Always mention deadlines. Focus on high-priority items."
+              rows={3}
+            />
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
 
 export function BriefingsSettingsCard() {
   const { data: config, isLoading } = useBriefingConfig()
@@ -113,10 +187,32 @@ export function BriefingsSettingsCard() {
             <Input
               value={draft.chatId}
               onChange={(e) => setDraft({ ...draft, chatId: e.target.value })}
-              placeholder="123456789"
+              placeholder="Auto-captured from Telegram"
+              className={draft.chatId ? 'text-zinc-300' : 'text-zinc-500'}
             />
+            <p className="mt-1 text-xs text-zinc-500">
+              {draft.chatId
+                ? 'Captured from your Telegram chat'
+                : 'Send any message to your Telegram bot to auto-capture'}
+            </p>
           </div>
         </div>
+
+        <BriefingSection
+          title="Morning Briefing"
+          items={draft.morningItems}
+          instructions={draft.morningInstructions}
+          onItemsChange={(items) => setDraft({ ...draft, morningItems: items })}
+          onInstructionsChange={(v) => setDraft({ ...draft, morningInstructions: v })}
+        />
+
+        <BriefingSection
+          title="Evening Recap"
+          items={draft.eveningItems}
+          instructions={draft.eveningInstructions}
+          onItemsChange={(items) => setDraft({ ...draft, eveningItems: items })}
+          onInstructionsChange={(v) => setDraft({ ...draft, eveningInstructions: v })}
+        />
 
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={handleSave} disabled={updateConfig.isPending}>

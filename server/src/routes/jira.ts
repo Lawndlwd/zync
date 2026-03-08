@@ -14,7 +14,7 @@ function getJiraConfig() {
   const email = getSecret('JIRA_EMAIL')
   const apiToken = getSecret('JIRA_API_TOKEN')
   if (!baseUrl || !apiToken) {
-    throw new Error('Jira not configured. Set JIRA_BASE_URL and JIRA_API_TOKEN in .env')
+    throw new Error('Jira not configured. Set JIRA_BASE_URL and JIRA_API_TOKEN in Settings.')
   }
   // Jira Cloud: Basic auth with email:token
   // Jira Server/Data Center: Bearer token (Personal Access Token)

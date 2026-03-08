@@ -104,8 +104,19 @@ export function useOpenWakeWord(options: UseOpenWakeWordOptions = {}): UseOpenWa
       setIsConnected(false)
     }
 
-    // Get microphone
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    // Check mic permission before requesting — avoids console errors on page load
+    if (navigator.permissions) {
+      const perm = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+      if (perm.state === 'denied') {
+        cleanup()
+        throw new Error('Microphone permission denied')
+      }
+    }
+
+    // Get microphone with echo cancellation + noise suppression
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    })
     streamRef.current = stream
 
     // Set up AudioContext + worklet
@@ -131,8 +142,7 @@ export function useOpenWakeWord(options: UseOpenWakeWordOptions = {}): UseOpenWa
       window.addEventListener('touchstart', resumeOnGesture)
     }
 
-    const workletUrl = new URL('../audio/resampler.worklet.ts', import.meta.url)
-    await audioCtx.audioWorklet.addModule(workletUrl)
+    await audioCtx.audioWorklet.addModule('/resampler.worklet.js')
 
     const source = audioCtx.createMediaStreamSource(stream)
     const workletNode = new AudioWorkletNode(audioCtx, 'resampler-worklet')

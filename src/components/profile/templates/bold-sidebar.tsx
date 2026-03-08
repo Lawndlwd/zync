@@ -182,6 +182,7 @@ export function BoldSidebarTemplate({ profile, theme }: TemplateProps) {
         .cv-bold-sidebar .bs-bullets {
           margin: 4px 0 0 16px;
           padding: 0;
+          list-style-type: disc;
         }
         .cv-bold-sidebar .bs-bullets li {
           margin-bottom: 2px;
@@ -204,13 +205,18 @@ export function BoldSidebarTemplate({ profile, theme }: TemplateProps) {
           color: var(--cv-accent);
           margin-top: 2px;
         }
+        .cv-bold-sidebar .bs-gpa {
+          font-size: 8.5pt;
+          color: rgba(255,255,255,0.7);
+          margin-top: 2px;
+        }
         .cv-bold-sidebar [data-field] {
           cursor: text;
           transition: outline 0.15s;
           border-radius: 1px;
         }
         .cv-bold-sidebar [data-field]:hover {
-          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
           outline-offset: 2px;
         }
       `}} />
@@ -294,7 +300,7 @@ export function BoldSidebarTemplate({ profile, theme }: TemplateProps) {
                   <div className="bs-entry-dates">{edu.startDate} &ndash; {edu.endDate || 'Present'}</div>
                   <div className="bs-entry-title" data-field={`educations.${i}.degree`}>{edu.degree}{edu.field ? `, ${edu.field}` : ''}</div>
                   <div className="bs-entry-sub" data-field={`educations.${i}.school`}>{edu.school}</div>
-                  {edu.gpa && <div style={{ fontSize: '8.5pt', color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>GPA: {edu.gpa}</div>}
+                  {edu.gpa && <div className="bs-gpa">GPA: {edu.gpa}</div>}
                 </div>
               ))}
             </div>

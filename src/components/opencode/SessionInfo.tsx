@@ -50,7 +50,7 @@ export function SessionInfo({ sessionId }: SessionInfoProps) {
     : 0
 
   return (
-    <aside className="hidden xl:flex w-64 shrink-0 flex-col border-l border-white/[0.06] bg-zinc-950/50">
+    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-l border-white/[0.06] bg-zinc-950/50">
       <div className="px-4 py-3">
         <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-600">
           Session

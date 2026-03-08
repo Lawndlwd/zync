@@ -78,10 +78,10 @@ export async function streamChat(
         const parsed = JSON.parse(data)
         if (parsed.type === 'token') {
           callbacks.onToken(parsed.content)
-        } else if (parsed.type === 'thinking' && callbacks.onThinking) {
-          callbacks.onThinking(parsed.content)
-        } else if (parsed.type === 'tool_call' && callbacks.onToolCall) {
-          callbacks.onToolCall(parsed.toolCall)
+        } else if (parsed.type === 'thinking') {
+          if (callbacks.onThinking) callbacks.onThinking(parsed.content)
+        } else if (parsed.type === 'tool_call') {
+          if (callbacks.onToolCall) callbacks.onToolCall(parsed.toolCall)
         } else if (parsed.type === 'tool_result' && callbacks.onToolResult) {
           callbacks.onToolResult(parsed)
         } else if (parsed.type === 'usage' && callbacks.onUsage) {

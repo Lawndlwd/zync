@@ -30,7 +30,6 @@ export interface BotStatus {
   providerName: string
   isLocal: boolean
   channels?: string[]
-  skillsCount?: number
   briefingEnabled?: boolean
 }
 
@@ -51,7 +50,7 @@ export interface ChannelStatus {
 export interface ChannelConfigResponse {
   telegram?: { botToken: string; allowedUsers: string; hasBotToken: boolean }
   whatsapp?: { allowedNumbers: string; autoReply: boolean; autoReplyInstructions: string }
-  gmail?: { clientId: string; hasClientSecret: boolean; authorized: boolean; pollIntervalMs: number }
+  gmail?: { clientId: string; hasClientSecret: boolean; authorized: boolean; pollIntervalMs: number; enabledServices?: string[] }
 }
 
 export interface WhatsAppQRResponse {
@@ -60,11 +59,30 @@ export interface WhatsAppQRResponse {
   error: string | null
 }
 
-export interface SkillInfo {
-  name: string
-  description: string
-  triggers: string[]
+
+export interface BriefingCheckItem {
+  id: string
+  label: string
+  enabled: boolean
 }
+
+export const DEFAULT_MORNING_ITEMS: BriefingCheckItem[] = [
+  { id: 'jira', label: 'Jira issues', enabled: true },
+  { id: 'todos', label: 'To-do items', enabled: true },
+  { id: 'calendar', label: 'Calendar events', enabled: true },
+  { id: 'emails', label: 'Email digest', enabled: true },
+  { id: 'gtasks', label: 'Google Tasks', enabled: true },
+  { id: 'motivation', label: 'Motivational message', enabled: true },
+]
+
+export const DEFAULT_EVENING_ITEMS: BriefingCheckItem[] = [
+  { id: 'completed', label: 'Completed tasks', enabled: true },
+  { id: 'messages', label: 'Messages handled', enabled: true },
+  { id: 'pending', label: 'Pending items', enabled: true },
+  { id: 'blockers', label: 'Blockers', enabled: true },
+  { id: 'emails', label: 'Email update', enabled: true },
+  { id: 'gtasks', label: 'Google Tasks', enabled: true },
+]
 
 export interface BriefingConfig {
   morningCron: string
@@ -72,6 +90,10 @@ export interface BriefingConfig {
   channel: string
   chatId: string
   enabled: boolean
+  morningItems: BriefingCheckItem[]
+  eveningItems: BriefingCheckItem[]
+  morningInstructions: string
+  eveningInstructions: string
 }
 
 export interface ToolConfig {

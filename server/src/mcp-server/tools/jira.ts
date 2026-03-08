@@ -6,7 +6,7 @@ function getJiraConfig() {
   const apiToken = getSecret('JIRA_API_TOKEN')
   const email = getSecret('JIRA_EMAIL')
   if (!baseUrl || !apiToken) {
-    throw new Error('Jira not configured. Set JIRA_BASE_URL and JIRA_API_TOKEN in .env')
+    throw new Error('Jira not configured. Set JIRA_BASE_URL and JIRA_API_TOKEN in Settings.')
   }
   const isCloud = baseUrl.includes('atlassian.net')
   const authHeader = isCloud

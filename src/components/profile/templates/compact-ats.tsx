@@ -101,6 +101,7 @@ export function CompactAtsTemplate({ profile, theme }: TemplateProps) {
         .cv-ats .ats-bullets {
           margin: 2px 0 0 16px;
           padding: 0;
+          list-style-type: disc;
         }
         .cv-ats .ats-bullets li {
           margin-bottom: 1px;
@@ -135,7 +136,7 @@ export function CompactAtsTemplate({ profile, theme }: TemplateProps) {
           border-radius: 1px;
         }
         .cv-ats [data-field]:hover {
-          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
           outline-offset: 2px;
         }
       `}} />

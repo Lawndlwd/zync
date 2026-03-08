@@ -1,8 +1,8 @@
 import { Outlet, NavLink, useLocation, Navigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, Lightbulb, PenSquare, Inbox, Settings, Plus, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, Calendar, Lightbulb, PenSquare, Inbox, Settings, Plus, TrendingUp, Loader2 } from 'lucide-react'
 import { useSocialFilter } from '../../store/social-filter'
 import { getAccounts } from '../../services/social'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import type { SocialAccount, SocialPlatform } from '../../types/social'
 
 const tabs = [
@@ -20,6 +20,7 @@ const platforms: { value: SocialPlatform | 'all'; label: string }[] = [
   { value: 'instagram', label: 'Instagram' },
   { value: 'x', label: 'X' },
   { value: 'youtube', label: 'YouTube' },
+  { value: 'telegram', label: 'Telegram' },
 ]
 
 export function SocialLayout() {
@@ -103,7 +104,9 @@ export function SocialLayout() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-auto min-h-0">
-        <Outlet />
+        <Suspense fallback={<div className="flex items-center justify-center h-32 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>}>
+          <Outlet />
+        </Suspense>
       </div>
     </div>
   )

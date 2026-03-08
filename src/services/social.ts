@@ -14,6 +14,10 @@ export async function getAccounts(): Promise<SocialAccount[]> {
   return data.accounts
 }
 
+export async function deleteAccount(id: number): Promise<void> {
+  await fetchJSON(`${API_BASE}/accounts/${id}`, { method: 'DELETE' })
+}
+
 export async function triggerSync(platform?: string): Promise<{ autoReplied: number; flagged: number }> {
   return fetchJSON(`${API_BASE}/accounts/sync`, {
     method: 'POST',

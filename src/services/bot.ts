@@ -1,4 +1,4 @@
-import type { BotStatus, BotMemory, BotSchedule, BotToolDefinition, ChannelStatus, SkillInfo, BriefingConfig, ToolConfig, ChannelConfigResponse, WhatsAppQRResponse } from '@/types/bot'
+import type { BotStatus, BotMemory, BotSchedule, BotToolDefinition, ChannelStatus, BriefingConfig, ToolConfig, ChannelConfigResponse, WhatsAppQRResponse } from '@/types/bot'
 
 const API_BASE = '/api/bot'
 
@@ -77,13 +77,6 @@ export async function getBotChannels(): Promise<ChannelStatus[]> {
   return fetchJSON<ChannelStatus[]>(`${API_BASE}/channels`)
 }
 
-export async function getBotSkills(): Promise<SkillInfo[]> {
-  return fetchJSON<SkillInfo[]>(`${API_BASE}/skills`)
-}
-
-export async function reloadBotSkills(): Promise<{ count: number }> {
-  return fetchJSON<{ count: number }>(`${API_BASE}/skills/reload`, { method: 'POST' })
-}
 
 export async function getBriefingConfig(): Promise<BriefingConfig> {
   return fetchJSON<BriefingConfig>(`${API_BASE}/briefing/config`)

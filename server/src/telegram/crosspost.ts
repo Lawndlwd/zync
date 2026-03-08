@@ -6,7 +6,7 @@ import { trackChannelPost } from './analytics.js'
 
 export async function crossPostToTelegram(content: string, mediaUrl?: string): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   const channelId = getConfig('TELEGRAM_CHANNEL_ID')
-  const botToken = getSecret('CHANNEL_TELEGRAM_BOT_TOKEN')
+  const botToken = getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN')
 
   if (!channelId || !botToken) {
     return { ok: false, error: 'Telegram channel ID or bot token not configured' }

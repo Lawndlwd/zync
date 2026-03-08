@@ -94,6 +94,7 @@ export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
         .cv-min2col .m2c-bullets {
           margin: 4px 0 0 16px;
           padding: 0;
+          list-style-type: disc;
         }
         .cv-min2col .m2c-bullets li {
           margin-bottom: 2px;
@@ -116,13 +117,30 @@ export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
           font-size: 8.5pt;
           margin-top: 2px;
         }
+        .cv-min2col .m2c-gpa {
+          font-size: 9pt;
+          color: var(--cv-secondary);
+          margin-top: 2px;
+        }
+        .cv-min2col .m2c-section-wrap {
+          margin-bottom: var(--cv-section-spacing);
+        }
+        .cv-min2col .m2c-section-label-inline {
+          text-align: left;
+          margin-bottom: 8px;
+        }
+        .cv-min2col .m2c-proj-url {
+          font-size: 8pt;
+          color: var(--cv-secondary);
+          margin-left: 6px;
+        }
         .cv-min2col [data-field] {
           cursor: text;
           transition: outline 0.15s;
           border-radius: 1px;
         }
         .cv-min2col [data-field]:hover {
-          outline: 1px dashed rgba(108, 92, 231, 0.4);
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
           outline-offset: 2px;
         }
       `}} />
@@ -140,11 +158,11 @@ export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
         )}
 
         {profile.experiences.length > 0 && (
-          <div style={{ marginBottom: 'var(--cv-section-spacing)' }}>
+          <div className="m2c-section-wrap">
             {profile.experiences.map((exp, i) => (
               <div key={exp.id} className="m2c-entry-row">
                 <div className="m2c-date">
-                  {i === 0 && <div className="m2c-label" style={{ textAlign: 'left', marginBottom: 8 }}>Experience</div>}
+                  {i === 0 && <div className="m2c-label m2c-section-label-inline">Experience</div>}
                   {exp.startDate} &ndash; {exp.endDate || 'Present'}
                 </div>
                 <div className="m2c-content">
@@ -163,17 +181,17 @@ export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
         )}
 
         {profile.educations.length > 0 && (
-          <div style={{ marginBottom: 'var(--cv-section-spacing)' }}>
+          <div className="m2c-section-wrap">
             {profile.educations.map((edu, i) => (
               <div key={edu.id} className="m2c-entry-row">
                 <div className="m2c-date">
-                  {i === 0 && <div className="m2c-label" style={{ textAlign: 'left', marginBottom: 8 }}>Education</div>}
+                  {i === 0 && <div className="m2c-label m2c-section-label-inline">Education</div>}
                   {edu.startDate} &ndash; {edu.endDate || 'Present'}
                 </div>
                 <div className="m2c-content">
                   <span className="m2c-entry-title"><span data-field={`educations.${i}.degree`}>{edu.degree}</span>{edu.field ? <>, <span data-field={`educations.${i}.field`}>{edu.field}</span></> : ''}</span>
                   <span className="m2c-entry-company" data-field={`educations.${i}.school`}> &mdash; {edu.school}</span>
-                  {edu.gpa && <div style={{ fontSize: '9pt', color: 'var(--cv-secondary)', marginTop: 2 }}>GPA: {edu.gpa}</div>}
+                  {edu.gpa && <div className="m2c-gpa">GPA: {edu.gpa}</div>}
                 </div>
               </div>
             ))}
@@ -194,7 +212,7 @@ export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
               {profile.projects.map((proj, i) => (
                 <div key={proj.id} className="m2c-entry">
                   <span className="m2c-entry-title" data-field={`projects.${i}.name`}>{proj.name}</span>
-                  {proj.url && <span style={{ fontSize: '8pt', color: 'var(--cv-secondary)', marginLeft: 6 }}>{proj.url}</span>}
+                  {proj.url && <span className="m2c-proj-url">{proj.url}</span>}
                   <div className="m2c-proj-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
                   {proj.technologies.length > 0 && (
                     <div className="m2c-proj-tech">{proj.technologies.join(', ')}</div>

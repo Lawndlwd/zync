@@ -21,10 +21,10 @@ export function SettingField({
       <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-zinc-400">
         {label}
         {envValue && envValue !== '••••••••' && (
-          <Badge variant="primary" className="text-[10px]">from .env</Badge>
+          <Badge variant="primary" className="text-[10px]">from vault</Badge>
         )}
         {envValue === '••••••••' && (
-          <Badge variant="success" className="text-[10px]">configured in .env</Badge>
+          <Badge variant="success" className="text-[10px]">configured</Badge>
         )}
       </label>
       <Input

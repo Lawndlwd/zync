@@ -2,13 +2,14 @@ import { useState, useEffect, useMemo } from 'react'
 import { useProfile, useUpdateProfile } from '@/hooks/useJobs'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProfileEditor } from '@/components/profile/profile-editor'
 import { ThemeCustomizer } from '@/components/profile/theme-customizer'
 import { CvPreview } from '@/components/profile/cv-preview'
 import { UploadPrompt } from '@/components/profile/upload-prompt'
 import { DEFAULT_THEME } from '@/lib/cv-themes'
 import type { Profile, CvTheme } from '@/types/jobs'
-import { UserCircle } from 'lucide-react'
+import { UserCircle, FileText, Palette } from 'lucide-react'
 
 function debounce<T extends (...args: any[]) => any>(fn: T, ms: number) {
   let timer: ReturnType<typeof setTimeout>
@@ -68,15 +69,34 @@ export function ProfilePage() {
       <div className="min-h-0 flex-1">
         <ResizablePanelGroup orientation="horizontal">
           <ResizablePanel defaultSize={40} minSize={30}>
-            <ScrollArea className="h-full">
-              <div className="space-y-6 p-4">
-                <ProfileEditor profile={localProfile} onChange={handleChange} />
-                <div>
-                  <h3 className="mb-3 text-sm font-medium text-zinc-300">CV Theme</h3>
-                  <ThemeCustomizer theme={theme} onChange={handleThemeChange} />
-                </div>
+            <Tabs defaultValue="profile" className="flex h-full flex-col">
+              <div className="border-b border-white/[0.08] px-4">
+                <TabsList className="bg-transparent h-10">
+                  <TabsTrigger value="profile" className="gap-1.5 data-[state=active]:bg-white/[0.06]">
+                    <FileText size={14} />
+                    Profile
+                  </TabsTrigger>
+                  <TabsTrigger value="theme" className="gap-1.5 data-[state=active]:bg-white/[0.06]">
+                    <Palette size={14} />
+                    Theme
+                  </TabsTrigger>
+                </TabsList>
               </div>
-            </ScrollArea>
+              <TabsContent value="profile" className="mt-0 min-h-0 flex-1">
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    <ProfileEditor profile={localProfile} onChange={handleChange} />
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="theme" className="mt-0 min-h-0 flex-1">
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    <ThemeCustomizer theme={theme} onChange={handleThemeChange} />
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={60} minSize={35}>

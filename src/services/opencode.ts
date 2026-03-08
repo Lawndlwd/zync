@@ -8,7 +8,7 @@ import type {
   OpenCodeTokens,
 } from '../types/opencode'
 
-const DEFAULT_SERVER_URL = 'http://localhost:4096'
+const DEFAULT_SERVER_URL = '/opencode'
 
 // OpenCode timestamps may be in seconds or milliseconds depending on the endpoint
 function toISO(ts: number): string {
