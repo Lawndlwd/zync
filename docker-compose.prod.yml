@@ -19,7 +19,7 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - WHISPER_SERVICE_URL=http://whisper:9100
     volumes:
-      - zync-data:/app/data
+      - zync-data:/app/packages/server/data
       - zync-documents:/app/documents
     depends_on:
       whisper:

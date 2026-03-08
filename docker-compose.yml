@@ -2,16 +2,17 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: packages/app/Dockerfile
       args:
         MODE: development
     ports:
       - "${ZYNC_PORT:-8080}:5173"
     volumes:
-      - ./src:/app/src
-      - ./public:/app/public
-      - ./index.html:/app/index.html
-      - ./vite.config.ts:/app/vite.config.ts
+      - ./packages/app/src:/app/packages/app/src
+      - ./packages/app/public:/app/packages/app/public
+      - ./packages/app/index.html:/app/packages/app/index.html
+      - ./packages/app/vite.config.ts:/app/packages/app/vite.config.ts
+      - ./packages/shared/src:/app/packages/shared/src
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -25,7 +26,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: packages/server/Dockerfile
       args:
         MODE: development
     ports:
@@ -40,9 +41,10 @@ services:
       - OPENCODE_URL=http://host.docker.internal:4096
       - WHISPER_SERVICE_URL=http://whisper:9100
     volumes:
-      - ./server/src:/app/src
-      - ./server/data:/app/data
+      - ./packages/server/src:/app/packages/server/src
+      - ./packages/server/data:/app/packages/server/data
       - ./data/documents:/app/documents
+      - ./packages/shared/src:/app/packages/shared/src
     depends_on:
       whisper:
         condition: service_healthy
@@ -56,7 +58,7 @@ services:
 
   whisper:
     build:
-      context: ./server/whisper
+      context: ./packages/whisper
       dockerfile: Dockerfile
     expose:
       - "9100"
@@ -74,7 +76,7 @@ services:
 
   wakeword:
     build:
-      context: ./server/wakeword
+      context: ./packages/wakeword
       dockerfile: Dockerfile
     environment:
       - WAKEWORD_PORT=9000
