@@ -21,6 +21,7 @@ const JobsPage = lazy(() => import('@/pages/jobs').then(m => ({ default: m.JobsP
 const ProfilePage = lazy(() => import('@/pages/profile').then(m => ({ default: m.ProfilePage })))
 const SocialLayout = lazy(() => import('@/components/social/social-layout').then(m => ({ default: m.SocialLayout })))
 const SocialDashboard = lazy(() => import('@/pages/social-dashboard').then(m => ({ default: m.SocialDashboard })))
+const SocialTrending = lazy(() => import('@/pages/social-trending').then(m => ({ default: m.SocialTrending })))
 const SocialCalendarTab = lazy(() => import('@/pages/social-calendar-tab').then(m => ({ default: m.SocialCalendarTab })))
 const SocialWorkshop = lazy(() => import('@/pages/social-workshop').then(m => ({ default: m.SocialWorkshop })))
 const SocialCreate = lazy(() => import('@/pages/social-create').then(m => ({ default: m.SocialCreate })))
@@ -111,6 +112,7 @@ export function App() {
             <Route path="/social" element={<SocialLayout />}>
               <Route index element={<Navigate to="/social/dashboard" replace />} />
               <Route path="dashboard" element={<SocialDashboard />} />
+              <Route path="trending" element={<SocialTrending />} />
               <Route path="calendar" element={<SocialCalendarTab />} />
               <Route path="workshop" element={<SocialWorkshop />} />
               <Route path="create" element={<SocialCreate />} />

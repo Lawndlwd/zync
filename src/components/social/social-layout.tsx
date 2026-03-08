@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, Navigate } from 'react-router-dom'
-import { LayoutDashboard, Calendar, Lightbulb, PenSquare, Inbox, Settings, Plus } from 'lucide-react'
+import { LayoutDashboard, Calendar, Lightbulb, PenSquare, Inbox, Settings, Plus, TrendingUp } from 'lucide-react'
 import { useSocialFilter } from '../../store/social-filter'
 import { getAccounts } from '../../services/social'
 import { useEffect, useState } from 'react'
@@ -7,6 +7,7 @@ import type { SocialAccount, SocialPlatform } from '../../types/social'
 
 const tabs = [
   { to: '/social/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/social/trending', label: 'Trending', icon: TrendingUp },
   { to: '/social/calendar', label: 'Calendar', icon: Calendar },
   { to: '/social/workshop', label: 'Workshop', icon: Lightbulb },
   { to: '/social/create', label: 'Create', icon: PenSquare },
