@@ -201,14 +201,16 @@ export function WidgetsRow() {
       {widgets.map(w => (
         <WidgetCard key={w.id} widget={w} />
       ))}
-      {/* Add widget button */}
-      <button
-        onClick={() => setModalOpen(true)}
-        className="col-span-2 lg:col-span-3 rounded-xl border border-dashed border-white/[0.1] bg-white/[0.02] px-4 py-3.5 flex flex-col items-center justify-center gap-2 hover:bg-white/[0.04] hover:border-white/[0.15] transition-colors min-h-[120px]"
-      >
-        <Plus size={20} className="text-zinc-500" />
-        <span className="text-xs text-zinc-500">Add Widget</span>
-      </button>
+      {/* Add widget button — hide when all 4 types are added */}
+      {widgets.length < 4 && (
+        <button
+          onClick={() => setModalOpen(true)}
+          className="col-span-2 lg:col-span-3 rounded-xl border border-dashed border-white/[0.1] bg-white/[0.02] px-4 py-3.5 flex flex-col items-center justify-center gap-2 hover:bg-white/[0.04] hover:border-white/[0.15] transition-colors min-h-[120px]"
+        >
+          <Plus size={20} className="text-zinc-500" />
+          <span className="text-xs text-zinc-500">Add Widget</span>
+        </button>
+      )}
       <AddWidgetModal open={modalOpen} onOpenChange={setModalOpen} />
     </>
   )
