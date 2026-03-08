@@ -565,92 +565,259 @@ export function updateIdeaStatus(id: number, status: string) {
 // --- Insights / analytics ---
 
 export interface SocialInsightsData {
-  engagementOverTime: Array<{ date: string; likes: number; comments: number }>
-  postFrequency: Array<{ week: string; count: number }>
-  topPosts: Array<{ external_id: string; content: string; permalink: string | null; engagement: number; like_count: number; comments_count: number }>
-  commentStatusBreakdown: Array<{ status: string; count: number }>
+  summary: {
+    followers: number
+    followersDelta: number
+    engagementRate: number
+    engagementRateDelta: number
+    totalReach: number
+    reachDelta: number
+    totalImpressions: number
+    impressionsDelta: number
+    postsPublished: number
+    postsDelta: number
+  }
+  sparklines: {
+    followers: Array<{ date: string; value: number }>
+    engagementRate: Array<{ date: string; value: number }>
+    reach: Array<{ date: string; value: number }>
+    impressions: Array<{ date: string; value: number }>
+    posts: Array<{ date: string; value: number }>
+  }
+  reachAndImpressions: Array<{ date: string; reach: number; impressions: number }>
+  followerGrowth: Array<{ date: string; followers: number }>
+  followerGrowthPrev: Array<{ date: string; followers: number }>
+  engagementBreakdown: Array<{ type: string; value: number }>
+  engagementRateOverTime: Array<{ date: string; rate: number }>
   postingHeatmap: Array<{ day_of_week: number; hour: number; avg_engagement: number }>
-  growthOverTime: Array<{ date: string; cumulative_likes: number; cumulative_comments: number }>
+  topPosts: Array<{
+    id: number; external_id: string; content: string; media_url: string | null; permalink: string | null
+    reach: number; impressions: number; engagement: number; engagement_rate: number
+    like_count: number; comments_count: number; shares_count: number; saves_count: number
+  }>
+  platformComparison: Array<{ platform: string; avg_engagement_rate: number; total_reach: number; total_posts: number }>
+  postFrequency: Array<{ week: string; count: number; avg_engagement_rate: number }>
 }
 
-export function getInsights(platform: string, days: number, accountId?: number): SocialInsightsData {
+export function getInsights(platform: string | null, days: number, accountId?: number): SocialInsightsData {
   const db = getSocialDb()
-  // Compute the cutoff date as a plain string to avoid format mismatch with ISO8601 posted_at
   const cutoff = new Date(Date.now() - days * 86400_000).toISOString()
-
-  // Use COALESCE to handle NULL posted_at, and datetime() to normalize ISO8601 for date functions
+  const prevCutoff = new Date(Date.now() - days * 2 * 86400_000).toISOString()
   const dateFn = "date(COALESCE(posted_at, created_at))"
 
-  // Optional account filter
-  const accountFilter = accountId != null ? ' AND account_id = ?' : ''
-  const accountParam = accountId != null ? [accountId] : []
+  // Build dynamic filters
+  const conditions: string[] = []
+  const params: any[] = []
+  if (platform) { conditions.push('platform = ?'); params.push(platform) }
+  if (accountId != null) { conditions.push('account_id = ?'); params.push(accountId) }
+  const baseWhere = conditions.length > 0 ? conditions.join(' AND ') : '1=1'
 
-  // 1. Engagement over time — daily likes + comments
-  const engagementOverTime = db.prepare(`
-    SELECT ${dateFn} as post_date,
+  // --- Summary: current period totals ---
+  const curTotals = db.prepare(`
+    SELECT COUNT(*) as posts,
            COALESCE(SUM(like_count), 0) as likes,
-           COALESCE(SUM(comments_count), 0) as comments
+           COALESCE(SUM(comments_count), 0) as comments,
+           COALESCE(SUM(shares_count), 0) as shares,
+           COALESCE(SUM(saves_count), 0) as saves,
+           COALESCE(SUM(reach), 0) as reach,
+           COALESCE(SUM(impressions), 0) as impressions
     FROM social_posts
-    WHERE platform = ? AND COALESCE(posted_at, created_at) >= ?${accountFilter}
-    GROUP BY post_date
-    ORDER BY post_date
-  `).all(platform, cutoff, ...accountParam) as Array<{ post_date: string; likes: number; comments: number }>
-  const engagementMapped = engagementOverTime.map(r => ({ date: r.post_date, likes: r.likes, comments: r.comments }))
+    WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+  `).get(...params, cutoff) as any
 
-  // 2. Post frequency — posts per week
-  const postFrequency = db.prepare(`
-    SELECT strftime('%Y-W%W', COALESCE(posted_at, created_at)) as week,
-           COUNT(*) as count
+  const prevTotals = db.prepare(`
+    SELECT COUNT(*) as posts,
+           COALESCE(SUM(like_count), 0) as likes,
+           COALESCE(SUM(comments_count), 0) as comments,
+           COALESCE(SUM(shares_count), 0) as shares,
+           COALESCE(SUM(saves_count), 0) as saves,
+           COALESCE(SUM(reach), 0) as reach,
+           COALESCE(SUM(impressions), 0) as impressions
     FROM social_posts
-    WHERE platform = ? AND COALESCE(posted_at, created_at) >= ?${accountFilter}
-    GROUP BY week
-    ORDER BY week
-  `).all(platform, cutoff, ...accountParam) as SocialInsightsData['postFrequency']
+    WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ? AND COALESCE(posted_at, created_at) < ?
+  `).get(...params, prevCutoff, cutoff) as any
 
-  // 3. Top posts — top 10 by engagement (no date filter — show best ever)
-  const topPosts = db.prepare(`
-    SELECT external_id, content, permalink,
-           (COALESCE(like_count, 0) + COALESCE(comments_count, 0)) as engagement,
-           COALESCE(like_count, 0) as like_count,
-           COALESCE(comments_count, 0) as comments_count
-    FROM social_posts
-    WHERE platform = ?${accountFilter}
-    ORDER BY engagement DESC
-    LIMIT 10
-  `).all(platform, ...accountParam) as SocialInsightsData['topPosts']
+  const delta = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : 0
 
-  // 4. Comment status breakdown (no date filter — show all)
-  const commentStatusBreakdown = db.prepare(`
-    SELECT reply_status as status, COUNT(*) as count
-    FROM social_comments
-    WHERE platform = ?${accountFilter}
-    GROUP BY reply_status
-  `).all(platform, ...accountParam) as SocialInsightsData['commentStatusBreakdown']
+  const curEngagement = curTotals.likes + curTotals.comments + curTotals.shares + curTotals.saves
+  const prevEngagement = prevTotals.likes + prevTotals.comments + prevTotals.shares + prevTotals.saves
+  const curEngRate = curTotals.reach > 0 ? (curEngagement / curTotals.reach) * 100 : 0
+  const prevEngRate = prevTotals.reach > 0 ? (prevEngagement / prevTotals.reach) * 100 : 0
 
-  // 5. Posting time heatmap — day_of_week x hour with avg engagement
+  // Follower snapshots
+  const startDate = cutoff.split('T')[0]
+  const prevStartDate = prevCutoff.split('T')[0]
+  const endDate = new Date().toISOString().split('T')[0]
+
+  const followerSnapshots = db.prepare(`
+    SELECT date, ${accountId ? 'followers' : 'SUM(followers) as followers'}
+    FROM social_account_snapshots
+    WHERE ${accountId ? 'account_id = ? AND ' : ''}date BETWEEN ? AND ?
+    ${accountId ? '' : 'GROUP BY date'} ORDER BY date
+  `).all(...(accountId ? [accountId, startDate, endDate] : [startDate, endDate])) as Array<{ date: string; followers: number }>
+
+  const prevFollowerSnapshots = db.prepare(`
+    SELECT date, ${accountId ? 'followers' : 'SUM(followers) as followers'}
+    FROM social_account_snapshots
+    WHERE ${accountId ? 'account_id = ? AND ' : ''}date BETWEEN ? AND ?
+    ${accountId ? '' : 'GROUP BY date'} ORDER BY date
+  `).all(...(accountId ? [accountId, prevStartDate, startDate] : [prevStartDate, startDate])) as Array<{ date: string; followers: number }>
+
+  const latestFollowers = followerSnapshots.length > 0 ? followerSnapshots[followerSnapshots.length - 1].followers : 0
+  const earliestFollowers = followerSnapshots.length > 0 ? followerSnapshots[0].followers : 0
+  const prevEarliestFollowers = prevFollowerSnapshots.length > 0 ? prevFollowerSnapshots[0].followers : 0
+  const followersDelta = delta(latestFollowers - earliestFollowers, earliestFollowers - prevEarliestFollowers)
+
+  // --- Sparklines: daily aggregates ---
+  const dailyPosts = db.prepare(`
+    SELECT ${dateFn} as date, COUNT(*) as value
+    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    GROUP BY date ORDER BY date
+  `).all(...params, cutoff) as Array<{ date: string; value: number }>
+
+  const dailyReach = db.prepare(`
+    SELECT ${dateFn} as date, COALESCE(SUM(reach), 0) as value
+    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    GROUP BY date ORDER BY date
+  `).all(...params, cutoff) as Array<{ date: string; value: number }>
+
+  const dailyImpressions = db.prepare(`
+    SELECT ${dateFn} as date, COALESCE(SUM(impressions), 0) as value
+    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    GROUP BY date ORDER BY date
+  `).all(...params, cutoff) as Array<{ date: string; value: number }>
+
+  const dailyEngRate = db.prepare(`
+    SELECT ${dateFn} as date,
+           CASE WHEN SUM(reach) > 0 THEN
+             (SUM(COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0))) * 100.0 / SUM(reach)
+           ELSE 0 END as value
+    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    GROUP BY date ORDER BY date
+  `).all(...params, cutoff) as Array<{ date: string; value: number }>
+
+  // --- Reach and Impressions area chart ---
+  const reachAndImpressions = db.prepare(`
+    SELECT ${dateFn} as date,
+           COALESCE(SUM(reach), 0) as reach,
+           COALESCE(SUM(impressions), 0) as impressions
+    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    GROUP BY date ORDER BY date
+  `).all(...params, cutoff) as Array<{ date: string; reach: number; impressions: number }>
+
+  // --- Engagement breakdown ---
+  const engBreakdown = db.prepare(`
+    SELECT COALESCE(SUM(like_count), 0) as likes,
+           COALESCE(SUM(comments_count), 0) as comments,
+           COALESCE(SUM(shares_count), 0) as shares,
+           COALESCE(SUM(saves_count), 0) as saves
+    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+  `).get(...params, cutoff) as any
+
+  const engagementBreakdown = [
+    { type: 'Likes', value: engBreakdown.likes },
+    { type: 'Comments', value: engBreakdown.comments },
+    { type: 'Shares', value: engBreakdown.shares },
+    { type: 'Saves', value: engBreakdown.saves },
+  ]
+
+  // --- Engagement rate over time ---
+  const engagementRateOverTime = db.prepare(`
+    SELECT ${dateFn} as date,
+           CASE WHEN SUM(reach) > 0 THEN
+             (SUM(COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0))) * 100.0 / SUM(reach)
+           ELSE 0 END as rate
+    FROM social_posts WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    GROUP BY date ORDER BY date
+  `).all(...params, cutoff) as Array<{ date: string; rate: number }>
+
+  // --- Posting heatmap ---
   const postingHeatmap = db.prepare(`
     SELECT CAST(strftime('%w', COALESCE(posted_at, created_at)) AS INTEGER) as day_of_week,
            CAST(strftime('%H', COALESCE(posted_at, created_at)) AS INTEGER) as hour,
-           AVG(COALESCE(like_count, 0) + COALESCE(comments_count, 0)) as avg_engagement
+           AVG(COALESCE(like_count, 0) + COALESCE(comments_count, 0) + COALESCE(shares_count, 0) + COALESCE(saves_count, 0)) as avg_engagement
     FROM social_posts
-    WHERE platform = ? AND posted_at IS NOT NULL${accountFilter}
+    WHERE ${baseWhere} AND posted_at IS NOT NULL
     GROUP BY day_of_week, hour
-  `).all(platform, ...accountParam) as SocialInsightsData['postingHeatmap']
+  `).all(...params) as SocialInsightsData['postingHeatmap']
 
-  // 6. Growth metrics — cumulative totals over time
-  const growthOverTime = db.prepare(`
-    SELECT post_date as date, cumulative_likes, cumulative_comments FROM (
-      SELECT ${dateFn} as post_date,
-             SUM(SUM(COALESCE(like_count, 0))) OVER (ORDER BY ${dateFn}) as cumulative_likes,
-             SUM(SUM(COALESCE(comments_count, 0))) OVER (ORDER BY ${dateFn}) as cumulative_comments
+  // --- Top 5 posts ---
+  const topPosts = db.prepare(`
+    SELECT id, external_id, content, media_url, permalink,
+           COALESCE(reach, 0) as reach,
+           COALESCE(impressions, 0) as impressions,
+           (COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0)) as engagement,
+           CASE WHEN reach > 0 THEN
+             (COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0)) * 100.0 / reach
+           ELSE 0 END as engagement_rate,
+           COALESCE(like_count, 0) as like_count,
+           COALESCE(comments_count, 0) as comments_count,
+           COALESCE(shares_count, 0) as shares_count,
+           COALESCE(saves_count, 0) as saves_count
+    FROM social_posts
+    WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    ORDER BY engagement DESC
+    LIMIT 5
+  `).all(...params, cutoff) as SocialInsightsData['topPosts']
+
+  // --- Platform comparison (only when platform is null / all) ---
+  let platformComparison: SocialInsightsData['platformComparison'] = []
+  if (!platform) {
+    platformComparison = db.prepare(`
+      SELECT platform,
+             CASE WHEN SUM(reach) > 0 THEN
+               (SUM(COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0))) * 100.0 / SUM(reach)
+             ELSE 0 END as avg_engagement_rate,
+             COALESCE(SUM(reach), 0) as total_reach,
+             COUNT(*) as total_posts
       FROM social_posts
-      WHERE platform = ? AND COALESCE(posted_at, created_at) >= ?${accountFilter}
-      GROUP BY post_date
-    )
-    ORDER BY date
-  `).all(platform, cutoff, ...accountParam) as SocialInsightsData['growthOverTime']
+      WHERE COALESCE(posted_at, created_at) >= ?${accountId != null ? ' AND account_id = ?' : ''}
+      GROUP BY platform
+    `).all(cutoff, ...(accountId != null ? [accountId] : [])) as SocialInsightsData['platformComparison']
+  }
 
-  return { engagementOverTime: engagementMapped, postFrequency, topPosts, commentStatusBreakdown, postingHeatmap, growthOverTime }
+  // --- Post frequency by week ---
+  const postFrequency = db.prepare(`
+    SELECT strftime('%Y-W%W', COALESCE(posted_at, created_at)) as week,
+           COUNT(*) as count,
+           CASE WHEN SUM(reach) > 0 THEN
+             (SUM(COALESCE(like_count,0) + COALESCE(comments_count,0) + COALESCE(shares_count,0) + COALESCE(saves_count,0))) * 100.0 / SUM(reach)
+           ELSE 0 END as avg_engagement_rate
+    FROM social_posts
+    WHERE ${baseWhere} AND COALESCE(posted_at, created_at) >= ?
+    GROUP BY week ORDER BY week
+  `).all(...params, cutoff) as SocialInsightsData['postFrequency']
+
+  return {
+    summary: {
+      followers: latestFollowers,
+      followersDelta,
+      engagementRate: curEngRate,
+      engagementRateDelta: delta(curEngRate, prevEngRate),
+      totalReach: curTotals.reach,
+      reachDelta: delta(curTotals.reach, prevTotals.reach),
+      totalImpressions: curTotals.impressions,
+      impressionsDelta: delta(curTotals.impressions, prevTotals.impressions),
+      postsPublished: curTotals.posts,
+      postsDelta: delta(curTotals.posts, prevTotals.posts),
+    },
+    sparklines: {
+      followers: followerSnapshots.map(s => ({ date: s.date, value: s.followers })),
+      engagementRate: dailyEngRate,
+      reach: dailyReach,
+      impressions: dailyImpressions,
+      posts: dailyPosts,
+    },
+    reachAndImpressions,
+    followerGrowth: followerSnapshots.map(s => ({ date: s.date, followers: s.followers })),
+    followerGrowthPrev: prevFollowerSnapshots.map(s => ({ date: s.date, followers: s.followers })),
+    engagementBreakdown,
+    engagementRateOverTime,
+    postingHeatmap,
+    topPosts,
+    platformComparison,
+    postFrequency,
+  }
 }
 
 // --- Media helpers ---
