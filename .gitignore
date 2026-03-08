@@ -31,8 +31,8 @@ packages/server/data/
 docs/
 
 # Python venv
-packages/pr-agent/.venv/
-packages/wakeword/.venv/
+.venv/
+**/.venv/
 
 # Environment files
 .env
