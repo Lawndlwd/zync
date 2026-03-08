@@ -199,9 +199,11 @@ export interface TrendResult {
 
 export async function searchTrends(topic: string, platform: string): Promise<TrendResult[]> {
   const platformHint = platform && platform !== 'all' ? ` specifically for ${platform}` : ' across social media platforms'
-  const prompt = `You are a social media trend analyst. Research current trending topics related to "${topic}"${platformHint}.
+  const prompt = `You are a social media trend analyst. Based on your knowledge, suggest 6 trending topics related to "${topic}"${platformHint}.
 
-Return a JSON array of 5-8 trending topics. Each item must have:
+Do NOT search the web or browse any websites. Use your existing knowledge only. Answer immediately.
+
+Return a JSON array of exactly 6 items. Each item must have:
 - trend_title: catchy title for the trend
 - description: 1-2 sentences explaining why it's trending and how to leverage it
 - relevance: one of "hot", "rising", or "emerging"
@@ -210,7 +212,7 @@ Return a JSON array of 5-8 trending topics. Each item must have:
 
 Respond with ONLY the JSON array, no markdown fences or extra text.`
 
-  const response = await askLLM(prompt, 120_000)
+  const response = await askLLM(prompt, 60_000)
 
   try {
     const jsonMatch = response.match(/\[[\s\S]*\]/)
