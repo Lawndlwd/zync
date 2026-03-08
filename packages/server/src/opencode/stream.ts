@@ -33,6 +33,8 @@ export async function streamOpenCode(
   let done = false
   let promptSent = false
   let sseReady = false
+  let sawAssistant = false // true once we see an assistant message
+  let promptSentAt = 0    // timestamp when prompt was sent
 
   const finish = () => {
     if (done) return
@@ -98,6 +100,7 @@ export async function streamOpenCode(
         const info = props.info
         if (!info || info.sessionID !== sessionId) return
         if (info.role === 'user') userMsgIds.add(info.id)
+        if (info.role === 'assistant') sawAssistant = true
       }
 
       // Stream assistant text parts
@@ -121,12 +124,15 @@ export async function streamOpenCode(
         }
       }
 
-      // Session idle → done
+      // Session idle → done (but only if we've seen assistant output or enough time has passed)
+      const isIdleReady = () => sawAssistant || fullText.length > 0 || (Date.now() - promptSentAt > 5000)
+
       if (type === 'session.status') {
         const sid = props.sessionID
         if (sid !== sessionId || !promptSent) return
         const status = props.status?.type || props.status
-        if (status === 'idle' || status === 'completed' || status === 'error') {
+        if (status === 'error') { finishWithFallback(); return }
+        if ((status === 'idle' || status === 'completed') && isIdleReady()) {
           finishWithFallback()
         }
       }
@@ -134,14 +140,14 @@ export async function streamOpenCode(
       if (type === 'session.idle') {
         const sid = props.sessionID
         if (sid !== sessionId || !promptSent) return
-        finishWithFallback()
+        if (isIdleReady()) finishWithFallback()
       }
 
       if (type === 'session.updated') {
         const info = props.info
         if (!info || info.id !== sessionId || !promptSent) return
         if (info.status === 'idle' || info.status === 'completed') {
-          finishWithFallback()
+          if (isIdleReady()) finishWithFallback()
         }
       }
     } catch {
@@ -172,6 +178,7 @@ export async function streamOpenCode(
   try {
     await sendPromptAsync(sessionId, prompt)
     promptSent = true
+    promptSentAt = Date.now()
   } catch (err) {
     finish()
     callbacks.onError(err instanceof Error ? err : new Error(String(err)))

@@ -26,13 +26,21 @@ Return ONLY a JSON array:
 
   const response = await waitForResponse(sessionId, prompt, { timeoutMs: 60_000 })
 
+  logger.info({ responseLength: response.length, preview: response.slice(0, 500) }, 'News LLM response')
+
+  if (!response || !response.trim()) {
+    logger.error('News LLM returned empty response')
+    return []
+  }
+
   try {
     const match = response.match(/\[[\s\S]*\]/)
-    if (!match) throw new Error('No JSON array found')
+    if (!match) throw new Error('No JSON array found in response')
     const items = JSON.parse(match[0])
+    logger.info({ itemCount: items.length }, 'News parsed successfully')
     return items.slice(0, 3)
   } catch (err) {
-    logger.error({ err, response: response.slice(0, 300) }, 'Failed to parse news JSON')
+    logger.error({ err, response: response.slice(0, 500) }, 'Failed to parse news JSON')
     return []
   }
 }
