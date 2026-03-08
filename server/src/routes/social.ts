@@ -17,11 +17,12 @@ import { getOAuthUrl, exchangeCodeForToken, exchangeForLongLivedToken, refreshLo
 import { replyInstagramComment } from '../social/scrapers/instagram.js'
 import { postTweet } from '../social/scrapers/x.js'
 import { saveUploadedFile, deleteMediaFile, getMediaDir } from '../social/media.js'
-import { analyzeImage, analyzeVideo, generateCaptionForMedia, generateFromBrief, suggestHashtags, suggestOptimalTime, type MediaAnalysis } from '../social/ai-analyzer.js'
+import { analyzeImage, analyzeVideo, generateCaptionForMedia, generateFromBrief, suggestHashtags, suggestOptimalTime, searchTrends, type MediaAnalysis } from '../social/ai-analyzer.js'
 import {
   getWorkshopBoards, createWorkshopBoard, updateWorkshopBoard, deleteWorkshopBoard,
   getWorkshopCards, createWorkshopCard, updateWorkshopCard, deleteWorkshopCard,
   getWorkshopMessages,
+  getSavedTrends, saveTrend, deleteSavedTrend,
 } from '../social/db.js'
 import { workshopChatStream } from '../social/workshop-chat.js'
 
@@ -679,6 +680,56 @@ socialRouter.put('/config', (req, res) => {
     if (autoReplyPrompt !== undefined) secretsSvc.set('SOCIAL_AUTO_REPLY_PROMPT', autoReplyPrompt, 'social')
     if (autoReplyRequireApproval !== undefined) secretsSvc.set('SOCIAL_AUTO_REPLY_REQUIRE_APPROVAL', String(autoReplyRequireApproval), 'social')
 
+    res.json({ success: true })
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
+// --- Trend routes ---
+
+socialRouter.post('/trends/search', async (req, res) => {
+  try {
+    const { topic, platform } = req.body
+    if (!topic) return res.status(400).json({ error: 'topic is required' })
+    const trends = await searchTrends(topic, platform || 'all')
+    res.json({ trends })
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
+socialRouter.get('/trends/bookmarks', (_req, res) => {
+  try {
+    const trends = getSavedTrends()
+    res.json({ trends })
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
+socialRouter.post('/trends/bookmark', (req, res) => {
+  try {
+    const { topic, platform, trend_title, description, hashtags, content_ideas, relevance } = req.body
+    if (!trend_title) return res.status(400).json({ error: 'trend_title is required' })
+    const id = saveTrend({
+      topic: topic || '',
+      platform: platform || 'all',
+      trend_title,
+      description: description || '',
+      hashtags: JSON.stringify(hashtags || []),
+      content_ideas: JSON.stringify(content_ideas || []),
+      relevance: relevance || 'trending',
+    })
+    res.json({ id })
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
+socialRouter.delete('/trends/:id', (req, res) => {
+  try {
+    deleteSavedTrend(Number(req.params.id))
     res.json({ success: true })
   } catch (err) {
     errorResponse(res, err)
