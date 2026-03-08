@@ -1,9 +1,10 @@
-import { Routes, Route, Outlet, useNavigate } from 'react-router-dom'
+import { Routes, Route, Outlet, useNavigate, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/app-layout'
 import { lazy, Suspense, useEffect, useState } from 'react'
 
 const DashboardPage = lazy(() => import('@/pages/dashboard').then(m => ({ default: m.DashboardPage })))
 const JiraPage = lazy(() => import('@/pages/jira').then(m => ({ default: m.JiraPage })))
+const LinearPage = lazy(() => import('@/pages/linear').then(m => ({ default: m.LinearPage })))
 const TasksPage = lazy(() => import('@/pages/tasks').then(m => ({ default: m.TasksPage })))
 const ChatPage = lazy(() => import('@/pages/opencode').then(m => ({ default: m.OpenCodePage })))
 const SettingsPage = lazy(() => import('@/pages/settings').then(m => ({ default: m.SettingsPage })))
@@ -18,6 +19,13 @@ const CanvasPage = lazy(() => import('@/pages/canvas').then(m => ({ default: m.C
 const SetupPage = lazy(() => import('@/pages/setup').then(m => ({ default: m.SetupPage })))
 const JobsPage = lazy(() => import('@/pages/jobs').then(m => ({ default: m.JobsPage })))
 const ProfilePage = lazy(() => import('@/pages/profile').then(m => ({ default: m.ProfilePage })))
+const SocialLayout = lazy(() => import('@/components/social/social-layout').then(m => ({ default: m.SocialLayout })))
+const SocialDashboard = lazy(() => import('@/pages/social-dashboard').then(m => ({ default: m.SocialDashboard })))
+const SocialCalendarTab = lazy(() => import('@/pages/social-calendar-tab').then(m => ({ default: m.SocialCalendarTab })))
+const SocialWorkshop = lazy(() => import('@/pages/social-workshop').then(m => ({ default: m.SocialWorkshop })))
+const SocialCreate = lazy(() => import('@/pages/social-create').then(m => ({ default: m.SocialCreate })))
+const SocialInbox = lazy(() => import('@/pages/social-inbox').then(m => ({ default: m.SocialInbox })))
+const SocialSettingsTab = lazy(() => import('@/pages/social-settings-tab').then(m => ({ default: m.SocialSettingsTab })))
 import { useSettingsStore } from '@/store/settings'
 import { fetchServerSettings } from '@/services/jira'
 import { getSetupStatus } from '@/services/setup'
@@ -85,6 +93,7 @@ export function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/jira" element={<JiraPage />} />
+            <Route path="/linear" element={<LinearPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/tasks/:projectName" element={<TasksPage />} />
             <Route path="/chat" element={<ChatPage />} />
@@ -95,11 +104,20 @@ export function App() {
             <Route path="/github" element={<GitHubPage />} />
             <Route path="/github/pr/:owner/:repo/:number" element={<GitHubPRPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/documents/:folder" element={<DocumentsPage />} />
-            <Route path="/documents/:folder/:doc" element={<DocumentsPage />} />
+            <Route path="/documents/*" element={<DocumentsPage />} />
             <Route path="/canvas" element={<CanvasPage />} />
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/social" element={<SocialLayout />}>
+              <Route index element={<Navigate to="/social/dashboard" replace />} />
+              <Route path="dashboard" element={<SocialDashboard />} />
+              <Route path="calendar" element={<SocialCalendarTab />} />
+              <Route path="workshop" element={<SocialWorkshop />} />
+              <Route path="create" element={<SocialCreate />} />
+              <Route path="create/:id" element={<SocialCreate />} />
+              <Route path="inbox" element={<SocialInbox />} />
+              <Route path="settings" element={<SocialSettingsTab />} />
+            </Route>
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
