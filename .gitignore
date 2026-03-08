@@ -25,18 +25,18 @@ dist-ssr
 
 # Data files
 data/
-server/data/
+packages/server/data/
 
 # Internal docs and plans
 docs/
 
 # Python venv
-server/.venv/
-server/wakeword/.venv/
+packages/pr-agent/.venv/
+packages/wakeword/.venv/
 
 # Environment files
 .env
-server/.env
+packages/server/.env
 
 # Local MCP config (contains tokens)
 .mcp.json
@@ -44,7 +44,10 @@ server/.env
 # Worktrees
 .worktrees/
 
+# Turborepo
+.turbo/
+
 # Secrets vault
-server/data/secrets.db
-server/data/secrets.db-shm
-server/data/secrets.db-wal
+packages/server/data/secrets.db
+packages/server/data/secrets.db-shm
+packages/server/data/secrets.db-wal
