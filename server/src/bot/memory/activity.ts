@@ -2,7 +2,7 @@ import { getDb } from './db.js'
 import { getSessionMessages } from '../../opencode/client.js'
 
 export interface LLMCallRecord {
-  source: 'chat' | 'bot' | 'schedule' | 'pr-agent' | 'code-review' | 'telegram-support'
+  source: 'chat' | 'bot' | 'schedule' | 'pr-agent' | 'code-review' | 'telegram-support' | 'telegram-dm'
   model: string
   prompt_tokens: number
   completion_tokens: number
