@@ -1,20 +1,56 @@
 import { getDb } from './db.js'
+import { getSessionMessages } from '../../opencode/client.js'
 
 export interface LLMCallRecord {
-  source: 'chat' | 'bot' | 'schedule' | 'pr-agent'
+  source: 'chat' | 'bot' | 'schedule' | 'pr-agent' | 'code-review' | 'telegram-support'
   model: string
   prompt_tokens: number
   completion_tokens: number
   total_tokens: number
   tool_names: string[]
   duration_ms: number
+  session_id?: string
+  message_id?: string
+  cost?: number
+}
+
+/** Extract token usage from the latest assistant message in a session */
+export async function extractUsageFromSession(sessionId: string): Promise<{
+  model: string
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  cost: number
+  message_id?: string
+}> {
+  try {
+    const msgs = await getSessionMessages(sessionId)
+    const assistantMsgs = msgs.filter((m: any) => m.info?.role === 'assistant')
+    const last = assistantMsgs[assistantMsgs.length - 1]
+    const info = last?.info
+    if (info?.tokens) {
+      const output = info.tokens.output || 0
+      const reasoning = info.tokens.reasoning || 0
+      return {
+        model: info.modelID || 'opencode',
+        prompt_tokens: 0,
+        completion_tokens: output + reasoning,
+        total_tokens: output + reasoning,
+        cost: info.cost || 0,
+        message_id: info.id,
+      }
+    }
+  } catch {
+    // fallback to zeros
+  }
+  return { model: 'opencode', prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, cost: 0 }
 }
 
 export function insertLLMCall(record: LLMCallRecord): void {
   const db = getDb()
   db.prepare(`
-    INSERT INTO llm_calls (source, model, prompt_tokens, completion_tokens, total_tokens, tool_names, duration_ms)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO llm_calls (source, model, prompt_tokens, completion_tokens, total_tokens, tool_names, duration_ms, session_id, message_id, cost)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     record.source,
     record.model,
@@ -23,6 +59,9 @@ export function insertLLMCall(record: LLMCallRecord): void {
     record.total_tokens,
     JSON.stringify(record.tool_names),
     record.duration_ms,
+    record.session_id ?? null,
+    record.message_id ?? null,
+    record.cost ?? null,
   )
 }
 
