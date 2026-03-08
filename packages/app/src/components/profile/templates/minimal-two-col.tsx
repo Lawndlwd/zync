@@ -1,0 +1,235 @@
+import type { Profile, CvTheme } from '@zync/shared/types'
+
+interface TemplateProps {
+  profile: Profile
+  theme: CvTheme
+}
+
+export function MinimalTwoColTemplate({ profile, theme }: TemplateProps) {
+  const cssVars = {
+    '--cv-primary': theme.primaryColor,
+    '--cv-secondary': theme.secondaryColor,
+    '--cv-accent': theme.accentColor,
+    '--cv-bg': theme.backgroundColor,
+    '--cv-font-heading': theme.fontHeading,
+    '--cv-font-body': theme.fontBody,
+    '--cv-font-size': `${theme.fontSize}pt`,
+    '--cv-line-height': String(theme.lineHeight),
+    '--cv-section-spacing': `${theme.sectionSpacing}rem`,
+  } as React.CSSProperties
+
+  const contactItems = [profile.email, profile.phone, profile.location, profile.linkedin, profile.website].filter(Boolean)
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .cv-min2col {
+          width: 210mm;
+          min-height: 297mm;
+          box-sizing: border-box;
+          padding: 20mm 22mm;
+          background: var(--cv-bg);
+          font-family: var(--cv-font-body);
+          font-size: var(--cv-font-size);
+          line-height: var(--cv-line-height);
+          color: var(--cv-primary);
+        }
+        .cv-min2col .m2c-name {
+          font-family: var(--cv-font-heading);
+          font-size: 28pt;
+          font-weight: 700;
+          color: var(--cv-accent);
+          margin: 0 0 4px;
+          letter-spacing: -0.5px;
+        }
+        .cv-min2col .m2c-meta {
+          font-size: 9pt;
+          color: var(--cv-secondary);
+          margin-bottom: var(--cv-section-spacing);
+        }
+        .cv-min2col .m2c-row {
+          display: grid;
+          grid-template-columns: 130px 1fr;
+          gap: 0 24px;
+          margin-bottom: var(--cv-section-spacing);
+        }
+        .cv-min2col .m2c-label {
+          font-family: var(--cv-font-heading);
+          font-size: 8pt;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          color: var(--cv-secondary);
+          padding-top: 2px;
+        }
+        .cv-min2col .m2c-content {
+          color: var(--cv-primary);
+        }
+        .cv-min2col .m2c-entry {
+          margin-bottom: 12px;
+        }
+        .cv-min2col .m2c-entry:last-child {
+          margin-bottom: 0;
+        }
+        .cv-min2col .m2c-entry-title {
+          font-weight: 700;
+          color: var(--cv-primary);
+        }
+        .cv-min2col .m2c-entry-company {
+          color: var(--cv-secondary);
+        }
+        .cv-min2col .m2c-entry-row {
+          display: grid;
+          grid-template-columns: 130px 1fr;
+          gap: 0 24px;
+          margin-bottom: 12px;
+        }
+        .cv-min2col .m2c-date {
+          font-size: 8pt;
+          color: var(--cv-secondary);
+          padding-top: 2px;
+          text-align: right;
+          padding-right: 0;
+        }
+        .cv-min2col .m2c-bullets {
+          margin: 4px 0 0 16px;
+          padding: 0;
+          list-style-type: disc;
+        }
+        .cv-min2col .m2c-bullets li {
+          margin-bottom: 2px;
+          font-size: calc(var(--cv-font-size) * 0.95);
+        }
+        .cv-min2col .m2c-summary {
+          color: var(--cv-secondary);
+          font-size: 10pt;
+        }
+        .cv-min2col .m2c-skills-text {
+          color: var(--cv-primary);
+        }
+        .cv-min2col .m2c-proj-desc {
+          color: var(--cv-secondary);
+          margin-top: 2px;
+          font-size: 9.5pt;
+        }
+        .cv-min2col .m2c-proj-tech {
+          color: var(--cv-accent);
+          font-size: 8.5pt;
+          margin-top: 2px;
+        }
+        .cv-min2col .m2c-gpa {
+          font-size: 9pt;
+          color: var(--cv-secondary);
+          margin-top: 2px;
+        }
+        .cv-min2col .m2c-section-wrap {
+          margin-bottom: var(--cv-section-spacing);
+        }
+        .cv-min2col .m2c-section-label-inline {
+          text-align: left;
+          margin-bottom: 8px;
+        }
+        .cv-min2col .m2c-proj-url {
+          font-size: 8pt;
+          color: var(--cv-secondary);
+          margin-left: 6px;
+        }
+        .cv-min2col [data-field] {
+          cursor: text;
+          transition: outline 0.15s;
+          border-radius: 1px;
+        }
+        .cv-min2col [data-field]:hover {
+          outline: 1px dashed color-mix(in srgb, var(--cv-accent) 50%, transparent);
+          outline-offset: 2px;
+        }
+      `}} />
+      <div className="cv-min2col" style={cssVars}>
+        <div className="m2c-name" data-field="name">{profile.name}</div>
+        <div className="m2c-meta">
+          <span data-field="title">{profile.title}</span>{contactItems.length > 0 && <> &nbsp;&middot;&nbsp; {contactItems.join(' &middot; ')}</>}
+        </div>
+
+        {profile.summary && (
+          <div className="m2c-row">
+            <div className="m2c-label">About</div>
+            <div className="m2c-content m2c-summary" data-field="summary">{profile.summary}</div>
+          </div>
+        )}
+
+        {profile.experiences.length > 0 && (
+          <div className="m2c-section-wrap">
+            {profile.experiences.map((exp, i) => (
+              <div key={exp.id} className="m2c-entry-row">
+                <div className="m2c-date">
+                  {i === 0 && <div className="m2c-label m2c-section-label-inline">Experience</div>}
+                  {exp.startDate} &ndash; {exp.endDate || 'Present'}
+                </div>
+                <div className="m2c-content">
+                  <span className="m2c-entry-title" data-field={`experiences.${i}.title`}>{exp.title}</span>
+                  <span className="m2c-entry-company" data-field={`experiences.${i}.company`}> &mdash; {exp.company}</span>
+                  {exp.location && <span className="m2c-entry-company" data-field={`experiences.${i}.location`}>, {exp.location}</span>}
+                  {exp.bullets.length > 0 && (
+                    <ul className="m2c-bullets">
+                      {exp.bullets.map((b, j) => <li key={j} data-field={`experiences.${i}.bullets.${j}`}>{b}</li>)}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {profile.educations.length > 0 && (
+          <div className="m2c-section-wrap">
+            {profile.educations.map((edu, i) => (
+              <div key={edu.id} className="m2c-entry-row">
+                <div className="m2c-date">
+                  {i === 0 && <div className="m2c-label m2c-section-label-inline">Education</div>}
+                  {edu.startDate} &ndash; {edu.endDate || 'Present'}
+                </div>
+                <div className="m2c-content">
+                  <span className="m2c-entry-title"><span data-field={`educations.${i}.degree`}>{edu.degree}</span>{edu.field ? <>, <span data-field={`educations.${i}.field`}>{edu.field}</span></> : ''}</span>
+                  <span className="m2c-entry-company" data-field={`educations.${i}.school`}> &mdash; {edu.school}</span>
+                  {edu.gpa && <div className="m2c-gpa">GPA: {edu.gpa}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {profile.skills.length > 0 && (
+          <div className="m2c-row">
+            <div className="m2c-label">Skills</div>
+            <div className="m2c-content m2c-skills-text">{profile.skills.join(', ')}</div>
+          </div>
+        )}
+
+        {profile.projects.length > 0 && (
+          <div className="m2c-row">
+            <div className="m2c-label">Projects</div>
+            <div className="m2c-content">
+              {profile.projects.map((proj, i) => (
+                <div key={proj.id} className="m2c-entry">
+                  <span className="m2c-entry-title" data-field={`projects.${i}.name`}>{proj.name}</span>
+                  {proj.url && <span className="m2c-proj-url">{proj.url}</span>}
+                  <div className="m2c-proj-desc" data-field={`projects.${i}.description`}>{proj.description}</div>
+                  {proj.technologies.length > 0 && (
+                    <div className="m2c-proj-tech">{proj.technologies.join(', ')}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {profile.languages.length > 0 && (
+          <div className="m2c-row">
+            <div className="m2c-label">Languages</div>
+            <div className="m2c-content m2c-skills-text">{profile.languages.join(', ')}</div>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
