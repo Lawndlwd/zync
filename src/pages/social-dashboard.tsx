@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, Heart, MessageCircle, FileText, TrendingUp } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useSocialFilter } from '@/store/social-filter'
 import * as socialService from '@/services/social'
-
-import { EngagementChart } from '@/components/social/insights/engagement-chart'
-import { PostFrequencyChart } from '@/components/social/insights/post-frequency-chart'
-import { TopPostsChart } from '@/components/social/insights/top-posts-chart'
-import { CommentStatusChart } from '@/components/social/insights/comment-status-chart'
+import { KpiCard } from '@/components/social/insights/kpi-card'
+import { ReachImpressionsChart } from '@/components/social/insights/reach-impressions-chart'
+import { FollowerGrowthChart } from '@/components/social/insights/follower-growth-chart'
+import { EngagementBreakdownChart } from '@/components/social/insights/engagement-breakdown-chart'
+import { EngagementRateChart } from '@/components/social/insights/engagement-rate-chart'
 import { PostingHeatmap } from '@/components/social/insights/posting-heatmap'
-import { GrowthChart } from '@/components/social/insights/growth-chart'
+import { TopPostsChart } from '@/components/social/insights/top-posts-chart'
+import { PlatformComparisonChart } from '@/components/social/insights/platform-comparison-chart'
+import { PostFrequencyChart } from '@/components/social/insights/post-frequency-chart'
 
 const timeRanges = [
   { label: '7d', days: 7 },
@@ -25,14 +27,9 @@ export function SocialDashboard() {
 
   const { data: insights, isLoading } = useQuery({
     queryKey: ['social-insights', platform, accountId, days],
-    queryFn: () => socialService.getInsights(platform ?? 'instagram', days, accountId),
+    queryFn: () => socialService.getInsights(platform ?? 'all', days, accountId),
     staleTime: 60_000,
   })
-
-  const totalPosts = insights?.topPosts.length ?? 0
-  const totalLikes = insights?.engagementOverTime.reduce((s, d) => s + d.likes, 0) ?? 0
-  const totalComments = insights?.engagementOverTime.reduce((s, d) => s + d.comments, 0) ?? 0
-  const avgEngagement = totalPosts > 0 ? Math.round((totalLikes + totalComments) / totalPosts) : 0
 
   return (
     <div>
@@ -58,37 +55,74 @@ export function SocialDashboard() {
         <div className="flex items-center justify-center py-20">
           <Loader2 size={24} className="animate-spin text-zinc-500" />
         </div>
-      ) : (
+      ) : insights ? (
         <>
-          {/* Summary stats */}
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { icon: FileText, label: 'Posts', value: totalPosts },
-              { icon: Heart, label: 'Total Likes', value: totalLikes.toLocaleString() },
-              { icon: MessageCircle, label: 'Total Comments', value: totalComments.toLocaleString() },
-              { icon: TrendingUp, label: 'Avg Engagement', value: avgEngagement.toLocaleString() },
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-                <div className="flex items-center gap-2 text-zinc-500 mb-1">
-                  <stat.icon size={14} />
-                  <span className="text-xs">{stat.label}</span>
-                </div>
-                <p className="text-lg font-semibold text-zinc-100">{stat.value}</p>
-              </div>
-            ))}
+          {/* Row 1: KPI cards */}
+          <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+            <KpiCard
+              title="Followers"
+              value={insights.summary.followers}
+              delta={insights.summary.followersDelta}
+              sparklineData={insights.sparklines.followers}
+              format="compact"
+            />
+            <KpiCard
+              title="Engagement Rate"
+              value={insights.summary.engagementRate}
+              delta={insights.summary.engagementRateDelta}
+              sparklineData={insights.sparklines.engagementRate}
+              format="percent"
+            />
+            <KpiCard
+              title="Total Reach"
+              value={insights.summary.totalReach}
+              delta={insights.summary.reachDelta}
+              sparklineData={insights.sparklines.reach}
+              format="compact"
+            />
+            <KpiCard
+              title="Impressions"
+              value={insights.summary.totalImpressions}
+              delta={insights.summary.impressionsDelta}
+              sparklineData={insights.sparklines.impressions}
+              format="compact"
+            />
+            <KpiCard
+              title="Posts Published"
+              value={insights.summary.postsPublished}
+              delta={insights.summary.postsDelta}
+              sparklineData={insights.sparklines.posts}
+              format="number"
+            />
           </div>
 
-          {/* Charts grid */}
-          <div className="grid gap-4 lg:grid-cols-2">
-            <EngagementChart data={insights?.engagementOverTime ?? []} />
-            <PostFrequencyChart data={insights?.postFrequency ?? []} />
-            <TopPostsChart data={insights?.topPosts ?? []} />
-            <CommentStatusChart data={insights?.commentStatusBreakdown ?? []} />
-            <PostingHeatmap data={insights?.postingHeatmap ?? []} />
-            <GrowthChart data={insights?.growthOverTime ?? []} />
+          {/* Row 2: Reach & Impressions + Follower Growth */}
+          <div className="mb-4 grid gap-4 lg:grid-cols-2">
+            <ReachImpressionsChart data={insights.reachAndImpressions} />
+            <FollowerGrowthChart data={insights.followerGrowth} prevData={insights.followerGrowthPrev} />
+          </div>
+
+          {/* Row 3: Engagement Breakdown + Engagement Rate */}
+          <div className="mb-4 grid gap-4 lg:grid-cols-2">
+            <EngagementBreakdownChart data={insights.engagementBreakdown} />
+            <EngagementRateChart data={insights.engagementRateOverTime} />
+          </div>
+
+          {/* Row 4: Posting Heatmap + Top Posts */}
+          <div className="mb-4 grid gap-4 lg:grid-cols-2">
+            <PostingHeatmap data={insights.postingHeatmap} />
+            <TopPostsChart data={insights.topPosts} />
+          </div>
+
+          {/* Row 5: Platform Comparison + Post Frequency */}
+          <div className="mb-4 grid gap-4 lg:grid-cols-2">
+            {insights.platformComparison.length > 0 && (
+              <PlatformComparisonChart data={insights.platformComparison} />
+            )}
+            <PostFrequencyChart data={insights.postFrequency} />
           </div>
         </>
-      )}
+      ) : null}
     </div>
   )
 }
