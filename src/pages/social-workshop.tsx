@@ -11,7 +11,7 @@ export function SocialWorkshop() {
   const [boards, setBoards] = useState<Awaited<ReturnType<typeof socialService.getWorkshopBoards>>>([])
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null)
   const [boardsLoading, setBoardsLoading] = useState(true)
-  const [workshopRefreshKey, setWorkshopRefreshKey] = useState(0)
+  const [workshopRefreshKey] = useState(0)
 
   useEffect(() => {
     setBoardsLoading(true)
@@ -64,7 +64,7 @@ export function SocialWorkshop() {
 
       {selectedBoardId ? (
         <div className="flex-1 min-h-0">
-          <ResizablePanelGroup direction="horizontal">
+          <ResizablePanelGroup orientation="horizontal">
             <ResizablePanel defaultSize={70} minSize={30}>
               <div className="h-full pr-2">
                 <WorkshopBoard boardId={selectedBoardId} refreshKey={workshopRefreshKey} />
