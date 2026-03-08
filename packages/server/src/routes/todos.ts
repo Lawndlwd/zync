@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { getDb } from '../bot/memory/db.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { TodoCreateSchema, TodoUpdateSchema } from '../lib/schemas.js'
+import { TodoCreateSchema, TodoUpdateSchema } from '@zync/shared/schemas'
 
 export const todosRouter = Router()
 

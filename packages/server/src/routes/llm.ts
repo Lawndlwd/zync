@@ -4,7 +4,7 @@ import { getOrCreateSession, getActiveDashboardSession, sendPromptAsync } from '
 import { streamOpenCode } from '../opencode/stream.js'
 import { insertLLMCall, extractUsageFromSession } from '../bot/memory/activity.js'
 import { validate } from '../lib/validate.js'
-import { LlmChatSchema } from '../lib/schemas.js'
+import { LlmChatSchema } from '@zync/shared/schemas'
 
 export const llmRouter = Router()
 

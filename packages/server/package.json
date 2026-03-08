@@ -1,5 +1,5 @@
 {
-  "name": "zync-server",
+  "name": "@zync/server",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -10,9 +10,11 @@
     "dev": "tsx watch --ignore './data/**' src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "secrets:migrate": "tsx src/secrets/migrate.ts"
   },
   "dependencies": {
+    "@zync/shared": "workspace:*",
     "@huggingface/transformers": "^3.0.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "baileys": "7.0.0-rc.9",

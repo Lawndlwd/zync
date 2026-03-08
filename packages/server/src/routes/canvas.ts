@@ -5,7 +5,7 @@ import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle 
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { loadPromptContent, interpolate } from '../skills/prompts.js'
-import { CanvasRenderSchema, CanvasPromptSchema } from '../lib/schemas.js'
+import { CanvasRenderSchema, CanvasPromptSchema } from '@zync/shared/schemas'
 
 export const canvasRouter = Router()
 

@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { getConfigService } from '../config/index.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { ConfigSetSchema, ConfigBulkSetSchema } from '../lib/schemas.js'
+import { ConfigSetSchema, ConfigBulkSetSchema } from '@zync/shared/schemas'
 
 const configRouter = Router()
 

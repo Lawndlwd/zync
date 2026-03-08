@@ -4,7 +4,7 @@ import { join, relative } from 'path'
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { ProjectCreateSchema, ProjectUpdateSchema, TaskCreateSchema, TaskUpdateSchema } from '../lib/schemas.js'
+import { ProjectCreateSchema, ProjectUpdateSchema, TaskCreateSchema, TaskUpdateSchema } from '@zync/shared/schemas'
 import { getConfig } from '../config/index.js'
 
 export const projectsRouter = Router()

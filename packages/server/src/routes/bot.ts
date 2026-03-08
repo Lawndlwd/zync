@@ -11,7 +11,7 @@ import {
   TelegramConfigSchema,
   WhatsAppConfigSchema,
   GmailConfigSchema,
-} from '../lib/schemas.js'
+} from '@zync/shared/schemas'
 import { getSecret, getSecrets } from '../secrets/index.js'
 import { getConfig, getConfigService } from '../config/index.js'
 import { searchMemory, saveMemory, deleteMemory, listAllMemories, getMemoryCount } from '../bot/memory/index.js'

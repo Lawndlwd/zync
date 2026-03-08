@@ -6,7 +6,7 @@ import { errorResponse } from '../lib/errors.js'
 import {
   CampaignCreateSchema, CampaignStatusSchema,
   JobStatusSchema, ProfileUpdateSchema,
-} from '../lib/schemas.js'
+} from '@zync/shared/schemas'
 import {
   getCampaigns, getCampaign, createCampaign, updateCampaignStatus, deleteCampaign,
   getProfile, upsertProfile,

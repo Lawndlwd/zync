@@ -4,7 +4,7 @@ import { join, basename, extname, relative } from 'path'
 import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { FolderCreateSchema, FolderRenameSchema, DocumentCreateSchema, DocumentUpdateSchema, DocumentBulkSchema } from '../lib/schemas.js'
+import { FolderCreateSchema, FolderRenameSchema, DocumentCreateSchema, DocumentUpdateSchema, DocumentBulkSchema } from '@zync/shared/schemas'
 import { getConfig } from '../config/index.js'
 
 export const documentsRouter = Router()

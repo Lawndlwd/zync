@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { validate } from '../lib/validate.js'
-import { GithubConfigSchema, GithubCommentSchema, GithubReviewCommentSchema, GithubCreatePrSchema } from '../lib/schemas.js'
+import { GithubConfigSchema, GithubCommentSchema, GithubReviewCommentSchema, GithubCreatePrSchema } from '@zync/shared/schemas'
 import { getSecret, getSecrets } from '../secrets/index.js'
 import { getConfig, getConfigService } from '../config/index.js'
 

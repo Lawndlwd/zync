@@ -2,7 +2,7 @@ import { Router } from 'express'
 import multer from 'multer'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { JiraTransitionSchema, JiraCommentSchema, JiraCreateIssueSchema } from '../lib/schemas.js'
+import { JiraTransitionSchema, JiraCommentSchema, JiraCreateIssueSchema } from '@zync/shared/schemas'
 import { getSecret } from '../secrets/index.js'
 
 export const jiraRouter = Router()

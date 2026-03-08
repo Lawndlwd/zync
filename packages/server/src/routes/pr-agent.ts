@@ -8,7 +8,7 @@ import { getOpenCodeUrl } from '../opencode/client.js'
 import { getDb } from '../bot/memory/db.js'
 import { insertLLMCall } from '../bot/memory/activity.js'
 import { validate } from '../lib/validate.js'
-import { PrAgentRunSchema } from '../lib/schemas.js'
+import { PrAgentRunSchema } from '@zync/shared/schemas'
 
 export const prAgentRouter = Router()
 

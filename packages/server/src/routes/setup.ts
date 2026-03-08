@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { SetupVerifySchema } from '../lib/schemas.js'
+import { SetupVerifySchema } from '@zync/shared/schemas'
 import { getConfigService, getConfig } from '../config/index.js'
 import { getSecrets, getSecret } from '../secrets/index.js'
 import { logger } from '../lib/logger.js'

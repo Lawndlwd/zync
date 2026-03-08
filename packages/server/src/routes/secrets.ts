@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { getSecrets } from '../secrets/index.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { SecretSetSchema } from '../lib/schemas.js'
+import { SecretSetSchema } from '@zync/shared/schemas'
 
 export const secretsRouter = Router()
 
