@@ -202,7 +202,7 @@ export async function searchTrends(topic: string, platform: string): Promise<Tre
   const prompt = `You are a social media trend analyst. Suggest 6 trending topics related to "${topic}"${platformHint}.
 
 You may check up to 3 websites for recent data, but do not browse more than that. Be quick and focused.
-Do NOT use any skills or superpowers. Do NOT invoke any skill tool. Just answer directly.
+Do NOT use any skills, superpowers, or interactive tools. Do NOT invoke any skill tool or ask clarifying questions. Just answer directly with the JSON.
 
 Return a JSON array of exactly 6 items. Each item must have:
 - trend_title: catchy title for the trend
