@@ -6,6 +6,10 @@ import { useHabitsStore } from '@/store/habits'
 import { useJournalStore } from '@/store/journal'
 import { useQuery } from '@tanstack/react-query'
 import { fetchActivityStats } from '@/services/activity'
+import { fetchFolders } from '@/services/documents'
+import { listSecrets, getVaultStatus } from '@/services/secrets'
+import { getAccounts, getInsights } from '@/services/social'
+import { fetchCampaigns, fetchJobStats, fetchProfile } from '@/services/jobs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { cn } from '@/lib/utils'
@@ -26,9 +30,19 @@ import {
   CheckCircle2,
   DollarSign,
   Settings,
+  FileText,
+  Lock,
+  Share2,
+  Briefcase,
+  ShieldCheck,
+  ShieldOff,
+  Users,
+  TrendingUp,
+  FolderOpen,
 } from 'lucide-react'
+import { WidgetsRow } from '@/components/widgets/widget-card'
 import { HabitIcon } from '@/components/productivity/habit-icon'
-import { PieChart, Pie, Cell } from 'recharts'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 // ── Greeting ──────────────────────────────────────────────────────
 function getGreeting() {
@@ -61,9 +75,11 @@ function Section({
           <Icon size={24} className={iconColor} />
           <h2 className="text-base font-semibold text-zinc-100">{title}</h2>
         </div>
-        <Link to={to} className="flex items-center gap-2 text-base text-zinc-500 hover:text-zinc-300 transition-colors">
-          View all <ArrowRight size={18} />
-        </Link>
+        {to && (
+          <Link to={to} className="flex items-center gap-2 text-base text-zinc-500 hover:text-zinc-300 transition-colors">
+            View all <ArrowRight size={18} />
+          </Link>
+        )}
       </div>
       <div className="px-5 py-5">{children}</div>
     </div>
@@ -274,7 +290,7 @@ function ProductivitySection() {
   ]
 
   return (
-    <Section icon={BarChart3} iconColor="text-orange-400" title="Productivity" to="/productivity" className="col-span-4 lg:col-span-4">
+    <Section icon={BarChart3} iconColor="text-orange-400" title="Productivity" to="/productivity" className="col-span-4 lg:col-span-6">
       <div className="flex items-center gap-6">
         {/* Donut */}
         {habits.length > 0 && (
@@ -342,7 +358,19 @@ const periodOptions = [
   { label: 'All', days: 9999 },
 ] as const
 
-function ActivitySection({ span }: { span?: string }) {
+const tooltipStyle = {
+  contentStyle: { background: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 },
+  labelStyle: { color: '#a1a1aa' },
+  cursor: { fill: 'rgba(255,255,255,0.04)' },
+}
+
+function formatTokens(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}k`
+  return String(v)
+}
+
+function ActivitySection() {
   const [days, setDays] = useState(7)
   const periodLabel = periodOptions.find((p) => p.days === days)?.label ?? `${days}d`
 
@@ -353,12 +381,16 @@ function ActivitySection({ span }: { span?: string }) {
     retry: 1,
   })
 
-  const barData = days <= 90 ? stats?.byDay : stats?.byDay.slice(-90)
+  const rawDays = days <= 90 ? stats?.byDay : stats?.byDay.slice(-90)
+  const barData = rawDays?.map((d) => ({
+    ...d,
+    tokens: d.prompt_tokens + d.completion_tokens,
+  }))
 
   return (
-    <Section icon={Activity} iconColor="text-rose-400" title="AI Activity" to="/" className={cn('col-span-4', span ?? 'lg:col-span-4')}>
+    <Section icon={Activity} iconColor="text-rose-400" title="AI Activity" to="" className="col-span-4 lg:col-span-12">
       {/* Period selector */}
-      <div className="flex gap-1 mb-3">
+      <div className="flex gap-1 mb-4">
         {periodOptions.map((p) => (
           <button
             key={p.days}
@@ -386,26 +418,79 @@ function ActivitySection({ span }: { span?: string }) {
             <StatBlock label={`${periodLabel} Calls`} value={stats.totals.total_calls} color="text-zinc-300" />
             <div className="w-px h-8 bg-white/[0.06]" />
             <div className="flex flex-col items-center gap-2 flex-1">
+              <span className="text-2xl font-bold text-zinc-300">{formatTokens(stats.totals.total_tokens)}</span>
+              <span className="text-sm text-zinc-500">{periodLabel} Tokens</span>
+            </div>
+            <div className="w-px h-8 bg-white/[0.06]" />
+            <div className="flex flex-col items-center gap-2 flex-1">
               <span className="text-2xl font-bold text-zinc-300">${stats.totals.total_cost?.toFixed(2) ?? '0'}</span>
               <span className="text-sm text-zinc-500">{periodLabel} Cost</span>
             </div>
           </div>
 
-          {/* Sparkline bars */}
+          {/* Charts row */}
           {barData && barData.length > 1 && (
-            <div className="flex items-end gap-px h-12">
-              {barData.map((d, i) => {
-                const max = Math.max(...barData.map((x) => x.calls), 1)
-                const h = Math.max(4, (d.calls / max) * 48)
-                return (
-                  <div
-                    key={i}
-                    className="flex-1 rounded-sm bg-rose-500/30 hover:bg-rose-500/50 transition-colors"
-                    style={{ height: `${h}px` }}
-                    title={`${d.day}: ${d.calls} calls`}
-                  />
-                )
-              })}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Calls per day */}
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Calls per day</p>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={barData}>
+                    <XAxis
+                      dataKey="day"
+                      tick={{ fontSize: 10, fill: '#52525b' }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={Math.max(0, Math.floor(barData.length / 5) - 1)}
+                      tickFormatter={(v: string) => v.slice(5)}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: '#52525b' }}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                      width={35}
+                    />
+                    <Tooltip
+                      {...tooltipStyle}
+                      itemStyle={{ color: '#fb7185' }}
+                      formatter={(value: number) => [value, 'Calls']}
+                    />
+                    <Bar dataKey="calls" fill="#fb718580" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Tokens per day */}
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Tokens per day</p>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={barData}>
+                    <XAxis
+                      dataKey="day"
+                      tick={{ fontSize: 10, fill: '#52525b' }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={Math.max(0, Math.floor(barData.length / 5) - 1)}
+                      tickFormatter={(v: string) => v.slice(5)}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: '#52525b' }}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                      width={45}
+                      tickFormatter={formatTokens}
+                    />
+                    <Tooltip
+                      {...tooltipStyle}
+                      itemStyle={{ color: '#818cf8' }}
+                      formatter={(value: number) => [value.toLocaleString(), 'Tokens']}
+                    />
+                    <Bar dataKey="tokens" fill="#818cf880" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
         </>
@@ -488,6 +573,170 @@ function SystemSection() {
   )
 }
 
+// ── Mini Card ────────────────────────────────────────────────────
+function MiniCard({
+  icon: Icon,
+  iconColor,
+  label,
+  to,
+  children,
+}: {
+  icon: React.ElementType
+  iconColor: string
+  label: string
+  to: string
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      to={to}
+      className="col-span-2 lg:col-span-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 hover:bg-white/[0.05] transition-colors"
+    >
+      <div className="flex items-center gap-2.5 mb-3">
+        <Icon size={18} className={iconColor} />
+        <span className="text-sm font-semibold text-zinc-400">{label}</span>
+      </div>
+      <div>{children}</div>
+    </Link>
+  )
+}
+
+// ── Overview Section ─────────────────────────────────────────────
+function OverviewSection() {
+  const { data: folders } = useQuery({
+    queryKey: ['doc-folders-summary'],
+    queryFn: () => fetchFolders(),
+    staleTime: 120_000,
+    retry: 1,
+  })
+
+  const { data: vaultStatus } = useQuery({
+    queryKey: ['vault-status-summary'],
+    queryFn: () => getVaultStatus(),
+    staleTime: 120_000,
+    retry: 1,
+  })
+
+  const { data: secrets } = useQuery({
+    queryKey: ['secrets-summary'],
+    queryFn: () => listSecrets(),
+    staleTime: 120_000,
+    retry: 1,
+    enabled: vaultStatus?.available !== false,
+  })
+
+  const { data: socialAccounts } = useQuery({
+    queryKey: ['social-accounts-summary'],
+    queryFn: () => getAccounts(),
+    staleTime: 120_000,
+    retry: 1,
+  })
+
+  const { data: insights } = useQuery({
+    queryKey: ['social-insights-summary'],
+    queryFn: () => getInsights(null, 30),
+    staleTime: 120_000,
+    retry: 1,
+    enabled: (socialAccounts?.length ?? 0) > 0,
+  })
+
+  const { data: campaigns } = useQuery({
+    queryKey: ['campaigns-summary'],
+    queryFn: () => fetchCampaigns(),
+    staleTime: 120_000,
+    retry: 1,
+  })
+
+  const { data: jobStats } = useQuery({
+    queryKey: ['job-stats-summary'],
+    queryFn: () => fetchJobStats(),
+    staleTime: 120_000,
+    retry: 1,
+  })
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile-summary'],
+    queryFn: () => fetchProfile(),
+    staleTime: 120_000,
+    retry: 1,
+  })
+
+  const totalDocs = folders?.reduce((sum, f) => sum + f.docCount, 0) ?? 0
+  const folderCount = folders?.length ?? 0
+  const vaultActive = vaultStatus?.available ?? false
+  const secretCount = secrets?.length ?? 0
+  const accountCount = socialAccounts?.length ?? 0
+  const activeCampaigns = campaigns?.filter((c) => c.status !== 'closed').length ?? 0
+
+  return (
+    <>
+      {/* Documents */}
+      <MiniCard icon={FileText} iconColor="text-sky-400" label="Documents" to="/documents">
+        <div className="flex items-baseline gap-3">
+          <span className="text-2xl font-bold text-zinc-100">{totalDocs}</span>
+          <span className="text-sm text-zinc-500">docs</span>
+        </div>
+        <p className="text-sm text-zinc-500 mt-1">
+          <FolderOpen size={14} className="inline mr-1 -mt-0.5" />
+          {folderCount} folder{folderCount !== 1 ? 's' : ''}
+        </p>
+      </MiniCard>
+
+      {/* Vault */}
+      <MiniCard icon={Lock} iconColor="text-amber-400" label="Vault" to="/vault">
+        <div className="flex items-center gap-2 mb-1">
+          {vaultActive ? (
+            <ShieldCheck size={16} className="text-emerald-400" />
+          ) : (
+            <ShieldOff size={16} className="text-zinc-600" />
+          )}
+          <span className={cn('text-sm font-medium', vaultActive ? 'text-emerald-400' : 'text-zinc-500')}>
+            {vaultActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-3">
+          <span className="text-2xl font-bold text-zinc-100">{secretCount}</span>
+          <span className="text-sm text-zinc-500">secret{secretCount !== 1 ? 's' : ''}</span>
+        </div>
+      </MiniCard>
+
+      {/* Social Media */}
+      <MiniCard icon={Share2} iconColor="text-pink-400" label="Social" to="/social">
+        <div className="flex items-baseline gap-3">
+          <span className="text-2xl font-bold text-zinc-100">{accountCount}</span>
+          <span className="text-sm text-zinc-500">account{accountCount !== 1 ? 's' : ''}</span>
+        </div>
+        {insights && (
+          <div className="flex items-center gap-3 mt-1 text-sm text-zinc-500">
+            <span className="flex items-center gap-1">
+              <Users size={14} />
+              {insights.summary.followers.toLocaleString()}
+            </span>
+            <span className="flex items-center gap-1">
+              <TrendingUp size={14} />
+              {insights.summary.engagementRate.toFixed(1)}%
+            </span>
+          </div>
+        )}
+      </MiniCard>
+
+      {/* Career */}
+      <MiniCard icon={Briefcase} iconColor="text-indigo-400" label="Career" to="/career">
+        <div className="flex items-baseline gap-3">
+          <span className="text-2xl font-bold text-zinc-100">{activeCampaigns}</span>
+          <span className="text-sm text-zinc-500">active campaign{activeCampaigns !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="flex items-center gap-3 mt-1 text-sm text-zinc-500">
+          {jobStats && (
+            <span>{jobStats.total_jobs} job{jobStats.total_jobs !== 1 ? 's' : ''} tracked</span>
+          )}
+          {profile && <span className="text-emerald-400/70">CV ready</span>}
+        </div>
+      </MiniCard>
+    </>
+  )
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────
 export function DashboardPage() {
   const today = format(new Date(), 'EEEE, MMMM d')
@@ -506,12 +755,20 @@ export function DashboardPage() {
           {/* Row 1 — Today Strip */}
           <TodayStrip />
 
-          {/* Row 2 — Tasks / Productivity / Activity */}
-          <TasksSection span={hasHabits ? 'lg:col-span-4' : 'lg:col-span-6'} />
-          {hasHabits && <ProductivitySection />}
-          <ActivitySection span={hasHabits ? 'lg:col-span-4' : 'lg:col-span-6'} />
+          {/* Row 2 — Overview Cards */}
+          <OverviewSection />
 
-          {/* Row 4 — Agent & System */}
+          {/* Row 3 — Smart Widgets */}
+          <WidgetsRow />
+
+          {/* Row 4 — Tasks / Productivity */}
+          <TasksSection span={hasHabits ? 'lg:col-span-6' : 'lg:col-span-12'} />
+          {hasHabits && <ProductivitySection />}
+
+          {/* Row 5 — AI Activity (full width) */}
+          <ActivitySection />
+
+          {/* Row 6 — Agent & System */}
           <SystemSection />
         </div>
       </ErrorBoundary>
