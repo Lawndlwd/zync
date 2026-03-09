@@ -26,6 +26,7 @@ interface OpenCodeState {
   appendStreamingDelta: (partId: string, delta: string) => void
   addStreamingToolCall: (part: OpenCodePart) => void
   trackUserMsgId: (msgId: string) => void
+  freezeStreaming: () => void
   finishStreaming: () => void
 }
 
@@ -77,28 +78,25 @@ export const useOpenCodeStore = create<OpenCodeState>()(
         set((state) => {
           const sm = state.streamingMessage
           if (!sm) return state
-          const sent = sm.partLengths.get(partId) || 0
-          if (fullText.length <= sent) return state
-          const delta = fullText.slice(sent)
-          const newLengths = new Map(sm.partLengths)
-          newLengths.set(partId, fullText.length)
 
-          // Find existing text part or create new one
           const existingIdx = sm.parts.findIndex(
             (p) => p.type === 'text' && (p as any)._partId === partId
           )
+          // Set text to fullText (not append) — this is idempotent and correct
+          // even if appendStreamingDelta already accumulated partial text
           let newParts: OpenCodePart[]
           if (existingIdx >= 0) {
+            const existing = sm.parts[existingIdx] as { type: 'text'; text: string }
+            if (existing.text === fullText) return state // no change
             newParts = [...sm.parts]
-            const existing = newParts[existingIdx] as { type: 'text'; text: string; _partId: string }
-            newParts[existingIdx] = { type: 'text', text: existing.text + delta, _partId: partId } as any
+            newParts[existingIdx] = { type: 'text', text: fullText, _partId: partId } as any
           } else {
-            newParts = [...sm.parts, { type: 'text', text: delta, _partId: partId } as any]
+            newParts = [...sm.parts, { type: 'text', text: fullText, _partId: partId } as any]
           }
 
-          return {
-            streamingMessage: { ...sm, parts: newParts, partLengths: newLengths },
-          }
+          const newLengths = new Map(sm.partLengths)
+          newLengths.set(partId, fullText.length)
+          return { streamingMessage: { ...sm, parts: newParts, partLengths: newLengths } }
         }),
 
       appendStreamingDelta: (partId, delta) =>
@@ -142,6 +140,9 @@ export const useOpenCodeStore = create<OpenCodeState>()(
           newIds.add(msgId)
           return { streamingMessage: { ...sm, userMsgIds: newIds } }
         }),
+
+      freezeStreaming: () =>
+        set({ isStreaming: false }),
 
       finishStreaming: () =>
         set({ streamingMessage: null, isStreaming: false }),

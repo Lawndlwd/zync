@@ -46,14 +46,14 @@ export function useOpenCodeProviders() {
   })
 }
 
-export function useOpenCodeSessions() {
+export function useOpenCodeSessions(enabled = true) {
   return useQuery({
     queryKey: ['opencode', 'sessions'],
     queryFn: fetchSessions,
-    // No polling — SSE handles real-time updates
+    enabled,
     staleTime: 10_000,
     refetchOnWindowFocus: false,
-    placeholderData: (prev) => prev, // keep previous data during refetch to prevent flicker
+    placeholderData: (prev) => prev,
   })
 }
 

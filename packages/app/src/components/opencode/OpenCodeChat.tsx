@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Send, Sparkles, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,8 +29,9 @@ export function OpenCodeChat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showScrollDown, setShowScrollDown] = useState(false)
 
-  const { data: messages = [] } = useOpenCodeMessages(activeSessionId)
+  const { data: messages = [], isFetching } = useOpenCodeMessages(activeSessionId)
   const createSession = useCreateSession()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     const el = scrollRef.current
@@ -61,13 +63,23 @@ export function OpenCodeChat() {
   const prevStreaming = useRef(isStreaming)
   useEffect(() => {
     if (prevStreaming.current && !isStreaming) {
-      setPendingUserMsg(null)
       setTimeout(() => textareaRef.current?.focus(), 0)
     }
     prevStreaming.current = isStreaming
   }, [isStreaming])
 
+  // Frozen = streaming done, content stays visible from SSE (no refetch yet)
+  const isFrozen = !isStreaming && !!streamingMessage
 
+  // Clear frozen state on session switch
+  const prevSessionId = useRef(activeSessionId)
+  useEffect(() => {
+    if (activeSessionId !== prevSessionId.current) {
+      if (isFrozen) finishStreaming()
+      setPendingUserMsg(null)
+      prevSessionId.current = activeSessionId
+    }
+  }, [activeSessionId, isFrozen, finishStreaming])
 
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
@@ -78,7 +90,7 @@ export function OpenCodeChat() {
 
   const handleSend = useCallback(async () => {
     if (!input.trim()) return
-    if (isStreaming) finishStreaming()
+    if (isStreaming || isFrozen) finishStreaming()
     const text = input.trim()
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
@@ -91,12 +103,27 @@ export function OpenCodeChat() {
       setPendingUserMsg(text)
       setReviewState({ status: 'Starting review...', provider, target, result: null, error: null })
 
+      let sessionId = activeSessionId
+      if (!sessionId) {
+        try {
+          const session = await createSession.mutateAsync(undefined)
+          sessionId = session.id
+        } catch {
+          setReviewState(null)
+          setPendingUserMsg(null)
+          return
+        }
+      }
+
       runPRReview(
         { provider, target } as ParsedReviewCommand,
+        sessionId,
         (status) => setReviewState((s) => s ? { ...s, status } : s),
-        (result) => {
-          setReviewState((s) => s ? { ...s, result, status: 'Done' } : s)
+        () => {
+          setReviewState(null)
           setPendingUserMsg(null)
+          // Refetch session messages to show the nice parsed review card
+          queryClient.invalidateQueries({ queryKey: ['opencode', 'messages', sessionId] })
         },
         (error) => {
           setReviewState((s) => s ? { ...s, error, status: 'Failed' } : s)
@@ -126,7 +153,7 @@ export function OpenCodeChat() {
       finishStreaming()
       setTimeout(() => textareaRef.current?.focus(), 0)
     }
-  }, [input, isStreaming, activeSessionId, createSession, startStreaming, finishStreaming])
+  }, [input, isStreaming, isFrozen, activeSessionId, createSession, startStreaming, finishStreaming])
 
   // Programmatic send (for question card responses)
   const sendMessage = useCallback(async (text: string) => {
@@ -207,7 +234,7 @@ export function OpenCodeChat() {
       {/* Scrollable message area */}
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-8 py-6 lg:px-12">
-          {messages.length === 0 && !isStreaming && (
+          {messages.length === 0 && !isStreaming && !isFetching && !isFrozen && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10">
                 <Sparkles size={24} className="text-indigo-400" />

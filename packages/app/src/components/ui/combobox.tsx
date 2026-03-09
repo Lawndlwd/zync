@@ -16,6 +16,7 @@ interface ComboboxBaseProps {
   className?: string
   disabled?: boolean
   onSearch?: (query: string) => void
+  onOpen?: () => void
   isLoading?: boolean
   creatable?: boolean
 }
@@ -42,6 +43,7 @@ export function Combobox(props: ComboboxProps) {
     className,
     disabled,
     onSearch,
+    onOpen,
     isLoading,
     creatable,
   } = props
@@ -138,7 +140,11 @@ export function Combobox(props: ComboboxProps) {
     <div ref={ref} className={cn('relative', className)}>
       <button
         type="button"
-        onClick={() => !disabled && setOpen(!open)}
+        onClick={() => {
+          if (disabled) return
+          if (!open) onOpen?.()
+          setOpen(!open)
+        }}
         disabled={disabled}
         className="flex h-9 w-full items-center justify-between rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 text-sm text-zinc-300 hover:border-zinc-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
       >

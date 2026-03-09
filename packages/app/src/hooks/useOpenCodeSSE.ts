@@ -66,12 +66,14 @@ export function useOpenCodeSSE() {
           const sid = data.properties?.sessionID
           const status = data.properties?.status?.type || data.properties?.status
           if (status === 'idle' || status === 'error') {
-            invalidate(['opencode', 'sessions'])
+            // Sessions are fetched on-demand when dropdown opens — no need to invalidate here
             if (isStreaming && sm && sid === sm.sessionId) {
               justFinishedRef.current = { sessionId: sid, time: Date.now() }
-              queryClient.refetchQueries({ queryKey: ['opencode', 'messages', sid] }).finally(() => {
-                useOpenCodeStore.getState().finishStreaming()
-              })
+              // SSE already delivered all visible content.
+              // Stop streaming but keep streamingMessage visible (frozen).
+              // Don't touch the query cache — no invalidation, no refetch.
+              // Cache updates naturally on next user action (send, session switch, refresh).
+              useOpenCodeStore.getState().freezeStreaming()
               fetch('/api/opencode/log-usage', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -88,25 +90,13 @@ export function useOpenCodeSSE() {
           return
         }
 
-        if (type === 'session.idle') {
-          const sid = data.properties?.sessionID
-          invalidate(['opencode', 'sessions'])
-          if (isStreaming && sm && sid === sm.sessionId) {
-            justFinishedRef.current = { sessionId: sid, time: Date.now() }
-            store.finishStreaming()
-            fetch('/api/opencode/log-usage', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ sessionId: sid }),
-            }).catch(() => {})
-          }
-          // else: suppressed — session.status already handled it, or justFinished
+        if (type === 'session.idle' || type === 'session.updated') {
+          // Suppressed — session.status already handled completion
           return
         }
 
-        if (type === 'session.updated' || type === 'session.created' || type === 'session.deleted') {
+        if (type === 'session.created' || type === 'session.deleted') {
           invalidate(['opencode', 'sessions'])
-          // Don't log usage from session.updated — session.status/session.idle handle it
           return
         }
 
@@ -130,8 +120,9 @@ export function useOpenCodeSSE() {
         if (type === 'message.created' || type === 'message.updated') {
           const info = data.properties?.info
           const sessionId = info?.sessionID
-          if (isStreaming && sm && sessionId === sm.sessionId) {
-            if (info?.role === 'user' && info?.id) {
+          // Suppress for active OR frozen streaming session
+          if (sm && sessionId === sm.sessionId) {
+            if (isStreaming && info?.role === 'user' && info?.id) {
               useOpenCodeStore.getState().trackUserMsgId(info.id)
             }
           } else if (sessionId && !isJustFinished(sessionId)) {
@@ -145,7 +136,9 @@ export function useOpenCodeSSE() {
           const part = data.properties?.part
           const sessionId = part?.sessionID
 
-          if (isStreaming && sm && sessionId === sm.sessionId) {
+          // Suppress for active OR frozen streaming session
+          if (sm && sessionId === sm.sessionId) {
+            if (!isStreaming) return // frozen — ignore late part updates
             if (sm.userMsgIds.has(part?.messageID)) return
 
             if (part?.type === 'text' && part.text) {
@@ -177,11 +170,11 @@ export function useOpenCodeSSE() {
         if (type === 'message.part.delta') {
           const props = data.properties
           const sessionId = props?.sessionID
-          if (isStreaming && sm && sessionId === sm.sessionId) {
-            if (props?.field === 'text' && props?.delta) {
+          if (sm && sessionId === sm.sessionId) {
+            if (isStreaming && props?.field === 'text' && props?.delta) {
               useOpenCodeStore.getState().appendStreamingDelta(props.partID, props.delta)
             }
-            return
+            return // suppress for both active and frozen streaming
           }
           if (sessionId && !isJustFinished(sessionId)) {
             invalidate(['opencode', 'messages', sessionId])
