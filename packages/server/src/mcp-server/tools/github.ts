@@ -3,7 +3,7 @@ import { getSecret } from '../../secrets/index.js'
 import { getConfig } from '../../config/index.js'
 
 function getGithubConfig() {
-  const baseUrl = getSecret('GITHUB_BASE_URL') || getConfig('GITHUB_BASE_URL') || 'https://api.github.com'
+  const baseUrl = getConfig('GITHUB_BASE_URL') || 'https://api.github.com'
   const pat = getSecret('GITHUB_PAT')
   if (!pat) {
     throw new Error('GitHub not configured. Add GITHUB_PAT in Settings > Integrations > GitHub or the Vault.')

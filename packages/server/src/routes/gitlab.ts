@@ -7,7 +7,7 @@ import { getConfig, getConfigService } from '../config/index.js'
 export const gitlabRouter = Router()
 
 function getGitlabConfig() {
-  const baseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL')
+  const baseUrl = getConfig('GITLAB_BASE_URL')
   const pat = getSecret('GITLAB_PAT')
   if (!baseUrl || !pat) {
     throw new Error('GitLab not configured. Add GITLAB_BASE_URL and GITLAB_PAT in Settings > Integrations > GitLab or the Vault.')
@@ -170,12 +170,12 @@ gitlabRouter.get('/proxy/image', async (req, res) => {
 
 // Get saved gitlab config (secrets masked)
 gitlabRouter.get('/config', (_req, res) => {
-  const baseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL') || ''
+  const baseUrl = getConfig('GITLAB_BASE_URL') || ''
   const pat = getSecret('GITLAB_PAT')
   res.json({
     baseUrl,
     pat: pat ? '••••••••' : '',
-    fromEnv: !!(getSecret('GITLAB_BASE_URL') && getSecret('GITLAB_PAT')),
+    fromEnv: !!(getConfig('GITLAB_BASE_URL') && getSecret('GITLAB_PAT')),
   })
 })
 

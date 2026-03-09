@@ -1,6 +1,6 @@
 // server/src/memory/search.ts
 
-import { getDb } from '../bot/memory/db.js'
+import { getBrainDb } from './brain-db.js'
 import { generateEmbedding, embeddingToBuffer, bufferToEmbedding, cosineSimilarity, getModelName } from './embeddings.js'
 import { logger } from '../lib/logger.js'
 
@@ -17,7 +17,7 @@ const VECTOR_WEIGHT = 0.7
 const KEYWORD_WEIGHT = 0.3
 
 export async function hybridSearch(query: string, limit = 10): Promise<MemorySearchResult[]> {
-  const db = getDb()
+  const db = getBrainDb()
 
   // BM25 keyword search via FTS5
   let keywordResults: Array<{ id: number; content: string; category: string; created_at: string; rank: number }> = []
@@ -97,7 +97,7 @@ export async function hybridSearch(query: string, limit = 10): Promise<MemorySea
 }
 
 export async function saveMemoryWithEmbedding(content: string, category = 'general'): Promise<{ id: number }> {
-  const db = getDb()
+  const db = getBrainDb()
   const embedding = await generateEmbedding(content)
   const embeddingBuf = embeddingToBuffer(embedding)
 

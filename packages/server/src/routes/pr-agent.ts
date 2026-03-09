@@ -4,8 +4,7 @@ import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 import { getSecret } from '../secrets/index.js'
 import { getConfig } from '../config/index.js'
-import { getOpenCodeUrl } from '../opencode/client.js'
-import { getDb } from '../bot/memory/db.js'
+import { getOpenCodeUrl, getActiveDashboardSession, getOrCreateSession } from '../opencode/client.js'
 import { insertLLMCall } from '../bot/memory/activity.js'
 import { validate } from '../lib/validate.js'
 import { PrAgentRunSchema } from '@zync/shared/schemas'
@@ -18,53 +17,100 @@ const WRAPPER_SCRIPT = resolve(import.meta.dirname, '../../../pr-agent/run_pr_ag
 const VALID_TOOLS = ['review', 'describe', 'improve', 'ask'] as const
 type PRAgentTool = (typeof VALID_TOOLS)[number]
 
+/**
+ * Parse raw PR-Agent review markdown into structured items.
+ * Looks for "Key issues to review" section and extracts issue blocks.
+ */
+function parseRawReviewMarkdown(raw: string): { severity: string; title: string; file?: string; line?: number; body: string }[] {
+  const items: { severity: string; title: string; file?: string; line?: number; body: string }[] = []
+
+  // Pattern: **Title** or **Category: Title** followed by description text
+  // PR-Agent "Key issues" format: bold title on its own line, description below
+  const issuePattern = /\*\*(?:(\w[\w\s]*?)\s*[:：]\s*)?(.+?)\*\*\s*\n([\s\S]*?)(?=\n\*\*[\w]|\n#{1,3}\s|$)/g
+  let match
+
+  // Find the "Key issues" section or similar
+  const keyIssuesStart = raw.search(/key issues to review|issues found|code feedback/i)
+  const searchText = keyIssuesStart >= 0 ? raw.slice(keyIssuesStart) : raw
+
+  while ((match = issuePattern.exec(searchText)) !== null) {
+    const category = (match[1] || '').trim().toLowerCase()
+    const title = match[2].trim()
+    const body = match[3].trim()
+
+    // Skip non-issue bold text (headers, labels, etc.)
+    if (!body || body.length < 10) continue
+    if (/^(score|estimated|pr contains|no security|security)/i.test(title)) continue
+
+    // Map category to severity
+    let severity = 'suggestion'
+    if (/bug|error|critical|major/i.test(category)) severity = 'critical'
+    else if (/warning|medium|performance/i.test(category)) severity = 'warning'
+    else if (/smell|minor|low|style/i.test(category)) severity = 'suggestion'
+
+    // Try to extract file reference from the body
+    let file: string | undefined
+    let line: number | undefined
+    const fileMatch = body.match(/[`']?(\S+\.\w{1,5}(?::\d+)?)[`']?/)
+    if (fileMatch) {
+      const parts = fileMatch[1].split(':')
+      file = parts[0]
+      if (parts[1]) line = Number(parts[1]) || undefined
+    }
+
+    items.push({ severity, title, file, line, body })
+  }
+
+  return items
+}
+
 async function buildPRAgentEnv(tool: PRAgentTool, question?: string, extraInstructions?: string, provider?: 'gitlab' | 'github'): Promise<Record<string, string>> {
-  const gitlabBaseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL') || ''
+  const gitlabBaseUrl = getConfig('GITLAB_BASE_URL') || ''
   const gitlabPat = getSecret('GITLAB_PAT') || ''
 
   const env: Record<string, string> = {
     ...process.env as Record<string, string>,
-    CONFIG__GIT_PROVIDER: provider || 'gitlab',
-    GITLAB__URL: gitlabBaseUrl.replace(/\/api\/v4\/?$/, ''),
-    GITLAB__PERSONAL_ACCESS_TOKEN: gitlabPat,
+    'CONFIG.GIT_PROVIDER': provider || 'gitlab',
+    'GITLAB.URL': gitlabBaseUrl.replace(/\/api\/v4\/?$/, ''),
+    'GITLAB.PERSONAL_ACCESS_TOKEN': gitlabPat,
     OPENCODE_URL: getOpenCodeUrl(),
   }
 
-  // ── PR-Agent tool settings ──
+  // ── PR-Agent tool settings (dynaconf uses dot separators) ──
 
   // /review — thorough analysis
-  env['PR_REVIEWER__NUM_MAX_FINDINGS'] = '10'
-  env['PR_REVIEWER__REQUIRE_SECURITY_REVIEW'] = 'true'
-  env['PR_REVIEWER__REQUIRE_TESTS_REVIEW'] = 'true'
-  env['PR_REVIEWER__REQUIRE_SCORE_REVIEW'] = 'true'
-  env['PR_REVIEWER__REQUIRE_ESTIMATE_EFFORT_TO_REVIEW'] = 'true'
-  env['PR_REVIEWER__REQUIRE_CAN_BE_SPLIT_REVIEW'] = 'false'
-  env['PR_REVIEWER__REQUIRE_TODO_SCAN'] = 'true'
-  env['PR_REVIEWER__REQUIRE_TICKET_ANALYSIS_REVIEW'] = 'true'
-  env['PR_REVIEWER__ENABLE_REVIEW_LABELS_SECURITY'] = 'true'
-  env['PR_REVIEWER__ENABLE_REVIEW_LABELS_EFFORT'] = 'true'
-  env['PR_REVIEWER__PERSISTENT_COMMENT'] = 'true'
+  env['PR_REVIEWER.NUM_MAX_FINDINGS'] = '10'
+  env['PR_REVIEWER.REQUIRE_SECURITY_REVIEW'] = 'true'
+  env['PR_REVIEWER.REQUIRE_TESTS_REVIEW'] = 'true'
+  env['PR_REVIEWER.REQUIRE_SCORE_REVIEW'] = 'true'
+  env['PR_REVIEWER.REQUIRE_ESTIMATE_EFFORT_TO_REVIEW'] = 'true'
+  env['PR_REVIEWER.REQUIRE_CAN_BE_SPLIT_REVIEW'] = 'false'
+  env['PR_REVIEWER.REQUIRE_TODO_SCAN'] = 'true'
+  env['PR_REVIEWER.REQUIRE_TICKET_ANALYSIS_REVIEW'] = 'true'
+  env['PR_REVIEWER.ENABLE_REVIEW_LABELS_SECURITY'] = 'true'
+  env['PR_REVIEWER.ENABLE_REVIEW_LABELS_EFFORT'] = 'true'
+  env['PR_REVIEWER.PERSISTENT_COMMENT'] = 'true'
 
   // /improve — more suggestions
-  env['PR_CODE_SUGGESTIONS__NUM_CODE_SUGGESTIONS'] = '6'
-  env['PR_CODE_SUGGESTIONS__FOCUS_ONLY_ON_PROBLEMS'] = 'true'
-  env['PR_CODE_SUGGESTIONS__SUGGESTIONS_SCORE_THRESHOLD'] = '0'
+  env['PR_CODE_SUGGESTIONS.NUM_CODE_SUGGESTIONS'] = '6'
+  env['PR_CODE_SUGGESTIONS.FOCUS_ONLY_ON_PROBLEMS'] = 'true'
+  env['PR_CODE_SUGGESTIONS.SUGGESTIONS_SCORE_THRESHOLD'] = '0'
 
   // /describe — richer descriptions
-  env['PR_DESCRIPTION__ENABLE_PR_TYPE'] = 'true'
-  env['PR_DESCRIPTION__ENABLE_PR_DIAGRAM'] = 'true'
-  env['PR_DESCRIPTION__USE_BULLET_POINTS'] = 'true'
-  env['PR_DESCRIPTION__ADD_ORIGINAL_USER_DESCRIPTION'] = 'true'
-  env['PR_DESCRIPTION__USE_DESCRIPTION_MARKERS'] = 'false'
-  env['PR_DESCRIPTION__ENABLE_LARGE_PR_HANDLING'] = 'false'
+  env['PR_DESCRIPTION.ENABLE_PR_TYPE'] = 'true'
+  env['PR_DESCRIPTION.ENABLE_PR_DIAGRAM'] = 'true'
+  env['PR_DESCRIPTION.USE_BULLET_POINTS'] = 'true'
+  env['PR_DESCRIPTION.ADD_ORIGINAL_USER_DESCRIPTION'] = 'true'
+  env['PR_DESCRIPTION.USE_DESCRIPTION_MARKERS'] = 'false'
+  env['PR_DESCRIPTION.ENABLE_LARGE_PR_HANDLING'] = 'false'
 
   // GitHub provider support
   if (provider === 'github') {
     const githubPat = getSecret('GITHUB_PAT') || ''
-    env['CONFIG__GIT_PROVIDER'] = 'github'
-    env['GITHUB__USER_TOKEN'] = githubPat
-    delete env['GITLAB__URL']
-    delete env['GITLAB__PERSONAL_ACCESS_TOKEN']
+    env['CONFIG.GIT_PROVIDER'] = 'github'
+    env['GITHUB.USER_TOKEN'] = githubPat
+    delete env['GITLAB.URL']
+    delete env['GITLAB.PERSONAL_ACCESS_TOKEN']
   }
 
   if (question) {
@@ -73,10 +119,10 @@ async function buildPRAgentEnv(tool: PRAgentTool, question?: string, extraInstru
 
   if (extraInstructions) {
     const toolEnvMap: Record<PRAgentTool, string> = {
-      review: 'PR_REVIEWER__EXTRA_INSTRUCTIONS',
-      describe: 'PR_DESCRIPTION__EXTRA_INSTRUCTIONS',
-      improve: 'PR_CODE_SUGGESTIONS__EXTRA_INSTRUCTIONS',
-      ask: 'PR_REVIEWER__EXTRA_INSTRUCTIONS',
+      review: 'PR_REVIEWER.EXTRA_INSTRUCTIONS',
+      describe: 'PR_DESCRIPTION.EXTRA_INSTRUCTIONS',
+      improve: 'PR_CODE_SUGGESTIONS.EXTRA_INSTRUCTIONS',
+      ask: 'PR_REVIEWER.EXTRA_INSTRUCTIONS',
     }
     env[toolEnvMap[tool]] = extraInstructions
   }
@@ -96,7 +142,7 @@ function rewriteMrUrl(webUrl: string, projectId: number): string {
 
 // POST /api/pr-agent/run — Execute a PR-Agent tool
 prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
-  const { tool, mrUrl, projectId, mrIid, headSha, question, extraInstructions } = req.body as {
+  const { tool, mrUrl, projectId, mrIid, headSha, question, extraInstructions, sessionId: reqSessionId } = req.body as {
     tool: string
     mrUrl: string
     projectId?: number
@@ -104,6 +150,7 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
     headSha?: string
     question?: string
     extraInstructions?: string
+    sessionId?: string
   }
 
   if (!existsSync(VENV_PYTHON)) {
@@ -111,6 +158,17 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
       error: 'PR-Agent not installed',
       message: 'Run: cd server && python3 -m venv .venv && .venv/bin/pip install pr-agent',
     })
+    return
+  }
+
+  // Validate credentials before starting
+  const provider = mrUrl.includes('github.com') ? 'github' as const : 'gitlab' as const
+  if (provider === 'github' && !getSecret('GITHUB_PAT')) {
+    res.status(400).json({ error: 'GitHub PAT not configured. Add it in Settings > Integrations > GitHub.' })
+    return
+  }
+  if (provider === 'gitlab' && !getSecret('GITLAB_PAT')) {
+    res.status(400).json({ error: 'GitLab PAT not configured. Add it in Settings > Integrations > GitLab.' })
     return
   }
 
@@ -142,7 +200,6 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
     send('debug', { modelConfigError: message })
   }
 
-  const provider = mrUrl.includes('github.com') ? 'github' as const : 'gitlab' as const
   const env = await buildPRAgentEnv(tool as PRAgentTool, question, extraInstructions, provider)
 
   const effectiveUrl = projectId ? rewriteMrUrl(mrUrl, projectId) : mrUrl
@@ -151,6 +208,9 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
   if (prAgentModel) {
     env['OPENCODE_MODEL'] = prAgentModel
   }
+  // Use the session ID from the request (frontend knows which session the user is in)
+  const activeSession = reqSessionId || getActiveDashboardSession() || await getOrCreateSession('chat')
+  env['OPENCODE_SESSION_ID'] = activeSession
 
   // Send resolved extra instructions for debugging
   const extraKey = Object.keys(env).find(k => k.endsWith('__EXTRA_INSTRUCTIONS'))
@@ -208,18 +268,6 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
     stderrLog += chunk.toString()
   })
 
-  const saveResult = (result: unknown) => {
-    if (projectId && mrIid && headSha) {
-      try {
-        const db = getDb()
-        db.prepare(`
-          INSERT INTO pr_agent_results (project_id, mr_iid, tool, head_sha, result, created_at)
-          VALUES (?, ?, ?, ?, ?, datetime('now'))
-        `).run(projectId, mrIid, tool, headSha, JSON.stringify(result))
-      } catch { /* best-effort cache */ }
-    }
-  }
-
   child.on('close', (code) => {
     const durationMs = Date.now() - prAgentStartTime
 
@@ -267,21 +315,25 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
         const parsed = JSON.parse(jsonTagMatch[1].trim())
         const full = { ...parsed, rawOutput }
         send('result', full)
-        saveResult(full)
         res.end()
         return
       } catch { /* fall through to fallback */ }
     }
 
-    // Fallback: no inline JSON found — use raw output directly
+    // Fallback: no inline JSON found — parse raw PR-Agent markdown into structured items
+    const scoreMatch = rawOutput.match(/Score:\s*(\d+)/)
+    const parsedItems = parseRawReviewMarkdown(rawOutput)
+    const fallbackSummary = parsedItems.length > 0
+      ? `PR review completed with ${parsedItems.length} finding${parsedItems.length !== 1 ? 's' : ''}`
+      : `/${tool} completed`
     const fallback = {
       tool,
-      summary: `/${tool} completed`,
-      items: [{ severity: 'info' as const, title: `${tool} output`, body: rawOutput }],
+      summary: fallbackSummary,
+      score: scoreMatch ? Number(scoreMatch[1]) : undefined,
+      items: parsedItems,
       rawOutput,
     }
     send('result', fallback)
-    saveResult(fallback)
     res.end()
   })
 
@@ -291,32 +343,6 @@ prAgentRouter.post('/run', validate(PrAgentRunSchema), async (req, res) => {
       child.kill('SIGTERM')
     }
   })
-})
-
-// GET /api/pr-agent/results/:projectId/:mrIid — Get all results (chat history)
-prAgentRouter.get('/results/:projectId/:mrIid', (req, res) => {
-  const projectId = Number(req.params.projectId)
-  const mrIid = Number(req.params.mrIid)
-
-  try {
-    const db = getDb()
-    const rows = db.prepare(`
-      SELECT id, tool, head_sha, result, created_at
-      FROM pr_agent_results
-      WHERE project_id = ? AND mr_iid = ?
-      ORDER BY created_at ASC
-    `).all(projectId, mrIid) as { id: number; tool: string; head_sha: string; result: string; created_at: string }[]
-
-    res.json(rows.map(r => ({
-      id: r.id,
-      tool: r.tool,
-      headSha: r.head_sha,
-      result: JSON.parse(r.result),
-      createdAt: r.created_at,
-    })))
-  } catch {
-    res.json([])
-  }
 })
 
 // GET /api/pr-agent/status — Health check

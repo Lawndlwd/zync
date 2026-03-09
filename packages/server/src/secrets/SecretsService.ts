@@ -112,6 +112,44 @@ export class SecretsService {
     return !!row
   }
 
+  // --- PIN management ---
+
+  private ensurePinTable(): void {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS vault_pin (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        pin_hash TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `)
+  }
+
+  hasPin(): boolean {
+    this.ensurePinTable()
+    const row = this.db.prepare('SELECT 1 FROM vault_pin WHERE id = 1').get()
+    return !!row
+  }
+
+  setPin(pin: string): void {
+    if (!/^\d{6}$/.test(pin)) throw new Error('PIN must be exactly 6 digits')
+    this.ensurePinTable()
+    const pinHash = crypto.scryptSync(pin, 'zync-vault-pin-v1', 32).toString('hex')
+    this.db.prepare(`
+      INSERT INTO vault_pin (id, pin_hash) VALUES (1, ?)
+      ON CONFLICT(id) DO UPDATE SET pin_hash = excluded.pin_hash, created_at = datetime('now')
+    `).run(pinHash)
+  }
+
+  verifyPin(pin: string): boolean {
+    this.ensurePinTable()
+    const row = this.db.prepare('SELECT pin_hash FROM vault_pin WHERE id = 1').get() as { pin_hash: string } | undefined
+    if (!row) return false
+    const inputHash = crypto.scryptSync(pin, 'zync-vault-pin-v1', 32).toString('hex')
+    const a = Buffer.from(inputHash, 'hex')
+    const b = Buffer.from(row.pin_hash, 'hex')
+    return a.length === b.length && crypto.timingSafeEqual(a, b)
+  }
+
   close(): void {
     this.db.close()
   }

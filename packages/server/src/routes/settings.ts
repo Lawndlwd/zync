@@ -14,25 +14,25 @@ export const settingsRouter = Router()
 settingsRouter.get('/', (_req, res) => {
   res.json({
     jira: {
-      baseUrl: getSecret('JIRA_BASE_URL') || '',
-      email: getSecret('JIRA_EMAIL') || '',
+      baseUrl: getConfig('JIRA_BASE_URL') || '',
+      email: getConfig('JIRA_EMAIL') || '',
       apiToken: getSecret('JIRA_API_TOKEN') ? '••••••••' : '',
-      projectKey: getSecret('JIRA_PROJECT_KEY') || '',
+      projectKey: getConfig('JIRA_PROJECT_KEY') || '',
     },
     gitlab: {
-      baseUrl: getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL') || '',
+      baseUrl: getConfig('GITLAB_BASE_URL') || '',
       pat: getSecret('GITLAB_PAT') ? '••••••••' : '',
     },
     github: {
-      baseUrl: getSecret('GITHUB_BASE_URL') || getConfig('GITHUB_BASE_URL') || '',
+      baseUrl: getConfig('GITHUB_BASE_URL') || '',
       pat: getSecret('GITHUB_PAT') ? '••••••••' : '',
     },
     messages: {
-      customEndpoint: getSecret('MESSAGES_ENDPOINT') || '',
+      customEndpoint: getConfig('MESSAGES_ENDPOINT') || '',
     },
     linear: {
       apiKey: getSecret('LINEAR_API_KEY') ? '••••••••' : '',
-      defaultTeamId: getSecret('LINEAR_DEFAULT_TEAM_ID') || '',
+      defaultTeamId: getConfig('LINEAR_DEFAULT_TEAM_ID') || '',
     },
   })
 })
@@ -75,26 +75,28 @@ settingsRouter.put('/', (req, res) => {
     const d = result.data
     const isMasked = (v?: string) => !v || v.startsWith('••••')
 
+    const configSvc = getConfigService()
+
     if (d.jira) {
-      if (d.jira.baseUrl) secretsSvc.set('JIRA_BASE_URL', d.jira.baseUrl, 'jira')
-      if (d.jira.email) secretsSvc.set('JIRA_EMAIL', d.jira.email, 'jira')
+      if (d.jira.baseUrl) configSvc?.set('JIRA_BASE_URL', d.jira.baseUrl, 'jira')
+      if (d.jira.email) configSvc?.set('JIRA_EMAIL', d.jira.email, 'jira')
       if (!isMasked(d.jira.apiToken)) secretsSvc.set('JIRA_API_TOKEN', d.jira.apiToken!, 'jira')
-      if (d.jira.projectKey) secretsSvc.set('JIRA_PROJECT_KEY', d.jira.projectKey, 'jira')
+      if (d.jira.projectKey) configSvc?.set('JIRA_PROJECT_KEY', d.jira.projectKey, 'jira')
     }
     if (d.gitlab) {
-      if (d.gitlab.baseUrl) secretsSvc.set('GITLAB_BASE_URL', d.gitlab.baseUrl, 'gitlab')
+      if (d.gitlab.baseUrl) configSvc?.set('GITLAB_BASE_URL', d.gitlab.baseUrl, 'gitlab')
       if (!isMasked(d.gitlab.pat)) secretsSvc.set('GITLAB_PAT', d.gitlab.pat!, 'gitlab')
     }
     if (d.github) {
-      if (d.github.baseUrl) secretsSvc.set('GITHUB_BASE_URL', d.github.baseUrl, 'github')
+      if (d.github.baseUrl) configSvc?.set('GITHUB_BASE_URL', d.github.baseUrl, 'github')
       if (!isMasked(d.github.pat)) secretsSvc.set('GITHUB_PAT', d.github.pat!, 'github')
     }
     if (d.messages) {
-      if (d.messages.customEndpoint) secretsSvc.set('MESSAGES_ENDPOINT', d.messages.customEndpoint, 'general')
+      if (d.messages.customEndpoint) configSvc?.set('MESSAGES_ENDPOINT', d.messages.customEndpoint, 'general')
     }
     if (d.linear) {
       if (!isMasked(d.linear.apiKey)) secretsSvc.set('LINEAR_API_KEY', d.linear.apiKey!, 'linear')
-      if (d.linear.defaultTeamId) secretsSvc.set('LINEAR_DEFAULT_TEAM_ID', d.linear.defaultTeamId, 'linear')
+      if (d.linear.defaultTeamId) configSvc?.set('LINEAR_DEFAULT_TEAM_ID', d.linear.defaultTeamId, 'linear')
     }
 
     res.json({ success: true })

@@ -3,7 +3,7 @@ import { Router } from 'express'
 import { getSecrets } from '../secrets/index.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
-import { SecretSetSchema, SecretRevealSchema } from '@zync/shared/schemas'
+import { SecretSetSchema } from '@zync/shared/schemas'
 
 export const secretsRouter = Router()
 
@@ -13,10 +13,28 @@ function requireVault() {
   return svc
 }
 
-// GET /api/secrets/status — vault availability (must be before /:name)
+// GET /api/secrets/status — vault availability + PIN status
 secretsRouter.get('/status', (_req, res) => {
-  const available = !!getSecrets()
-  res.json({ available })
+  const svc = getSecrets()
+  const available = !!svc
+  const hasPin = available ? svc!.hasPin() : false
+  res.json({ available, hasPin })
+})
+
+// POST /api/secrets/pin — set or update vault PIN (6 digits)
+secretsRouter.post('/pin', (req, res) => {
+  try {
+    const svc = requireVault()
+    const { pin } = req.body
+    if (!pin || !/^\d{6}$/.test(pin)) {
+      res.status(400).json({ error: 'PIN must be exactly 6 digits' })
+      return
+    }
+    svc.setPin(pin)
+    res.json({ success: true })
+  } catch (err) {
+    errorResponse(res, err)
+  }
 })
 
 // GET /api/secrets — list all secrets (metadata only, no values)
@@ -42,21 +60,31 @@ secretsRouter.put('/', validate(SecretSetSchema), (req, res) => {
   }
 })
 
-// POST /api/secrets/:name/reveal — decrypt and return secret value
-secretsRouter.post('/:name/reveal', validate(SecretRevealSchema), (req, res) => {
+// POST /api/secrets/:name/reveal — decrypt and return secret value (accepts PIN or SECRET_KEY)
+secretsRouter.post('/:name/reveal', (req, res) => {
   try {
     const svc = requireVault()
-    const { secretKey } = req.body
+    const { pin, secretKey } = req.body
 
-    const serverKey = process.env.SECRET_KEY
-    if (!serverKey) {
-      res.status(403).json({ error: 'Invalid secret key' })
-      return
+    let authorized = false
+
+    // Try PIN first
+    if (pin && /^\d{6}$/.test(pin)) {
+      authorized = svc.verifyPin(pin)
     }
-    const a = Buffer.from(secretKey)
-    const b = Buffer.from(serverKey)
-    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-      res.status(403).json({ error: 'Invalid secret key' })
+
+    // Fall back to SECRET_KEY
+    if (!authorized && secretKey && typeof secretKey === 'string' && secretKey.length >= 32) {
+      const serverKey = process.env.SECRET_KEY
+      if (serverKey) {
+        const a = Buffer.from(secretKey)
+        const b = Buffer.from(serverKey)
+        authorized = a.length === b.length && crypto.timingSafeEqual(a, b)
+      }
+    }
+
+    if (!authorized) {
+      res.status(403).json({ error: pin ? 'Wrong PIN' : 'Invalid secret key' })
       return
     }
 

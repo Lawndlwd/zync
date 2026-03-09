@@ -3,16 +3,21 @@ import { Shield, Check, AlertTriangle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { setVaultPin } from '@/services/secrets'
+import toast from 'react-hot-toast'
 
 interface VaultStepProps {
   vaultStatus: 'available' | 'uninitialized'
+  hasPin?: boolean
 }
 
-export function VaultStep({ vaultStatus }: VaultStepProps) {
-  const [secretKey, setSecretKey] = useState('')
-  const [saved, setSaved] = useState(false)
+export function VaultStep({ vaultStatus, hasPin }: VaultStepProps) {
+  const [pin, setPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [done, setDone] = useState(false)
 
-  if (vaultStatus === 'available') {
+  if (vaultStatus === 'available' && hasPin) {
     return (
       <div className="flex flex-col items-center text-center max-w-lg mx-auto">
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20">
@@ -20,18 +25,61 @@ export function VaultStep({ vaultStatus }: VaultStepProps) {
         </div>
         <h2 className="text-2xl font-bold text-zinc-100 mb-2">Vault Ready</h2>
         <p className="text-zinc-400 mb-4">
-          Your encrypted vault is already set up. API keys and secrets are stored securely.
+          Your encrypted vault is set up and secured with a PIN.
         </p>
-        <Badge variant="success">SECRET_KEY configured</Badge>
+        <Badge variant="success">PIN configured</Badge>
       </div>
     )
   }
 
-  const handleGenerate = async () => {
-    const array = new Uint8Array(32)
-    crypto.getRandomValues(array)
-    const hex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('')
-    setSecretKey(hex)
+  if (vaultStatus !== 'available') {
+    return (
+      <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/20">
+          <AlertTriangle className="h-8 w-8 text-amber-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-zinc-100 mb-2">Vault Not Available</h2>
+        <p className="text-zinc-400 mb-4">
+          The server needs a <code className="text-zinc-300 bg-white/[0.06] px-1.5 py-0.5 rounded text-xs">SECRET_KEY</code> environment variable. It should auto-generate on first start — try restarting the server.
+        </p>
+      </div>
+    )
+  }
+
+  if (done) {
+    return (
+      <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20">
+          <Check className="h-8 w-8 text-emerald-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-zinc-100 mb-2">PIN Set</h2>
+        <p className="text-zinc-400 mb-4">
+          Use your 6-digit PIN to reveal secrets in the Vault. You can change it anytime from the Vault page.
+        </p>
+        <Badge variant="success">PIN configured</Badge>
+      </div>
+    )
+  }
+
+  const handleSave = async () => {
+    if (pin.length !== 6) {
+      toast.error('PIN must be 6 digits')
+      return
+    }
+    if (pin !== confirmPin) {
+      toast.error('PINs do not match')
+      return
+    }
+    setSaving(true)
+    try {
+      await setVaultPin(pin)
+      toast.success('Vault PIN set')
+      setDone(true)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to set PIN')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -40,57 +88,53 @@ export function VaultStep({ vaultStatus }: VaultStepProps) {
         <Shield className="h-8 w-8 text-amber-400" />
       </div>
 
-      <h2 className="text-2xl font-bold text-zinc-100 mb-2 text-center">Create Your Vault</h2>
+      <h2 className="text-2xl font-bold text-zinc-100 mb-2 text-center">Secure Your Vault</h2>
       <p className="text-zinc-400 mb-6 text-center text-sm leading-relaxed">
-        Zync uses an encrypted vault to store your API keys locally. You need to set a <code className="text-zinc-300 bg-white/[0.06] px-1.5 py-0.5 rounded text-xs">SECRET_KEY</code> environment variable before the server starts.
+        Set a 6-digit PIN to reveal your stored secrets. Your API keys are encrypted automatically — the PIN is just for viewing them.
       </p>
 
       <div className="w-full space-y-4">
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 space-y-3">
-          <p className="text-xs font-medium text-zinc-300">1. Generate a key</p>
-          <div className="flex gap-2">
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-300">Choose a 6-digit PIN</label>
             <Input
-              value={secretKey}
-              readOnly
-              placeholder="Click generate..."
-              className="font-mono text-xs"
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => { if (/^\d{0,6}$/.test(e.target.value)) setPin(e.target.value) }}
+              placeholder="••••••"
+              className="text-center tracking-[0.5em] text-lg font-mono h-12"
+              autoFocus
             />
-            <Button variant="outline" size="sm" onClick={handleGenerate}>
-              Generate
-            </Button>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-300">Confirm PIN</label>
+            <Input
+              type="password"
+              inputMode="numeric"
+              maxLength={6}
+              value={confirmPin}
+              onChange={(e) => { if (/^\d{0,6}$/.test(e.target.value)) setConfirmPin(e.target.value) }}
+              placeholder="••••••"
+              className="text-center tracking-[0.5em] text-lg font-mono h-12"
+              onKeyDown={(e) => { if (e.key === 'Enter' && pin.length === 6 && confirmPin.length === 6) handleSave() }}
+            />
           </div>
 
-          {secretKey && (
-            <>
-              <p className="text-xs font-medium text-zinc-300 mt-4">2. Add to your environment</p>
-              <div className="rounded-lg bg-black/40 border border-white/[0.06] p-3">
-                <code className="text-xs text-emerald-400 break-all select-all">
-                  SECRET_KEY={secretKey}
-                </code>
-              </div>
-              <p className="text-[11px] text-zinc-500">
-                Add this to your <code className="text-zinc-400">.env</code> file in the project root, then restart the server.
-              </p>
-
-              <Button
-                variant="default"
-                size="sm"
-                className="w-full mt-2"
-                onClick={() => {
-                  navigator.clipboard.writeText(`SECRET_KEY=${secretKey}`)
-                  setSaved(true)
-                }}
-              >
-                {saved ? 'Copied!' : 'Copy to Clipboard'}
-              </Button>
-            </>
-          )}
+          <Button
+            className="w-full"
+            onClick={handleSave}
+            disabled={saving || pin.length !== 6 || confirmPin.length !== 6}
+          >
+            {saving ? 'Setting PIN...' : 'Set PIN'}
+          </Button>
         </div>
 
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
           <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-300/80">
-            The vault is required to save your API keys securely. You can skip this for now, but you'll need to set it up before configuring integrations.
+            Remember this PIN — you'll need it to view your stored API keys and tokens.
           </p>
         </div>
       </div>

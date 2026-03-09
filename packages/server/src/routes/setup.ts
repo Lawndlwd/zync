@@ -16,13 +16,12 @@ setupRouter.get('/status', (_req, res) => {
     const vaultAvailable = !!getSecrets()
 
     // Check which integrations already have credentials saved
-    const gitlabUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL')
     const configuredIntegrations: Record<string, boolean> = {
-      jira: !!(getSecret('JIRA_BASE_URL') && getSecret('JIRA_API_TOKEN')),
-      gitlab: !!(gitlabUrl && getSecret('GITLAB_PAT')),
+      jira: !!(getConfig('JIRA_BASE_URL') && getSecret('JIRA_API_TOKEN')),
+      gitlab: !!(getConfig('GITLAB_BASE_URL') && getSecret('GITLAB_PAT')),
       telegram: !!(getSecret('TELEGRAM_BOT_TOKEN') || getSecret('CHANNEL_TELEGRAM_BOT_TOKEN')),
       whatsapp: !!getConfig('WHATSAPP_ALLOWED_NUMBERS'),
-      gmail: !!(getSecret('GMAIL_CLIENT_ID') || getSecret('CHANNEL_GMAIL_CLIENT_ID') || getSecret('GOOGLE_CLIENT_ID')),
+      gmail: !!getSecret('CHANNEL_GMAIL_CLIENT_ID'),
     }
 
     // Check app settings
@@ -34,6 +33,7 @@ setupRouter.get('/status', (_req, res) => {
     res.json({
       initialized: completed,
       vaultStatus: vaultAvailable ? 'available' : 'uninitialized',
+      hasPin: vaultAvailable ? getSecrets()!.hasPin() : false,
       requiredSteps: ['welcome', 'vault', 'integrations', 'configure', 'done'],
       configuredIntegrations,
       configuredSettings,

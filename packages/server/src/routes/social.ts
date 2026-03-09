@@ -3,6 +3,7 @@ import express from 'express'
 import multer from 'multer'
 import { errorResponse } from '../lib/errors.js'
 import { getSecret, getSecrets } from '../secrets/index.js'
+import { getConfig, getConfigService } from '../config/index.js'
 import {
   getAccounts, deleteAccount, getPosts, countPosts, getComments, countComments, getRules, getIdeas,
   createDraftPost, updateCommentReply, createRule, updateRule, deleteRule,
@@ -266,8 +267,8 @@ socialRouter.get('/insights', (req, res) => {
 
 // GET /api/social/instagram/profile — return profile info (pic, username)
 socialRouter.get('/instagram/profile', (_req, res) => {
-  const profilePic = getSecret('SOCIAL_INSTAGRAM_PROFILE_PIC')
-  const username = getSecret('SOCIAL_INSTAGRAM_USERNAME')
+  const profilePic = getConfig('SOCIAL_INSTAGRAM_PROFILE_PIC')
+  const username = getConfig('SOCIAL_INSTAGRAM_USERNAME')
   res.json({ profile_picture_url: profilePic || null, username: username || null })
 })
 
@@ -287,7 +288,7 @@ socialRouter.get('/instagram/account-insights', async (req, res) => {
 // GET /api/social/instagram/auth — redirect to Instagram OAuth
 socialRouter.get('/instagram/auth', (req, res) => {
   try {
-    const appId = getSecret('SOCIAL_INSTAGRAM_APP_ID')
+    const appId = getConfig('SOCIAL_INSTAGRAM_APP_ID')
     if (!appId) {
       return res.status(400).json({ error: 'Save App ID first in Settings before connecting' })
     }
@@ -320,7 +321,7 @@ socialRouter.get('/instagram/callback', async (req, res) => {
       return res.redirect('/settings?ig_error=Vault+not+available')
     }
 
-    const appId = getSecret('SOCIAL_INSTAGRAM_APP_ID')
+    const appId = getConfig('SOCIAL_INSTAGRAM_APP_ID')
     const appSecret = getSecret('SOCIAL_INSTAGRAM_APP_SECRET')
     if (!appId || !appSecret) {
       return res.redirect('/settings?ig_error=Missing+App+ID+or+Secret')
@@ -343,16 +344,19 @@ socialRouter.get('/instagram/callback', async (req, res) => {
     const profile = await fetchUserProfile(longResult.access_token)
     const igUserId = String(shortResult.user_id)
 
-    // Store in vault
+    // Store secret token in vault
     secretsSvc.set('SOCIAL_INSTAGRAM_ACCESS_TOKEN', longResult.access_token, 'social')
-    secretsSvc.set('SOCIAL_INSTAGRAM_USER_ID', igUserId, 'social')
+
+    // Store non-secret config values
+    const configSvc = getConfigService()
+    configSvc?.set('SOCIAL_INSTAGRAM_USER_ID', igUserId, 'social')
     const expiresAt = new Date(Date.now() + longResult.expires_in * 1000).toISOString()
-    secretsSvc.set('SOCIAL_INSTAGRAM_TOKEN_EXPIRES', expiresAt, 'social')
+    configSvc?.set('SOCIAL_INSTAGRAM_TOKEN_EXPIRES', expiresAt, 'social')
 
     upsertAccount('instagram', profile.username)
-    secretsSvc.set('SOCIAL_INSTAGRAM_USERNAME', profile.username, 'social')
+    configSvc?.set('SOCIAL_INSTAGRAM_USERNAME', profile.username, 'social')
     if (profile.profile_picture_url) {
-      secretsSvc.set('SOCIAL_INSTAGRAM_PROFILE_PIC', profile.profile_picture_url, 'social')
+      configSvc?.set('SOCIAL_INSTAGRAM_PROFILE_PIC', profile.profile_picture_url, 'social')
     }
 
     res.redirect(`/settings?ig_connected=${encodeURIComponent(profile.username)}`)
@@ -378,7 +382,8 @@ socialRouter.post('/instagram/refresh-token', async (_req, res) => {
     const result = await refreshLongLivedToken(currentToken)
     secretsSvc.set('SOCIAL_INSTAGRAM_ACCESS_TOKEN', result.access_token, 'social')
     const expiresAt = new Date(Date.now() + result.expires_in * 1000).toISOString()
-    secretsSvc.set('SOCIAL_INSTAGRAM_TOKEN_EXPIRES', expiresAt, 'social')
+    const configSvc = getConfigService()
+    configSvc?.set('SOCIAL_INSTAGRAM_TOKEN_EXPIRES', expiresAt, 'social')
 
     res.json({ success: true, expiresAt })
   } catch (err) {
@@ -513,7 +518,7 @@ socialRouter.post('/posts/:id/publish', async (req, res) => {
       : [post.platform]
 
     // Resolve media URLs from attached media
-    const publicUrl = getSecret('SOCIAL_MEDIA_PUBLIC_URL') || `${req.protocol}://${req.get('host')}`
+    const publicUrl = getConfig('SOCIAL_MEDIA_PUBLIC_URL') || `${req.protocol}://${req.get('host')}`
     const mediaList: Array<{ url: string; type: 'image' | 'video' }> = []
 
     if (post.media_ids) {
@@ -540,7 +545,7 @@ socialRouter.post('/posts/:id/publish', async (req, res) => {
         switch (targetPlatform) {
           case 'instagram': {
             const accessToken = getSecret('SOCIAL_INSTAGRAM_ACCESS_TOKEN')
-            const userId = getSecret('SOCIAL_INSTAGRAM_USER_ID')
+            const userId = getConfig('SOCIAL_INSTAGRAM_USER_ID')
             if (!accessToken || !userId) {
               results.push({ platform: 'instagram', error: 'Instagram not connected' })
               break
@@ -677,31 +682,32 @@ socialRouter.put('/config', (req, res) => {
 
     const { instagram, x, youtube, autoReplyEnabled, autoReplyPrompt, autoReplyRequireApproval } = req.body
     const isMasked = (v?: string) => !v || v.startsWith('••••')
+    const configSvc = getConfigService()
 
     if (instagram) {
-      if (instagram.appId) secretsSvc.set('SOCIAL_INSTAGRAM_APP_ID', instagram.appId, 'social')
+      if (instagram.appId) configSvc?.set('SOCIAL_INSTAGRAM_APP_ID', instagram.appId, 'social')
       if (!isMasked(instagram.appSecret)) secretsSvc.set('SOCIAL_INSTAGRAM_APP_SECRET', instagram.appSecret, 'social')
       if (!isMasked(instagram.accessToken)) secretsSvc.set('SOCIAL_INSTAGRAM_ACCESS_TOKEN', instagram.accessToken, 'social')
       if (instagram.username) upsertAccount('instagram', instagram.username)
-      if (instagram.enabled !== undefined) secretsSvc.set('SOCIAL_INSTAGRAM_ENABLED', String(instagram.enabled), 'social')
+      if (instagram.enabled !== undefined) configSvc?.set('SOCIAL_INSTAGRAM_ENABLED', String(instagram.enabled), 'social')
     }
     if (x) {
-      if (x.username) secretsSvc.set('SOCIAL_X_USERNAME', x.username, 'social')
+      if (x.username) configSvc?.set('SOCIAL_X_USERNAME', x.username, 'social')
       if (!isMasked(x.password)) secretsSvc.set('SOCIAL_X_PASSWORD', x.password, 'social')
       if (x.username) upsertAccount('x', x.username)
-      if (x.enabled !== undefined) secretsSvc.set('SOCIAL_X_ENABLED', String(x.enabled), 'social')
+      if (x.enabled !== undefined) configSvc?.set('SOCIAL_X_ENABLED', String(x.enabled), 'social')
     }
     if (youtube) {
-      if (youtube.email) secretsSvc.set('SOCIAL_YOUTUBE_USERNAME', youtube.email, 'social')
+      if (youtube.email) configSvc?.set('SOCIAL_YOUTUBE_USERNAME', youtube.email, 'social')
       if (!isMasked(youtube.password)) secretsSvc.set('SOCIAL_YOUTUBE_PASSWORD', youtube.password, 'social')
       if (youtube.email) upsertAccount('youtube', youtube.email)
-      if (youtube.enabled !== undefined) secretsSvc.set('SOCIAL_YOUTUBE_ENABLED', String(youtube.enabled), 'social')
+      if (youtube.enabled !== undefined) configSvc?.set('SOCIAL_YOUTUBE_ENABLED', String(youtube.enabled), 'social')
     }
 
-    // Auto-reply settings
-    if (autoReplyEnabled !== undefined) secretsSvc.set('SOCIAL_AUTO_REPLY_ENABLED', String(autoReplyEnabled), 'social')
-    if (autoReplyPrompt !== undefined) secretsSvc.set('SOCIAL_AUTO_REPLY_PROMPT', autoReplyPrompt, 'social')
-    if (autoReplyRequireApproval !== undefined) secretsSvc.set('SOCIAL_AUTO_REPLY_REQUIRE_APPROVAL', String(autoReplyRequireApproval), 'social')
+    // Auto-reply settings (config, not secrets)
+    if (autoReplyEnabled !== undefined) configSvc?.set('SOCIAL_AUTO_REPLY_ENABLED', String(autoReplyEnabled), 'social')
+    if (autoReplyPrompt !== undefined) configSvc?.set('SOCIAL_AUTO_REPLY_PROMPT', autoReplyPrompt, 'social')
+    if (autoReplyRequireApproval !== undefined) configSvc?.set('SOCIAL_AUTO_REPLY_REQUIRE_APPROVAL', String(autoReplyRequireApproval), 'social')
 
     res.json({ success: true })
   } catch (err) {

@@ -6,8 +6,8 @@ import {
 import { cn } from '@/lib/utils'
 
 export type SettingsSection =
-  | 'integrations' | 'jira' | 'gitlab' | 'github' | 'linear' | 'channels' | 'social'
-  | 'agent' | 'memories' | 'schedules' | 'tools'
+  | 'integrations'
+  | 'agent' | 'profile' | 'instructions' | 'memories' | 'schedules' | 'tools'
   | 'security' | 'config' | 'tool-config'
   | 'briefings'
   | 'opencode'
@@ -24,20 +24,14 @@ const groups: SidebarGroup[] = [
     id: 'integrations',
     label: 'Integrations',
     icon: <Link2 size={15} />,
-    children: [
-      { id: 'jira', label: 'Jira' },
-      { id: 'gitlab', label: 'GitLab' },
-      { id: 'github', label: 'GitHub' },
-      { id: 'linear', label: 'Linear' },
-      { id: 'channels', label: 'Channels' },
-      { id: 'social', label: 'Social Media' },
-    ],
   },
   {
     id: 'agent',
     label: 'Agent',
     icon: <Bot size={15} />,
     children: [
+      { id: 'profile', label: 'Profile' },
+      { id: 'instructions', label: 'Instructions' },
       { id: 'memories', label: 'Memories' },
       { id: 'schedules', label: 'Schedules' },
       { id: 'tools', label: 'Tools' },

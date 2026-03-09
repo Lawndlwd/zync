@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSettingsStore } from '@/store/settings'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SettingField } from './setting-field'
 import { Save, ExternalLink, Instagram, Twitter, Youtube, Send } from 'lucide-react'
@@ -24,7 +23,7 @@ const featureToggles: Array<{ key: keyof typeof import('@zync/shared/types').def
   { key: 'aiSuggestions', label: 'AI Suggestions', description: 'Get AI-powered caption ideas, hashtags, and optimal posting times' },
 ]
 
-export function SocialSettingsCard() {
+export function SocialSettingsContent() {
   const { settings, updateSocial } = useSettingsStore()
   const [saving, setSaving] = useState(false)
 
@@ -62,14 +61,7 @@ export function SocialSettingsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Social Media</CardTitle>
-        <CardDescription>
-          Configure platforms, features, and sync settings for your social media dashboard.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="space-y-6">
         {/* Per-platform toggles */}
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-zinc-300">Platforms</h3>
@@ -195,7 +187,6 @@ export function SocialSettingsCard() {
           <Save size={14} className="mr-1.5" />
           {saving ? 'Saving...' : 'Save'}
         </Button>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

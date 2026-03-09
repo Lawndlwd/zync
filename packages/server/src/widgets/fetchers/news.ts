@@ -4,6 +4,7 @@ import { logger } from '../../lib/logger.js'
 
 export interface NewsItem {
   title: string
+  url: string
   source: string
   topic: string
 }
@@ -13,18 +14,14 @@ const SESSION_PURPOSE = 'widget-news'
 export async function fetchNews(topics: string[]): Promise<NewsItem[]> {
   const sessionId = await getOrCreateSession(SESSION_PURPOSE)
   const today = new Date().toISOString().split('T')[0]
-  const prompt = `Today is ${today}. Give me exactly 3 of the most trending/watched news headlines right now for: ${topics.join(', ')}.
+  const prompt = `Today is ${today}. Give me 3 news headlines for: ${topics.join(', ')}.
 
-Rules:
-- Only the top 3 most important/viral stories
-- Each title must be under 60 characters
-- Source = the main outlet covering it
-- No explanations, no summaries, just the headlines
+You may use WebFetch ONCE to get headlines. No other tools — no Bash, no Read, no Grep, no Glob, no Agent, no Skill, no Edit, no Write. Maximum 1 WebFetch call, then immediately return the JSON.
 
-Return ONLY a JSON array:
-[{"title":"...","source":"...","topic":"..."}]`
+Return ONLY this JSON array:
+[{"title":"...","url":"https://...","source":"...","topic":"..."}]`
 
-  const response = await waitForResponse(sessionId, prompt, { timeoutMs: 60_000 })
+  const response = await waitForResponse(sessionId, prompt, { timeoutMs: 30_000 })
 
   logger.info({ responseLength: response.length, preview: response.slice(0, 500) }, 'News LLM response')
 

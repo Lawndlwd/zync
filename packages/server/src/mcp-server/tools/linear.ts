@@ -1,12 +1,13 @@
 import { z } from 'zod'
 import { getSecret } from '../../secrets/index.js'
+import { getConfig } from '../../config/index.js'
 
 function getLinearConfig() {
   const apiKey = getSecret('LINEAR_API_KEY')
   if (!apiKey) {
     throw new Error('Linear not configured. Set LINEAR_API_KEY in Settings.')
   }
-  const defaultTeamId = getSecret('LINEAR_DEFAULT_TEAM_ID') || undefined
+  const defaultTeamId = getConfig('LINEAR_DEFAULT_TEAM_ID') || undefined
   return { apiKey, defaultTeamId }
 }
 

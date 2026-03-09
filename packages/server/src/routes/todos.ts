@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getDb } from '../bot/memory/db.js'
+import { getBrainDb as getDb } from '../memory/brain-db.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'
 import { TodoCreateSchema, TodoUpdateSchema } from '@zync/shared/schemas'

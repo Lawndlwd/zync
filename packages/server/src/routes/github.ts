@@ -7,7 +7,7 @@ import { getConfig, getConfigService } from '../config/index.js'
 export const githubRouter = Router()
 
 function getGithubConfig() {
-  const baseUrl = getSecret('GITHUB_BASE_URL') || getConfig('GITHUB_BASE_URL') || 'https://api.github.com'
+  const baseUrl = getConfig('GITHUB_BASE_URL') || 'https://api.github.com'
   const pat = getSecret('GITHUB_PAT')
   if (!pat) {
     throw new Error('GitHub not configured. Add GITHUB_PAT in Settings > Integrations > GitHub or the Vault.')
@@ -117,12 +117,12 @@ async function githubFetchAllPages<T>(path: string, perPage = 100, maxItems = 50
 
 // GET config (masked)
 githubRouter.get('/config', (_req, res) => {
-  const baseUrl = getSecret('GITHUB_BASE_URL') || getConfig('GITHUB_BASE_URL') || 'https://api.github.com'
+  const baseUrl = getConfig('GITHUB_BASE_URL') || 'https://api.github.com'
   const pat = getSecret('GITHUB_PAT')
   res.json({
     baseUrl,
     pat: pat ? '••••••••' : '',
-    fromEnv: !!(getSecret('GITHUB_BASE_URL') && getSecret('GITHUB_PAT')),
+    fromEnv: !!(getConfig('GITHUB_BASE_URL') && getSecret('GITHUB_PAT')),
   })
 })
 

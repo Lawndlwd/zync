@@ -683,6 +683,54 @@ body {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* PR Review HTML output (PR-Agent returns HTML tables) */
+.pr-review-html {
+  color: var(--color-zinc-300, #d4d4d8);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.pr-review-html table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.8125rem;
+}
+
+.pr-review-html table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--color-zinc-300, #d4d4d8);
+  vertical-align: top;
+}
+
+.pr-review-html table tr:last-child td {
+  border-bottom: none;
+}
+
+.pr-review-html a {
+  color: var(--color-indigo-400, #818cf8);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pr-review-html a:hover {
+  color: var(--color-indigo-300, #a5b4fc);
+}
+
+.pr-review-html strong {
+  color: var(--color-zinc-200, #e4e4e7);
+  font-weight: 600;
+}
+
+.pr-review-html h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-zinc-100, #f4f4f5);
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

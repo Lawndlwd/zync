@@ -201,6 +201,7 @@ export const CanvasPromptSchema = z.object({
 export const PrAgentRunSchema = z.object({
   tool: z.enum(['review', 'describe', 'improve', 'ask']),
   mrUrl: z.string().min(1),
+  sessionId: z.string().optional(),
   projectId: z.number().optional(),
   mrIid: z.number().optional(),
   headSha: z.string().optional(),
@@ -342,3 +343,5 @@ export const ProfileUpdateSchema = z.object({
   languages: z.array(z.string()).optional(),
   cv_theme: CvThemeSchema.optional(),
 })
+
+// _VeBekaDpDQba_dk7pamDm86MQp1OjNiaQk.01.0z1814vry

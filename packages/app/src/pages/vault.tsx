@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
-  getVaultStatus, listSecrets, setSecret, deleteSecret, revealSecret,
+  getVaultStatus, listSecrets, setSecret, deleteSecret, revealSecret, setVaultPin,
   type SecretMeta,
 } from '@/services/secrets'
 
@@ -26,12 +26,17 @@ export function VaultPage() {
   const [newCategory, setNewCategory] = useState('general')
 
   const [revealDialog, setRevealDialog] = useState<string | null>(null)
-  const [revealKey, setRevealKey] = useState('')
+  const [revealPin, setRevealPin] = useState('')
+  const [unlockedAuth, setUnlockedAuth] = useState<{ pin: string } | { secretKey: string } | null>(null)
   const [revealedSecrets, setRevealedSecrets] = useState<Record<string, { value: string; timer: ReturnType<typeof setTimeout> }>>({})
 
   const [editingSecret, setEditingSecret] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [editCategory, setEditCategory] = useState('')
+  const [showPinSetup, setShowPinSetup] = useState(false)
+  const [newPin, setNewPin] = useState('')
+  const [confirmNewPin, setConfirmNewPin] = useState('')
+  const [pinSaving, setPinSaving] = useState(false)
 
   const status = useQuery({ queryKey: ['vault-status'], queryFn: getVaultStatus })
   const secrets = useQuery({
@@ -79,26 +84,45 @@ export function VaultPage() {
     }
   }, [revealedSecrets])
 
+  const hasPin = status.data?.hasPin === true
+
+  const showRevealed = (name: string, value: string) => {
+    const timer = setTimeout(() => {
+      setRevealedSecrets((prev) => {
+        const next = { ...prev }
+        delete next[name]
+        return next
+      })
+    }, 30_000)
+
+    setRevealedSecrets((prev) => {
+      if (prev[name]) clearTimeout(prev[name].timer)
+      return { ...prev, [name]: { value, timer } }
+    })
+  }
+
   const handleReveal = async (name: string) => {
     try {
-      const value = await revealSecret(name, revealKey)
+      const auth = hasPin ? { pin: revealPin } : { secretKey: revealPin }
+      const value = await revealSecret(name, auth)
+      setUnlockedAuth(auth)
       setRevealDialog(null)
-      setRevealKey('')
-
-      const timer = setTimeout(() => {
-        setRevealedSecrets((prev) => {
-          const next = { ...prev }
-          delete next[name]
-          return next
-        })
-      }, 30_000)
-
-      setRevealedSecrets((prev) => {
-        if (prev[name]) clearTimeout(prev[name].timer)
-        return { ...prev, [name]: { value, timer } }
-      })
+      setRevealPin('')
+      showRevealed(name, value)
     } catch (err: any) {
       toast.error(err.message || 'Failed to reveal secret')
+    }
+  }
+
+  const handleQuickReveal = async (name: string) => {
+    if (!unlockedAuth) { setRevealDialog(name); return }
+    try {
+      const value = await revealSecret(name, unlockedAuth)
+      showRevealed(name, value)
+    } catch {
+      // Auth expired or invalid — ask again
+      setUnlockedAuth(null)
+      setRevealDialog(name)
     }
   }
 
@@ -118,7 +142,7 @@ export function VaultPage() {
       toast.success('Copied to clipboard')
       return
     }
-    setRevealDialog(name)
+    handleQuickReveal(name)
   }
 
   const handleStartEdit = (secret: SecretMeta) => {
@@ -166,10 +190,15 @@ export function VaultPage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setShowAddForm(true)} disabled={showAddForm}>
-          <Plus size={16} className="mr-2" />
-          Add Secret
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowPinSetup(true)}>
+            {hasPin ? 'Change PIN' : 'Set PIN'}
+          </Button>
+          <Button onClick={() => setShowAddForm(true)} disabled={showAddForm}>
+            <Plus size={16} className="mr-2" />
+            Add Secret
+          </Button>
+        </div>
       </div>
 
       {showAddForm && (
@@ -345,7 +374,7 @@ export function VaultPage() {
                     <Button
                       variant="ghost" size="sm"
                       className="h-7 w-7 p-0 text-zinc-500 hover:text-zinc-300"
-                      onClick={() => setRevealDialog(secret.name)}
+                      onClick={() => handleQuickReveal(secret.name)}
                       title="Reveal"
                     >
                       <Eye size={14} />
@@ -383,36 +412,117 @@ export function VaultPage() {
         </div>
       )}
 
+      {showPinSetup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl border border-white/[0.08] bg-zinc-900 p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-zinc-100 mb-1">{hasPin ? 'Change PIN' : 'Set PIN'}</h3>
+            <p className="text-sm text-zinc-500 mb-4">Choose a 6-digit PIN to reveal secrets.</p>
+            <div className="space-y-3 mb-4">
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={newPin}
+                onChange={(e) => { if (/^\d{0,6}$/.test(e.target.value)) setNewPin(e.target.value) }}
+                placeholder="New PIN"
+                className="text-center tracking-[0.5em] text-lg font-mono h-11"
+                autoFocus
+              />
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={confirmNewPin}
+                onChange={(e) => { if (/^\d{0,6}$/.test(e.target.value)) setConfirmNewPin(e.target.value) }}
+                placeholder="Confirm PIN"
+                className="text-center tracking-[0.5em] text-lg font-mono h-11"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newPin.length === 6 && newPin === confirmNewPin) {
+                    setPinSaving(true)
+                    setVaultPin(newPin)
+                      .then(() => {
+                        toast.success('PIN updated')
+                        setShowPinSetup(false)
+                        setNewPin('')
+                        setConfirmNewPin('')
+                        queryClient.invalidateQueries({ queryKey: ['vault-status'] })
+                      })
+                      .catch(() => toast.error('Failed to set PIN'))
+                      .finally(() => setPinSaving(false))
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setShowPinSetup(false); setNewPin(''); setConfirmNewPin('') }}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={newPin.length !== 6 || newPin !== confirmNewPin || pinSaving}
+                onClick={() => {
+                  if (newPin !== confirmNewPin) { toast.error('PINs do not match'); return }
+                  setPinSaving(true)
+                  setVaultPin(newPin)
+                    .then(() => {
+                      toast.success('PIN updated')
+                      setShowPinSetup(false)
+                      setNewPin('')
+                      setConfirmNewPin('')
+                      queryClient.invalidateQueries({ queryKey: ['vault-status'] })
+                    })
+                    .catch(() => toast.error('Failed to set PIN'))
+                    .finally(() => setPinSaving(false))
+                }}
+              >
+                {pinSaving ? 'Saving...' : 'Save PIN'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {revealDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-xl border border-white/[0.08] bg-zinc-900 p-6 shadow-2xl">
             <h3 className="text-lg font-semibold text-zinc-100 mb-1">Reveal Secret</h3>
             <p className="text-sm text-zinc-500 mb-4">
-              Enter your <code className="rounded bg-zinc-800 px-1 text-zinc-400">SECRET_KEY</code> to
-              decrypt <span className="font-mono text-zinc-300">{revealDialog}</span>
+              {hasPin
+                ? <>Enter your <strong className="text-zinc-300">6-digit PIN</strong> to decrypt <span className="font-mono text-zinc-300">{revealDialog}</span></>
+                : <>Enter your <code className="rounded bg-zinc-800 px-1 text-zinc-400">SECRET_KEY</code> to decrypt <span className="font-mono text-zinc-300">{revealDialog}</span></>
+              }
             </p>
             <Input
               type="password"
-              value={revealKey}
-              onChange={(e) => setRevealKey(e.target.value)}
-              placeholder="SECRET_KEY"
-              className="mb-4 h-9 font-mono text-sm"
+              inputMode={hasPin ? 'numeric' : undefined}
+              maxLength={hasPin ? 6 : undefined}
+              value={revealPin}
+              onChange={(e) => {
+                const v = e.target.value
+                if (hasPin) {
+                  if (/^\d{0,6}$/.test(v)) setRevealPin(v)
+                } else {
+                  setRevealPin(v)
+                }
+              }}
+              placeholder={hasPin ? '••••••' : 'SECRET_KEY'}
+              className={cn('mb-4 h-9 text-sm', hasPin ? 'text-center tracking-[0.5em] text-lg font-mono' : 'font-mono')}
               autoFocus
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && revealKey.trim()) handleReveal(revealDialog)
+                if (e.key === 'Enter' && revealPin.trim()) handleReveal(revealDialog)
               }}
             />
             <div className="flex justify-end gap-2">
               <Button
                 variant="ghost" size="sm"
-                onClick={() => { setRevealDialog(null); setRevealKey('') }}
+                onClick={() => { setRevealDialog(null); setRevealPin('') }}
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
                 onClick={() => handleReveal(revealDialog)}
-                disabled={!revealKey.trim()}
+                disabled={hasPin ? revealPin.length !== 6 : !revealPin.trim()}
               >
                 <Eye size={14} className="mr-2" />
                 Reveal

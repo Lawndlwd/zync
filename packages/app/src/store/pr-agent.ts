@@ -15,6 +15,7 @@ export interface PRAgentItem {
 export interface PRAgentResult {
   tool: PRAgentTool
   summary: string
+  score?: number
   items: PRAgentItem[]
   rawOutput?: string
 }

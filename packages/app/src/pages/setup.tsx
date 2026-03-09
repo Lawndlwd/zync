@@ -17,12 +17,14 @@ export function SetupPage() {
   const navigate = useNavigate()
   const { currentStep, setStep, reset, setConfigured, preSelectConfigured } = useSetupStore()
   const [vaultStatus, setVaultStatus] = useState<'available' | 'uninitialized'>('uninitialized')
+  const [hasPin, setHasPin] = useState(false)
   const [finishing, setFinishing] = useState(false)
 
   useEffect(() => {
     getSetupStatus()
       .then((status) => {
         setVaultStatus(status.vaultStatus)
+        setHasPin(status.hasPin)
         setConfigured(status.configuredIntegrations, status.configuredSettings)
         preSelectConfigured(status.configuredIntegrations)
       })
@@ -112,7 +114,7 @@ export function SetupPage() {
       {/* Step content */}
       <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-12">
         {currentStep === 0 && <WelcomeStep />}
-        {currentStep === 1 && <VaultStep vaultStatus={vaultStatus} />}
+        {currentStep === 1 && <VaultStep vaultStatus={vaultStatus} hasPin={hasPin} />}
         {currentStep === 2 && <IntegrationsStep />}
         {currentStep === 3 && <ConfigureStep />}
         {currentStep === 4 && <DoneStep />}

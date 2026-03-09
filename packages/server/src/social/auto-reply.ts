@@ -1,5 +1,5 @@
 import { logger } from '../lib/logger.js'
-import { getSecret } from '../secrets/index.js'
+import { getConfig } from '../config/index.js'
 import { getPendingComments, getRules, updateCommentReply } from './db.js'
 import { getOrCreateSession } from '../opencode/client.js'
 import { waitForResponse } from '../opencode/wait-for-response.js'
@@ -8,9 +8,9 @@ import { loadPromptContent } from '../skills/prompts.js'
 const DEFAULT_PROMPT = loadPromptContent('auto-reply')
 
 function getAutoReplyConfig() {
-  const enabled = getSecret('SOCIAL_AUTO_REPLY_ENABLED')
-  const prompt = getSecret('SOCIAL_AUTO_REPLY_PROMPT')
-  const requireApproval = getSecret('SOCIAL_AUTO_REPLY_REQUIRE_APPROVAL')
+  const enabled = getConfig('SOCIAL_AUTO_REPLY_ENABLED')
+  const prompt = getConfig('SOCIAL_AUTO_REPLY_PROMPT')
+  const requireApproval = getConfig('SOCIAL_AUTO_REPLY_REQUIRE_APPROVAL')
   return {
     enabled: enabled === 'true',
     prompt: prompt || DEFAULT_PROMPT,

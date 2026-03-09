@@ -3,32 +3,36 @@ import { useSettingsStore } from '@/store/settings'
 import { fetchServerSettings } from '@/services/settings'
 import { Button } from '@/components/ui/button'
 import { RotateCcw, Download, Wand2 } from 'lucide-react'
+import {
+  Ticket, GitMerge, Github, BarChart3,
+  Send, MessageCircle, Mail, Instagram,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { useNavigate } from 'react-router-dom'
 import { SettingsSidebar, type SettingsSection } from '@/components/settings/settings-sidebar'
-import { JiraSettingsCard } from '@/components/settings/jira-settings'
-import { GitLabSettingsCard } from '@/components/settings/gitlab-settings'
-import { GitHubSettingsCard } from '@/components/settings/github-settings'
-import { LinearSettingsCard } from '@/components/settings/linear-settings'
-import { ChannelsSettingsCard } from '@/components/settings/channels-settings'
+import { IntegrationCard } from '@/components/settings/integration-card'
+import { JiraSettingsContent } from '@/components/settings/jira-settings'
+import { GitLabSettingsContent } from '@/components/settings/gitlab-settings'
+import { GitHubSettingsContent } from '@/components/settings/github-settings'
+import { LinearSettingsContent } from '@/components/settings/linear-settings'
+import { TelegramConfig, WhatsAppConfig, GmailConfig } from '@/components/settings/channels-settings'
+import { SocialSettingsContent } from '@/components/settings/social-settings'
 import { MemoriesSettingsCard } from '@/components/settings/memories-settings'
 import { SchedulesSettingsCard } from '@/components/settings/schedules-settings'
 import { ToolsSettingsCard } from '@/components/settings/tools-settings'
+import { MemoryProfileTab } from '@/components/settings/memory-profile'
+import { MemoryInstructionsTab } from '@/components/settings/memory-instructions'
 import { ConfigSettingsCard } from '@/components/settings/config-settings'
 import { ToolConfigSettingsCard } from '@/components/settings/tool-config-settings'
 import { BriefingsSettingsCard } from '@/components/settings/briefings-settings'
 import { OpenCodeSettings } from '@/components/opencode/OpenCodeSettings'
-import { SocialSettingsCard } from '@/components/settings/social-settings'
+import { useBotChannels } from '@/hooks/useBot'
 
 // Map sections to their parent groups for group-level navigation
 const sectionToGroup: Record<string, SettingsSection> = {
-  jira: 'integrations',
-  gitlab: 'integrations',
-  github: 'integrations',
-  linear: 'integrations',
-  channels: 'integrations',
-  social: 'integrations',
+  profile: 'agent',
+  instructions: 'agent',
   memories: 'agent',
   schedules: 'agent',
   tools: 'agent',
@@ -39,8 +43,8 @@ const sectionToGroup: Record<string, SettingsSection> = {
 
 // Group sections define which cards to show
 const groupSections: Record<string, SettingsSection[]> = {
-  integrations: ['jira', 'gitlab', 'github', 'linear', 'channels', 'social'],
-  agent: ['memories', 'schedules', 'tools'],
+  integrations: ['integrations'],
+  agent: ['profile', 'instructions', 'memories', 'schedules', 'tools'],
   security: ['config', 'tool-config'],
   briefings: ['briefings'],
   opencode: ['opencode'],
@@ -52,6 +56,102 @@ function getInitialSection(): SettingsSection {
     return hash
   }
   return 'integrations'
+}
+
+function IntegrationsSection({ envConfig }: { envConfig: Awaited<ReturnType<typeof fetchServerSettings>> | null }) {
+  const { settings } = useSettingsStore()
+  const { data: channels } = useBotChannels()
+
+  const getChannelStatus = (name: string): 'connected' | 'configured' | 'off' => {
+    const ch = channels?.find(c => c.channel === name)
+    if (!ch) return 'off'
+    if (ch.connected) return 'connected'
+    if (ch.configured) return 'configured'
+    return 'off'
+  }
+
+  const getChannelData = (name: string) => channels?.find(c => c.channel === name)
+
+  const hasToken = (val?: string) => !!val && val !== '' && val !== '••••••••'
+
+  return (
+    <div className="space-y-3">
+      <IntegrationCard
+        id="jira"
+        name="Jira"
+        icon={<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700"><Ticket size={16} className="text-white" /></div>}
+        status={envConfig?.jira?.baseUrl && hasToken(envConfig?.jira?.apiToken) ? 'connected' : envConfig?.jira?.baseUrl ? 'configured' : 'off'}
+      >
+        <JiraSettingsContent envConfig={envConfig} />
+      </IntegrationCard>
+
+      <IntegrationCard
+        id="gitlab"
+        name="GitLab"
+        icon={<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-red-600"><GitMerge size={16} className="text-white" /></div>}
+        status={envConfig?.gitlab?.baseUrl && hasToken(envConfig?.gitlab?.pat) ? 'connected' : envConfig?.gitlab?.baseUrl ? 'configured' : 'off'}
+      >
+        <GitLabSettingsContent envConfig={envConfig} />
+      </IntegrationCard>
+
+      <IntegrationCard
+        id="github"
+        name="GitHub"
+        icon={<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-zinc-600 to-zinc-800"><Github size={16} className="text-white" /></div>}
+        status={hasToken(envConfig?.github?.pat) ? 'connected' : envConfig?.github?.baseUrl ? 'configured' : 'off'}
+      >
+        <GitHubSettingsContent envConfig={envConfig} />
+      </IntegrationCard>
+
+      <IntegrationCard
+        id="linear"
+        name="Linear"
+        icon={<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600"><BarChart3 size={16} className="text-white" /></div>}
+        status={hasToken(envConfig?.linear?.apiKey) ? 'connected' : 'off'}
+      >
+        <LinearSettingsContent envConfig={envConfig} />
+      </IntegrationCard>
+
+      <IntegrationCard
+        id="telegram"
+        name="Telegram"
+        icon={<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-400 to-blue-600"><Send size={16} className="text-white" /></div>}
+        status={getChannelStatus('telegram')}
+      >
+        <TelegramConfig connected={getChannelData('telegram')?.connected ?? false} />
+      </IntegrationCard>
+
+      <IntegrationCard
+        id="whatsapp"
+        name="WhatsApp"
+        icon={<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600"><MessageCircle size={16} className="text-white" /></div>}
+        status={getChannelStatus('whatsapp')}
+      >
+        <WhatsAppConfig
+          connected={getChannelData('whatsapp')?.connected ?? false}
+          connectionState={getChannelData('whatsapp')?.connectionState ?? ''}
+        />
+      </IntegrationCard>
+
+      <IntegrationCard
+        id="gmail"
+        name="Google"
+        icon={<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-red-400 to-red-600"><Mail size={16} className="text-white" /></div>}
+        status={getChannelStatus('gmail')}
+      >
+        <GmailConfig connected={getChannelData('gmail')?.connected ?? false} />
+      </IntegrationCard>
+
+      <IntegrationCard
+        id="instagram"
+        name="Instagram"
+        icon={<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 to-purple-600"><Instagram size={16} className="text-white" /></div>}
+        status={settings.social.instagram.enabled ? 'connected' : 'off'}
+      >
+        <SocialSettingsContent />
+      </IntegrationCard>
+    </div>
+  )
 }
 
 export function SettingsPage() {
@@ -129,31 +229,18 @@ export function SettingsPage() {
         <div className="flex-1 min-w-0 space-y-6 overflow-y-auto pr-1">
           {/* Integrations */}
           {activeGroup === 'integrations' && (
-            <>
-              <div ref={setRef('jira')}>
-                <JiraSettingsCard envConfig={envConfig} />
-              </div>
-              <div ref={setRef('gitlab')}>
-                <GitLabSettingsCard envConfig={envConfig} />
-              </div>
-              <div ref={setRef('github')}>
-                <GitHubSettingsCard envConfig={envConfig} />
-              </div>
-              <div ref={setRef('linear')}>
-                <LinearSettingsCard envConfig={envConfig} />
-              </div>
-              <div ref={setRef('channels')}>
-                <ChannelsSettingsCard />
-              </div>
-              <div ref={setRef('social')}>
-                <SocialSettingsCard />
-              </div>
-            </>
+            <IntegrationsSection envConfig={envConfig} />
           )}
 
           {/* Agent */}
           {activeGroup === 'agent' && (
             <>
+              <div ref={setRef('profile')}>
+                <MemoryProfileTab />
+              </div>
+              <div ref={setRef('instructions')}>
+                <MemoryInstructionsTab />
+              </div>
               <div ref={setRef('memories')}>
                 <MemoriesSettingsCard />
               </div>

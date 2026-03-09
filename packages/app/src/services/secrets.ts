@@ -16,6 +16,7 @@ export interface SecretMeta {
 
 export interface VaultStatus {
   available: boolean
+  hasPin: boolean
 }
 
 export async function getVaultStatus(): Promise<VaultStatus> {
@@ -38,15 +39,25 @@ export async function deleteSecret(name: string): Promise<void> {
   await fetchJSON(`/api/secrets/${encodeURIComponent(name)}`, { method: 'DELETE' })
 }
 
-export async function revealSecret(name: string, secretKey: string): Promise<string> {
+export async function revealSecret(name: string, auth: { pin: string } | { secretKey: string }): Promise<string> {
   const res = await fetch(`/api/secrets/${encodeURIComponent(name)}/reveal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secretKey }),
+    body: JSON.stringify(auth),
   })
-  if (res.status === 403) throw new Error('Invalid secret key')
+  if (res.status === 403) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Invalid credentials')
+  }
   if (res.status === 404) throw new Error('Secret not found')
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   const data = await res.json()
   return data.value
+}
+
+export async function setVaultPin(pin: string): Promise<void> {
+  await fetchJSON('/api/secrets/pin', {
+    method: 'POST',
+    body: JSON.stringify({ pin }),
+  })
 }

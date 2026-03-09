@@ -1,4 +1,4 @@
-import type { BotStatus, BotMemory, BotSchedule, BotToolDefinition, ChannelStatus, BriefingConfig, ToolConfig, ChannelConfigResponse, WhatsAppQRResponse } from '@zync/shared/types'
+import type { BotStatus, BotSchedule, BotToolDefinition, ChannelStatus, BriefingConfig, ToolConfig, ChannelConfigResponse, WhatsAppQRResponse } from '@zync/shared/types'
 
 const API_BASE = '/api/bot'
 
@@ -16,26 +16,6 @@ async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
 
 export async function getBotStatus(): Promise<BotStatus> {
   return fetchJSON<BotStatus>(`${API_BASE}/status`)
-}
-
-export async function getBotMemories(query?: string, limit = 50): Promise<BotMemory[]> {
-  const params = new URLSearchParams()
-  if (query) params.set('q', query)
-  params.set('limit', String(limit))
-  return fetchJSON<BotMemory[]>(`${API_BASE}/memories?${params}`)
-}
-
-export async function createMemory(content: string, category?: string): Promise<{ id: number }> {
-  return fetchJSON<{ id: number }>(`${API_BASE}/memories`, {
-    method: 'POST',
-    body: JSON.stringify({ content, category }),
-  })
-}
-
-export async function deleteMemory(id: number): Promise<{ success: boolean }> {
-  return fetchJSON<{ success: boolean }>(`${API_BASE}/memories/${id}`, {
-    method: 'DELETE',
-  })
 }
 
 export async function getBotSchedules(): Promise<BotSchedule[]> {

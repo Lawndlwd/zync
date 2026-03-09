@@ -44,10 +44,10 @@ const integrationConfigs: FormConfig[] = [
     verifiable: true,
     verifyFields: ['baseUrl', 'apiToken'],
     fields: [
-      { key: 'baseUrl', label: 'Base URL', placeholder: 'https://your-domain.atlassian.net', storage: 'secret', storageName: 'JIRA_BASE_URL', category: 'jira' },
-      { key: 'email', label: 'Email (Cloud only)', placeholder: 'you@company.com', storage: 'secret', storageName: 'JIRA_EMAIL', category: 'jira' },
+      { key: 'baseUrl', label: 'Base URL', placeholder: 'https://your-domain.atlassian.net', storage: 'config', storageName: 'JIRA_BASE_URL', category: 'jira' },
+      { key: 'email', label: 'Email (Cloud only)', placeholder: 'you@company.com', storage: 'config', storageName: 'JIRA_EMAIL', category: 'jira' },
       { key: 'apiToken', label: 'API Token / PAT', placeholder: 'Your Jira API token or Personal Access Token', type: 'password', storage: 'secret', storageName: 'JIRA_API_TOKEN', category: 'jira' },
-      { key: 'projectKey', label: 'Project Key', placeholder: 'PROJ', storage: 'secret', storageName: 'JIRA_PROJECT_KEY', category: 'jira' },
+      { key: 'projectKey', label: 'Project Key', placeholder: 'PROJ', storage: 'config', storageName: 'JIRA_PROJECT_KEY', category: 'jira' },
     ],
   },
   {
@@ -58,7 +58,7 @@ const integrationConfigs: FormConfig[] = [
     verifiable: true,
     verifyFields: ['baseUrl', 'pat'],
     fields: [
-      { key: 'baseUrl', label: 'Base URL', placeholder: 'https://gitlab.com', storage: 'secret', storageName: 'GITLAB_BASE_URL', category: 'gitlab' },
+      { key: 'baseUrl', label: 'Base URL', placeholder: 'https://gitlab.com', storage: 'config', storageName: 'GITLAB_BASE_URL', category: 'gitlab' },
       { key: 'pat', label: 'Personal Access Token', placeholder: 'glpat-xxxxxxxxxxxx', type: 'password', storage: 'secret', storageName: 'GITLAB_PAT', category: 'gitlab' },
     ],
   },

@@ -1,6 +1,7 @@
 import { resolve } from 'path'
 import { mkdirSync } from 'fs'
 import { getSecret } from '../../secrets/index.js'
+import { getConfig } from '../../config/index.js'
 import { logger } from '../../lib/logger.js'
 
 const USER_DATA_DIR = resolve(import.meta.dirname, '../../../data/social-browser')
@@ -14,7 +15,7 @@ export function getSocialCredentials(platform: string): { username: string; pass
   const usernameKey = `SOCIAL_${platform.toUpperCase()}_USERNAME`
   const passwordKey = `SOCIAL_${platform.toUpperCase()}_PASSWORD`
 
-  const username = getSecret(usernameKey)
+  const username = getConfig(usernameKey)
   const password = getSecret(passwordKey)
 
   if (!username || !password) {
@@ -26,10 +27,10 @@ export function getSocialCredentials(platform: string): { username: string; pass
 }
 
 export function getInstagramGraphConfig(): { appId: string; appSecret: string; accessToken: string; igUserId: string } | null {
-  const appId = getSecret('SOCIAL_INSTAGRAM_APP_ID')
+  const appId = getConfig('SOCIAL_INSTAGRAM_APP_ID')
   const appSecret = getSecret('SOCIAL_INSTAGRAM_APP_SECRET')
   const accessToken = getSecret('SOCIAL_INSTAGRAM_ACCESS_TOKEN')
-  const igUserId = getSecret('SOCIAL_INSTAGRAM_USER_ID')
+  const igUserId = getConfig('SOCIAL_INSTAGRAM_USER_ID')
 
   if (!accessToken || !igUserId) {
     return null

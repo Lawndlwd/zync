@@ -12,37 +12,6 @@ export function useBotStatus() {
   })
 }
 
-export function useBotMemories(query?: string) {
-  return useQuery({
-    queryKey: ['bot-memories', query],
-    queryFn: () => botService.getBotMemories(query),
-    retry: 1,
-  })
-}
-
-export function useCreateMemory() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ content, category }: { content: string; category?: string }) =>
-      botService.createMemory(content, category),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bot-memories'] })
-      queryClient.invalidateQueries({ queryKey: ['bot-status'] })
-    },
-  })
-}
-
-export function useDeleteMemory() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: number) => botService.deleteMemory(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bot-memories'] })
-      queryClient.invalidateQueries({ queryKey: ['bot-status'] })
-    },
-  })
-}
-
 export function useBotSchedules() {
   return useQuery({
     queryKey: ['bot-schedules'],

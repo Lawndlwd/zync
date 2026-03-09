@@ -25,7 +25,7 @@ import { getChannelManager } from './channels/manager.js'
 import { handleMessage } from './agent/loop.js'
 import { startUsageTracker } from './opencode/client.js'
 import { insertLLMCall, extractUsageFromSession } from './bot/memory/activity.js'
-import { getDb } from './bot/memory/db.js'
+import { getBrainDb as getDb } from './memory/brain-db.js'
 import { initTodosTable } from './mcp-server/tools/todos.js'
 import { scheduleBriefings } from './proactive/briefing.js'
 import { jobsRouter } from './routes/jobs.js'
@@ -52,6 +52,9 @@ import { logger } from './lib/logger.js'
 import { getSecret } from './secrets/index.js'
 import { getConfig } from './config/index.js'
 import { migrateJsonConfigs } from './config/migrate.js'
+import { initBrainDb } from './memory/brain-db.js'
+import { migrateToBrain } from './memory/migrate-brain.js'
+import { memoryRouter } from './routes/memory.js'
 
 config()
 
@@ -120,6 +123,7 @@ app.use('/api/jobs', jobsRouter)
 app.use('/api/social', socialRouter)
 app.use('/api/telegram', telegramRouter)
 app.use('/api/widgets', widgetsRouter)
+app.use('/api/memory', memoryRouter)
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -142,6 +146,8 @@ process.on('SIGINT', () => stopWakeWordServer())
 
 // Initialize databases
 initDb()
+initBrainDb()
+migrateToBrain()
 initTodosTable()
 initHeartbeat()
 initJobsDb()

@@ -5,7 +5,6 @@ import { errorResponse } from '../lib/errors.js'
 import {
   GmailReplySchema,
   BriefingTriggerSchema,
-  MemoryCreateSchema,
   ScheduleCreateSchema,
   BotChatSchema,
   TelegramConfigSchema,
@@ -14,7 +13,7 @@ import {
 } from '@zync/shared/schemas'
 import { getSecret, getSecrets } from '../secrets/index.js'
 import { getConfig, getConfigService } from '../config/index.js'
-import { searchMemory, saveMemory, deleteMemory, listAllMemories, getMemoryCount } from '../bot/memory/index.js'
+import { getMemoryCount } from '../memory/memories.js'
 import { getAllSchedules } from '../bot/heartbeat/db.js'
 import { addSchedule, adminRemoveSchedule, adminToggleSchedule } from '../bot/heartbeat/scheduler.js'
 import { getOrCreateSession } from '../opencode/client.js'
@@ -667,45 +666,7 @@ botRouter.get('/recommendations', (_req, res) => {
   }
 })
 
-// GET /api/bot/memories?q=&limit=50
-botRouter.get('/memories', (req, res) => {
-  try {
-    const query = req.query.q as string | undefined
-    const limit = parseInt(req.query.limit as string) || 50
-
-    if (query && query.trim()) {
-      const results = searchMemory(query.trim(), limit)
-      res.json(results)
-    } else {
-      const results = listAllMemories(limit)
-      res.json(results)
-    }
-  } catch (err) {
-    errorResponse(res, err)
-  }
-})
-
-// POST /api/bot/memories
-botRouter.post('/memories', validate(MemoryCreateSchema), (req, res) => {
-  try {
-    const { content, category } = req.body
-    const result = saveMemory(content, category || 'general')
-    res.json(result)
-  } catch (err) {
-    errorResponse(res, err)
-  }
-})
-
-// DELETE /api/bot/memories/:id
-botRouter.delete('/memories/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id)
-    const success = deleteMemory(id)
-    res.json({ success })
-  } catch (err) {
-    errorResponse(res, err)
-  }
-})
+// Memory routes moved to /api/memory (see routes/memory.ts)
 
 // GET /api/bot/schedules
 botRouter.get('/schedules', (_req, res) => {

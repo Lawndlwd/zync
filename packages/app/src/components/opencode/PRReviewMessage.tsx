@@ -17,6 +17,20 @@ import { useState } from 'react'
 import { MarkdownContent } from '@/components/ui/markdown'
 import type { PRAgentResult, PRAgentItem } from '@/store/pr-agent'
 
+/** Render content that may contain HTML tags or plain markdown */
+function RichContent({ children, className }: { children: string; className?: string }) {
+  const hasHtml = /<[a-z][\s\S]*>/i.test(children)
+  if (hasHtml) {
+    return (
+      <div
+        className={cn('pr-review-html', className)}
+        dangerouslySetInnerHTML={{ __html: children }}
+      />
+    )
+  }
+  return <MarkdownContent raw>{children}</MarkdownContent>
+}
+
 export interface PRReviewState {
   status: string
   provider: 'gitlab' | 'github'
@@ -58,7 +72,7 @@ function ReviewItem({ item }: { item: PRAgentItem }) {
       {open && (
         <div className="px-3 pb-3 pt-0">
           <div className="text-sm text-zinc-300 leading-relaxed">
-            <MarkdownContent raw>{item.body}</MarkdownContent>
+            <RichContent>{item.body}</RichContent>
           </div>
           {item.suggestion && (
             <div className="mt-2 rounded-md bg-zinc-900/60 border border-white/[0.06] px-3 py-2">
@@ -115,6 +129,17 @@ export function PRReviewMessage({ state }: { state: PRReviewState }) {
   const criticalCount = result.items.filter(i => i.severity === 'critical').length
   const warningCount = result.items.filter(i => i.severity === 'warning').length
 
+  // Extract score — from structured JSON field, or parse from rawOutput as fallback
+  const score = result.score ?? (() => {
+    if (!result.rawOutput) return undefined
+    const m = result.rawOutput.match(/Score:\s*(\d+)/)
+    return m ? Number(m[1]) : undefined
+  })()
+
+  const scoreColor = score != null
+    ? score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-amber-400' : 'text-red-400'
+    : ''
+
   return (
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
       {/* Header */}
@@ -126,6 +151,9 @@ export function PRReviewMessage({ state }: { state: PRReviewState }) {
             Code Review — {state.target}
           </p>
           <div className="flex items-center gap-3 mt-0.5">
+            {score != null && (
+              <span className={cn('text-xs font-semibold', scoreColor)}>Score: {score}/100</span>
+            )}
             {criticalCount > 0 && (
               <span className="text-xs text-red-400">{criticalCount} critical</span>
             )}
@@ -141,7 +169,7 @@ export function PRReviewMessage({ state }: { state: PRReviewState }) {
       {result.summary && (
         <div className="px-4 py-3 border-b border-white/[0.05]">
           <div className="text-sm text-zinc-300 leading-relaxed">
-            <MarkdownContent raw>{result.summary}</MarkdownContent>
+            <RichContent>{result.summary}</RichContent>
           </div>
         </div>
       )}
@@ -159,7 +187,7 @@ export function PRReviewMessage({ state }: { state: PRReviewState }) {
       {result.items.length === 0 && result.rawOutput && (
         <div className="px-4 py-3">
           <div className="text-sm text-zinc-300 leading-relaxed">
-            <MarkdownContent raw>{result.rawOutput}</MarkdownContent>
+            <RichContent>{result.rawOutput}</RichContent>
           </div>
         </div>
       )}

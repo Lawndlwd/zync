@@ -10,10 +10,10 @@ const mcpLogger = pino({ level: 'info' }, pino.destination(2))
 // Load .env from project root (server/.env)
 config({ path: resolve(import.meta.dirname, '../../.env') })
 
-// Initialize database before tools that use it
-import { initDb } from '../bot/memory/db.js'
+// Initialize databases before tools that use them
+import { initBrainDb } from '../memory/brain-db.js'
 import { initTodosTable } from './tools/todos.js'
-initDb()
+initBrainDb()
 initTodosTable()
 
 import { getToolGroups, DEFAULT_ENABLED_GROUPS } from './groups.js'

@@ -50,6 +50,14 @@ export async function streamOpenCode(
     if (fullText) {
       finish()
       callbacks.onDone(fullText)
+      // Trigger post-conversation extraction (fire and forget)
+      import('../memory/extractor.js')
+        .then(({ extractFromSession, isExtractionSession }) => {
+          if (!isExtractionSession(sessionId)) {
+            extractFromSession(sessionId)
+          }
+        })
+        .catch(() => {})
       return
     }
 
@@ -79,6 +87,14 @@ export async function streamOpenCode(
 
     finish()
     callbacks.onDone(fullText)
+    // Trigger post-conversation extraction (fire and forget)
+    import('../memory/extractor.js')
+      .then(({ extractFromSession, isExtractionSession }) => {
+        if (!isExtractionSession(sessionId)) {
+          extractFromSession(sessionId)
+        }
+      })
+      .catch(() => {})
   }
 
   const timeout = setTimeout(() => {

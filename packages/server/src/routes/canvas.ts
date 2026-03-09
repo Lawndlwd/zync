@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { renderCanvas, clearCanvas } from '../canvas/renderer.js'
-import { getDb } from '../bot/memory/db.js'
+import { getBrainDb as getDb } from '../memory/brain-db.js'
 import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
 import { validate } from '../lib/validate.js'
 import { errorResponse } from '../lib/errors.js'

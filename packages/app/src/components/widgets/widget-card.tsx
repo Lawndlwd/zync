@@ -91,7 +91,13 @@ function NewsCardContent({ data }: { data: any }) {
         <div key={i} className="flex items-start gap-2">
           <span className="text-[10px] text-zinc-600 mt-0.5 shrink-0">{i + 1}.</span>
           <div className="min-w-0">
-            <p className="text-xs font-medium text-zinc-200 leading-snug truncate cursor-default" title={item.title}>{item.title}</p>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-zinc-200 leading-snug truncate block hover:text-sky-400 transition-colors"
+              title={item.title}
+            >{item.title}</a>
             <p className="text-[10px] text-zinc-600">{item.source} · {item.topic}</p>
           </div>
         </div>
@@ -108,7 +114,13 @@ function FinanceCardContent({ data }: { data: any }) {
       {data.slice(0, 3).map((tip: any, i: number) => (
         <div key={i} className="flex items-start gap-2">
           <span className="rounded-full bg-violet-500/10 text-violet-400 px-1.5 py-0.5 text-[9px] capitalize shrink-0 mt-0.5">{tip.category}</span>
-          <p className="text-xs text-zinc-300 leading-snug truncate cursor-default" title={tip.title}>{tip.title}</p>
+          <a
+            href={tip.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-zinc-300 leading-snug truncate block hover:text-violet-400 transition-colors"
+            title={tip.title}
+          >{tip.title}</a>
         </div>
       ))}
     </div>

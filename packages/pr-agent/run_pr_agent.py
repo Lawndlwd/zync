@@ -86,9 +86,8 @@ async def _patched_chat_completion(self, model, system, user, temperature=0.2, i
         emit("FULL_SYSTEM", system)
         emit("FULL_USER", user)
 
-    # Create a fresh session per LLM call to avoid message confusion
-    session = _oc_request("/session", method="POST", body={"title": "[dashboard] pr-agent-llm"})
-    session_id = session["id"]
+    # Use the dashboard session provided by the server
+    session_id = os.environ["OPENCODE_SESSION_ID"]
 
     structured_suffix = """
 
@@ -96,6 +95,7 @@ IMPORTANT ADDITIONAL INSTRUCTION: After your normal response, you MUST also outp
 {
   "tool": "review" | "describe" | "improve" | "ask",
   "summary": "one-line summary of the result",
+  "score": 85,
   "items": [
     {
       "severity": "critical" | "warning" | "suggestion" | "info",
@@ -109,6 +109,7 @@ IMPORTANT ADDITIONAL INSTRUCTION: After your normal response, you MUST also outp
 }
 Rules for the JSON:
 - "tool" must match the current operation (review/describe/improve/ask)
+- "score" is the overall PR quality score from 0–100 (for /review). Omit for other tools.
 - Every piece of feedback becomes an item
 - For /review: map severity ("Major" → "critical", "Medium" → "warning", "Minor/Low" → "suggestion")
 - For /improve: each suggestion is an item with severity "suggestion", include file/line
@@ -167,9 +168,8 @@ LiteLLMAIHandler.chat_completion = _patched_chat_completion
 
 # ── Monkey-patch GitLab provider to stream output ──
 
-from pr_agent.git_providers import gitlab_provider
+from pr_agent.git_providers import gitlab_provider, github_provider
 from pr_agent.git_providers import _GIT_PROVIDERS
-_OriginalProvider = gitlab_provider.GitLabProvider
 
 captured_output: list[str] = []
 
@@ -178,57 +178,72 @@ def _capture_and_stream(text: str):
     emit("CHUNK", text)
 
 
-class CapturingGitLabProvider(_OriginalProvider):
-    def publish_comment(self, mr_comment, is_temporary=False):
-        if is_temporary:
-            return
-        # Skip progress/loading comments (e.g. "Work in progress ..." with gif)
-        if "Work in progress" in mr_comment and "loading" in mr_comment:
-            self._progress_comment = mr_comment  # store ref so remove_initial_comment works
-            return
-        _capture_and_stream(mr_comment)
+def _make_capturing_provider(base_class):
+    """Create a capturing provider that intercepts publish calls and streams output."""
+    class CapturingProvider(base_class):
+        def publish_comment(self, comment, is_temporary=False):
+            if is_temporary:
+                return
+            if "Work in progress" in comment and "loading" in comment:
+                self._progress_comment = comment
+                return
+            _capture_and_stream(comment)
 
-    def publish_persistent_comment(self, pr_comment, **kwargs):
-        _capture_and_stream(pr_comment)
+        def publish_persistent_comment(self, comment, **kwargs):
+            _capture_and_stream(comment)
 
-    def publish_description(self, pr_title, pr_body):
-        _capture_and_stream(f"# {pr_title}\n\n{pr_body}")
+        def publish_persistent_comment_full(self, comment, **kwargs):
+            _capture_and_stream(comment)
 
-    def publish_inline_comment(self, body, relevant_file, relevant_line_in_file, original_suggestion=None):
-        _capture_and_stream(f"**{relevant_file}:{relevant_line_in_file}**\n{body}")
+        def publish_description(self, pr_title, pr_body):
+            _capture_and_stream(f"# {pr_title}\n\n{pr_body}")
 
-    def publish_code_suggestions(self, code_suggestions):
-        for s in code_suggestions:
-            body = s.get("body", "")
-            path = s.get("relevant_file", "")
-            _capture_and_stream(f"**{path}**\n{body}")
-        return True
+        def publish_inline_comment(self, body, relevant_file, relevant_line_in_file, original_suggestion=None):
+            _capture_and_stream(f"**{relevant_file}:{relevant_line_in_file}**\n{body}")
 
-    def publish_file_comments(self, file_comments):
-        for c in file_comments:
-            body = c.get("body", "")
-            path = c.get("relevant_file", "")
-            _capture_and_stream(f"**{path}**\n{body}")
-        return True
+        def publish_code_suggestions(self, code_suggestions):
+            for s in code_suggestions:
+                body = s.get("body", "")
+                path = s.get("relevant_file", "")
+                _capture_and_stream(f"**{path}**\n{body}")
+            return True
 
-    def publish_labels(self, pr_types):
-        pass
+        def publish_file_comments(self, file_comments):
+            for c in file_comments:
+                body = c.get("body", "")
+                path = c.get("relevant_file", "")
+                _capture_and_stream(f"**{path}**\n{body}")
+            return True
 
-    def publish_inline_comments(self, comments):
-        for c in comments:
-            body = c.get("body", "")
-            path = c.get("relevant_file", c.get("path", ""))
-            _capture_and_stream(f"**{path}**\n{body}")
+        def publish_labels(self, pr_types):
+            pass
 
-    def remove_initial_comment(self):
-        pass
+        def publish_inline_comments(self, comments):
+            for c in comments:
+                body = c.get("body", "")
+                path = c.get("relevant_file", c.get("path", ""))
+                _capture_and_stream(f"**{path}**\n{body}")
 
-    def remove_comment(self, comment):
-        pass
+        def remove_initial_comment(self):
+            pass
+
+        def remove_comment(self, comment):
+            pass
+
+        def remove_reaction(self, *args, **kwargs):
+            pass
+
+    CapturingProvider.__name__ = f"Capturing{base_class.__name__}"
+    return CapturingProvider
 
 
+CapturingGitLabProvider = _make_capturing_provider(gitlab_provider.GitLabProvider)
 gitlab_provider.GitLabProvider = CapturingGitLabProvider
 _GIT_PROVIDERS["gitlab"] = CapturingGitLabProvider
+
+CapturingGithubProvider = _make_capturing_provider(github_provider.GithubProvider)
+github_provider.GithubProvider = CapturingGithubProvider
+_GIT_PROVIDERS["github"] = CapturingGithubProvider
 
 
 async def main():

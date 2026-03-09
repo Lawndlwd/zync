@@ -1,6 +1,7 @@
 export interface SetupStatus {
   initialized: boolean
   vaultStatus: 'available' | 'uninitialized'
+  hasPin: boolean
   requiredSteps: string[]
   configuredIntegrations: Record<string, boolean>
   configuredSettings: Record<string, boolean>

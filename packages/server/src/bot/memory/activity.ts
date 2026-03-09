@@ -1,4 +1,4 @@
-import { getDb } from './db.js'
+import { getBrainDb as getDb } from '../../memory/brain-db.js'
 import { getSessionMessages } from '../../opencode/client.js'
 
 export interface LLMCallRecord {

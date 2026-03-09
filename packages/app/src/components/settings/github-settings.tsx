@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSettingsStore } from '@/store/settings'
 import { fetchServerSettings } from '@/services/settings'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,7 +8,7 @@ import { Save, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { SettingField } from './setting-field'
 
-export function GitHubSettingsCard({ envConfig }: { envConfig: Awaited<ReturnType<typeof fetchServerSettings>> | null }) {
+export function GitHubSettingsContent({ envConfig }: { envConfig: Awaited<ReturnType<typeof fetchServerSettings>> | null }) {
   const { settings, updateGithub } = useSettingsStore()
   const [baseUrl, setBaseUrl] = useState(settings.github.baseUrl)
   const [pat, setPat] = useState(settings.github.pat)
@@ -86,11 +85,7 @@ export function GitHubSettingsCard({ envConfig }: { envConfig: Awaited<ReturnTyp
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>GitHub Configuration</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <SettingField
             label="Base URL"
@@ -182,7 +177,6 @@ export function GitHubSettingsCard({ envConfig }: { envConfig: Awaited<ReturnTyp
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

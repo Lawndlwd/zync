@@ -3,7 +3,7 @@ import { getSecret } from '../../secrets/index.js'
 import { getConfig } from '../../config/index.js'
 
 function getGitlabConfig() {
-  const baseUrl = getSecret('GITLAB_BASE_URL') || getConfig('GITLAB_BASE_URL')
+  const baseUrl = getConfig('GITLAB_BASE_URL')
   const pat = getSecret('GITLAB_PAT')
   if (!baseUrl || !pat) {
     throw new Error('GitLab not configured. Add GITLAB_BASE_URL and GITLAB_PAT in Settings > Integrations > GitLab or the Vault.')

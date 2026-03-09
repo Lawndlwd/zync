@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useSettingsStore } from '@/store/settings'
 import { fetchServerSettings } from '@/services/settings'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { SettingField } from './setting-field'
 
-export function LinearSettingsCard({ envConfig }: { envConfig: Awaited<ReturnType<typeof fetchServerSettings>> | null }) {
+export function LinearSettingsContent({ envConfig }: { envConfig: Awaited<ReturnType<typeof fetchServerSettings>> | null }) {
   const { settings, updateLinear } = useSettingsStore()
   const [apiKey, setApiKey] = useState(settings.linear.apiKey)
   const [testResult, setTestResult] = useState<{ ok: boolean; name?: string; error?: string } | null>(null)
@@ -62,11 +61,7 @@ export function LinearSettingsCard({ envConfig }: { envConfig: Awaited<ReturnTyp
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Linear Configuration</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <SettingField
             label="API Key"
@@ -100,7 +95,6 @@ export function LinearSettingsCard({ envConfig }: { envConfig: Awaited<ReturnTyp
             <Badge variant="danger">Failed: {testResult.error}</Badge>
           )}
         </div>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

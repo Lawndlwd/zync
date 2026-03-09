@@ -4,6 +4,7 @@ import { logger } from '../../lib/logger.js'
 
 export interface FinanceTip {
   title: string
+  url: string
   category: string
 }
 
@@ -12,17 +13,14 @@ const SESSION_PURPOSE = 'widget-finance'
 export async function fetchFinanceTips(focus: string[]): Promise<FinanceTip[]> {
   const sessionId = await getOrCreateSession(SESSION_PURPOSE)
   const today = new Date().toISOString().split('T')[0]
-  const prompt = `Today is ${today}. Give me exactly 3 of the most trending financial insights right now for: ${focus.join(', ')}.
+  const prompt = `Today is ${today}. Give me 3 financial insights for: ${focus.join(', ')}.
 
-Rules:
-- Only the top 3 most relevant/actionable insights
-- Each title must be under 60 characters — short, punchy, like a headline
-- No explanations, no paragraphs
+You may use WebFetch ONCE to get insights. No other tools — no Bash, no Read, no Grep, no Glob, no Agent, no Skill, no Edit, no Write. Maximum 1 WebFetch call, then immediately return the JSON.
 
-Return ONLY a JSON array:
-[{"title":"...","category":"..."}]`
+Return ONLY this JSON array:
+[{"title":"...","url":"https://...","category":"..."}]`
 
-  const response = await waitForResponse(sessionId, prompt, { timeoutMs: 60_000 })
+  const response = await waitForResponse(sessionId, prompt, { timeoutMs: 30_000 })
 
   try {
     const match = response.match(/\[[\s\S]*\]/)

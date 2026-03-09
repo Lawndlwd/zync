@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getDb } from '../../bot/memory/db.js'
+import { getBrainDb as getDb } from '../../memory/brain-db.js'
 import { getGmailClient } from './google-auth.js'
 
 function decodeBody(payload: any): string {

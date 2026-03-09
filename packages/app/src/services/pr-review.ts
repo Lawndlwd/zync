@@ -10,6 +10,7 @@ export interface ParsedReviewCommand {
  */
 export function runPRReview(
   cmd: ParsedReviewCommand,
+  sessionId: string,
   onStatus: (status: string) => void,
   onResult: (result: PRAgentResult) => void,
   onError: (error: string) => void,
@@ -25,6 +26,7 @@ export function runPRReview(
         body: JSON.stringify({
           tool: 'review',
           mrUrl,
+          sessionId,
         }),
         signal: controller.signal,
       })

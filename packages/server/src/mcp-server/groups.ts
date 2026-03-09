@@ -8,6 +8,8 @@ import {
   deleteTodo, deleteTodoSchema,
 } from './tools/todos.js'
 import {
+  updateProfileHandler, updateProfileSchema,
+  saveInstructionHandler, saveInstructionSchema,
   saveMemoryHandler, saveMemorySchema,
   searchMemoryHandler, searchMemorySchema,
   deleteMemoryHandler, deleteMemorySchema,
@@ -169,22 +171,34 @@ export function getToolGroups(): ToolGroup[] {
           schema: deleteTodoSchema.shape,
           handler: (args) => deleteTodo(args),
         },
-        // Memory (3)
+        // Memory & Learning (5)
         {
-          name: 'remember',
-          description: 'Save a piece of information to long-term memory. Use categories like: preference, fact, project, person, decision.',
+          name: 'update_profile',
+          description: 'PREFERRED tool for personal info. Update user profile section: identity (name, job, company), technical (skills, languages), interests (hobbies), communication (tone prefs), work_patterns (schedule). Use this instead of save_memory for anything about the user.',
+          schema: updateProfileSchema.shape,
+          handler: (args) => updateProfileHandler(args),
+        },
+        {
+          name: 'save_instruction',
+          description: 'Save a rule the user wants you to follow. Use when user says "remember to always X" or "never do Y".',
+          schema: saveInstructionSchema.shape,
+          handler: (args) => saveInstructionHandler(args),
+        },
+        {
+          name: 'save_memory',
+          description: 'Save a fact or context that does NOT fit in profile sections. Use for project details, one-off facts, external context. Do NOT use for personal info like name/job/skills — use update_profile instead.',
           schema: saveMemorySchema.shape,
           handler: (args) => saveMemoryHandler(args),
         },
         {
           name: 'recall',
-          description: 'Search your long-term memory for relevant information. Uses full-text search.',
+          description: 'Search memories for relevant information. Uses hybrid keyword + semantic search.',
           schema: searchMemorySchema.shape,
           handler: (args) => searchMemoryHandler(args),
         },
         {
           name: 'forget',
-          description: 'Delete a specific memory by its ID.',
+          description: 'Delete a memory or instruction by ID.',
           schema: deleteMemorySchema.shape,
           handler: (args) => deleteMemoryHandler(args),
         },

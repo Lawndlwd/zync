@@ -1,6 +1,6 @@
 import * as cron from 'node-cron'
 import { logger } from '../lib/logger.js'
-import { getConfig } from '../config/index.js'
+import { getConfig, getConfigService } from '../config/index.js'
 import { getSecret, getSecrets } from '../secrets/index.js'
 import { syncAllPlatforms } from './scrapers/index.js'
 import { getScheduledPostsDue, updatePostStatus } from './db.js'
@@ -37,7 +37,7 @@ export function stopSocialSync(): void {
 
 async function maybeRefreshInstagramToken(): Promise<void> {
   try {
-    const expires = getSecret('SOCIAL_INSTAGRAM_TOKEN_EXPIRES')
+    const expires = getConfig('SOCIAL_INSTAGRAM_TOKEN_EXPIRES')
     if (!expires) return
 
     const expiresAt = new Date(expires)
@@ -57,7 +57,8 @@ async function maybeRefreshInstagramToken(): Promise<void> {
     if (secretsSvc) {
       secretsSvc.set('SOCIAL_INSTAGRAM_ACCESS_TOKEN', result.access_token, 'social')
       const newExpiry = new Date(Date.now() + result.expires_in * 1000).toISOString()
-      secretsSvc.set('SOCIAL_INSTAGRAM_TOKEN_EXPIRES', newExpiry, 'social')
+      const configSvc = getConfigService()
+      configSvc?.set('SOCIAL_INSTAGRAM_TOKEN_EXPIRES', newExpiry, 'social')
       logger.info({ daysUntilExpiry: Math.round(daysUntilExpiry) }, 'Instagram token refreshed')
     }
   } catch (err) {

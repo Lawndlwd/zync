@@ -14,6 +14,8 @@ import {
   Send,
 } from 'lucide-react'
 import { MarkdownContent } from '@/components/ui/markdown'
+import { PRReviewMessage, type PRReviewState } from './PRReviewMessage'
+import type { PRAgentResult } from '@/store/pr-agent'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -343,6 +345,52 @@ export function MessageBubble({
     .filter((p) => p.type === 'text')
     .map((p) => (p as { type: 'text'; text: string }).text)
     .join('')
+
+  // Detect PR-Agent prompt in user message — collapse it
+  const isPRAgentPrompt = textContent.startsWith('<system>\nYou are PR-Reviewer')
+
+  // Detect structured_json in assistant message — render as review component
+  const structuredJsonMatch = !isUser ? textContent.match(/<structured_json>([\s\S]*?)<\/structured_json>/) : null
+  let parsedReview: PRAgentResult | null = null
+  if (structuredJsonMatch) {
+    try {
+      parsedReview = JSON.parse(structuredJsonMatch[1].trim())
+    } catch { /* ignore parse errors */ }
+  }
+
+  // PR-Agent assistant response → render with PRReviewMessage
+  if (parsedReview && !isUser) {
+    const reviewState: PRReviewState = {
+      status: 'Done',
+      provider: 'gitlab',
+      target: '',
+      result: parsedReview,
+      error: null,
+    }
+    return (
+      <div className="py-2">
+        <PRReviewMessage state={reviewState} />
+      </div>
+    )
+  }
+
+  // PR-Agent user prompt → collapse to short label
+  if (isPRAgentPrompt && isUser) {
+    // Extract PR title from the prompt if available
+    const titleMatch = textContent.match(/Title:\s*'([^']+)'/)
+    return (
+      <div className="group/msg flex items-start gap-3 py-2">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/15 mt-0.5">
+          <User size={13} className="text-violet-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-zinc-400">
+            /review {titleMatch ? titleMatch[1] : 'merge request'}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   // User message — simple line with icon, no bubble
   if (isUser) {

@@ -85,7 +85,7 @@ function TelegramExtendedConfig() {
   )
 }
 
-function TelegramConfig({ connected }: { connected: boolean }) {
+export function TelegramConfig({ connected }: { connected: boolean }) {
   const { data: cfg } = useChannelConfig()
   const saveConfig = useSaveChannelConfig()
   const connect = useConnectChannel()
@@ -161,7 +161,7 @@ function TelegramConfig({ connected }: { connected: boolean }) {
   )
 }
 
-function WhatsAppConfig({ connected: connectedProp, connectionState }: { connected: boolean; connectionState: string }) {
+export function WhatsAppConfig({ connected: connectedProp, connectionState }: { connected: boolean; connectionState: string }) {
   const queryClient = useQueryClient()
   const { data: cfg } = useChannelConfig()
   const saveConfig = useSaveChannelConfig()
@@ -316,7 +316,7 @@ const GOOGLE_SERVICES = [
   { id: 'tasks', label: 'Tasks', api: 'Tasks API' },
 ]
 
-function GmailConfig({ connected }: { connected: boolean }) {
+export function GmailConfig({ connected }: { connected: boolean }) {
   const queryClient = useQueryClient()
   const { data: cfg } = useChannelConfig()
   const saveConfig = useSaveChannelConfig()
