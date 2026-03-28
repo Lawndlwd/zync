@@ -1,0 +1,56 @@
+{
+  "name": "@zync/server",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "zync-mcp": "./src/mcp-server/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --ignore './data/**' src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "secrets:migrate": "tsx src/secrets/migrate.ts",
+    "mcp": "tsx src/mcp-server/index.ts"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@zync/shared": "workspace:*",
+    "baileys": "7.0.0-rc.9",
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.6",
+    "crawlee": "^3.16.0",
+    "dotenv": "^17.3.1",
+    "eventsource": "^4.1.0",
+    "express": "^5.2.1",
+    "googleapis": "^171.4.0",
+    "grammy": "^1.41.0",
+    "gray-matter": "^4.0.3",
+    "heic-convert": "^2.1.0",
+    "multer": "^2.1.0",
+    "node-cron": "^4.2.1",
+    "pdf-parse": "^2.4.5",
+    "pino": "^9.0.0",
+    "pino-pretty": "^13.0.0",
+    "playwright": "^1.58.2",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
+    "ws": "^8.19.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.5.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/qrcode": "^1.5.6",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3"
+  }
+}
