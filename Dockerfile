@@ -32,7 +32,7 @@ FROM base AS build-production
 RUN pnpm --filter @zync/app build
 RUN pnpm --filter @zync/server build
 # Create self-contained deployment with resolved dependencies (no symlinks)
-RUN pnpm --filter @zync/server deploy /app/server-deploy
+RUN pnpm --filter @zync/server deploy --legacy /app/server-deploy
 
 # ── Production: slim runtime ──
 FROM node:20-bookworm-slim AS production
