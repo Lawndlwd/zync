@@ -46,16 +46,14 @@ services:
     restart: unless-stopped
 
   opencode:
-    build:
-      context: .
-      dockerfile: packages/opencode/Dockerfile
+    image: ghcr.io/lawndlwd/zync-opencode:latest
     expose:
       - "4096"
     env_file:
       - path: .env
         required: false
     environment:
-      - CORS_ORIGINS=http://app:3001,http://localhost:3001
+      - CORS_ORIGINS=${OPENCODE_CORS:-http://app:3001,http://localhost:3001}
       - OPENCODE_LOG_LEVEL=${OPENCODE_LOG_LEVEL:-INFO}
     volumes:
       - zync-data:/app/packages/server/data
