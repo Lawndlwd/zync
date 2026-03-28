@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim
+FROM node:24-bookworm-slim
 
 ARG OPENCODE_VERSION=1.3.3
 ARG TARGETARCH

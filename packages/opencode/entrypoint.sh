@@ -10,9 +10,9 @@ if [ -f "/config/opencode.json" ]; then
   cp /config/opencode.json "$CONFIG_DIR/opencode.json"
 else
   # Generate a minimal global config with the MCP server pointing to container paths
-  cat > "$CONFIG_DIR/opencode.json" <<'JSONEOF'
+  cat > "$CONFIG_DIR/opencode.json" <<JSONEOF
 {
-  "$schema": "https://opencode.ai/config.json",
+  "\$schema": "https://opencode.ai/config.json",
   "permission": {
     "*": "allow",
     "*.env": "deny",
@@ -23,7 +23,9 @@ else
       "type": "local",
       "command": ["node", "/app/packages/server/dist/mcp-server/index.js"],
       "environment": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "DOCUMENTS_PATH": "${DOCUMENTS_PATH:-/app/documents}",
+        "MCP_ENABLED_GROUPS": "${MCP_ENABLED_GROUPS:-}"
       },
       "enabled": true
     }

@@ -1,7 +1,7 @@
 ARG MODE=production
 
 # ── Base: install all dependencies ──
-FROM node:20-bookworm-slim AS base
+FROM node:24-bookworm-slim AS base
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-venv make g++ procps git \
     && rm -rf /var/lib/apt/lists/*
@@ -36,7 +36,7 @@ RUN pnpm --filter @zync/server build
 RUN pnpm --filter @zync/server deploy --legacy /app/server-deploy
 
 # ── Production: slim runtime ──
-FROM node:20-bookworm-slim AS production
+FROM node:24-bookworm-slim AS production
 RUN apt-get update && apt-get install -y --no-install-recommends procps python3 git && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/packages/server
 RUN corepack enable pnpm

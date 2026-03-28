@@ -55,8 +55,10 @@ services:
     environment:
       - CORS_ORIGINS=${OPENCODE_CORS:-http://app:3001,http://localhost:3001}
       - OPENCODE_LOG_LEVEL=${OPENCODE_LOG_LEVEL:-INFO}
+      - DOCUMENTS_PATH=/app/documents
     volumes:
       - zync-data:/app/packages/server/data
+      - zync-documents:/app/documents
       - opencode-data:/home/node/.local/share/opencode
       # Mount your opencode config with provider keys
       # - ./opencode-config.json:/config/opencode.json:ro

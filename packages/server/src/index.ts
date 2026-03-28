@@ -123,6 +123,29 @@ app.use(
     changeOrigin: true,
     pathRewrite: { '^/opencode': '' },
     ws: true,
+    timeout: 180_000,
+    proxyTimeout: 180_000,
+    on: {
+      proxyReq: (proxyReq) => {
+        // Strip browser Origin header so opencode CORS doesn't reject proxied requests
+        proxyReq.removeHeader('origin')
+      },
+      proxyRes: (proxyRes, req, res) => {
+        // Disable buffering for SSE endpoints
+        if (req.url?.includes('/event') || proxyRes.headers['content-type']?.includes('text/event-stream')) {
+          ;(res as import('http').ServerResponse).setHeader('X-Accel-Buffering', 'no')
+          ;(res as import('http').ServerResponse).setHeader('Cache-Control', 'no-cache')
+        }
+      },
+      error: (err, req, res) => {
+        logger.error({ err, url: (req as import('http').IncomingMessage).url }, 'OpenCode proxy error')
+        const response = res as import('http').ServerResponse
+        if (!response.headersSent) {
+          response.writeHead(502, { 'Content-Type': 'application/json' })
+          response.end(JSON.stringify({ error: 'OpenCode service unavailable' }))
+        }
+      },
+    },
   }),
 )
 

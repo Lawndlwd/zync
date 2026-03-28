@@ -1,7 +1,7 @@
 ARG MODE=production
 
 # ── Shared base: install deps ──
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 WORKDIR /app
 RUN corepack enable pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

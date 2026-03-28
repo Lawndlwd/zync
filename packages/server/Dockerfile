@@ -1,7 +1,7 @@
 ARG MODE=production
 
 # ── Shared base: install deps + native modules ──
-FROM node:20-bookworm-slim AS base
+FROM node:24-bookworm-slim AS base
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv make g++ procps git && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN corepack enable pnpm
@@ -20,7 +20,7 @@ ENV DOCUMENTS_PATH=/app/documents
 FROM base AS build-production
 RUN pnpm --filter @zync/server build
 
-FROM node:20-bookworm-slim AS production
+FROM node:24-bookworm-slim AS production
 RUN apt-get update && apt-get install -y --no-install-recommends procps python3 git && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/packages/server
 RUN corepack enable pnpm
