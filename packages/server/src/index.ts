@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path'
 import cors from 'cors'
 import { config } from 'dotenv'
 import express from 'express'
+import { createProxyMiddleware } from 'http-proxy-middleware'
 import { handleMessage } from './agent/loop.js'
 import { initDb, initHeartbeat } from './bot/index.js'
 import { extractUsageFromSession, insertLLMCall } from './bot/memory/activity.js'
@@ -112,6 +113,18 @@ app.use('/api/telegram', telegramRouter)
 app.use('/api/widgets', widgetsRouter)
 app.use('/api/memory', memoryRouter)
 app.use('/api/planner', plannerRouter)
+
+// Proxy /opencode/* to the OpenCode server (strips the /opencode prefix)
+const opencodeUrl = getConfig('OPENCODE_URL', 'http://localhost:4096') || 'http://localhost:4096'
+app.use(
+  '/opencode',
+  createProxyMiddleware({
+    target: opencodeUrl,
+    changeOrigin: true,
+    pathRewrite: { '^/opencode': '' },
+    ws: true,
+  }),
+)
 
 // In production, serve the built React frontend
 if (process.env.NODE_ENV === 'production') {

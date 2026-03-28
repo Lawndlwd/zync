@@ -8,6 +8,7 @@ services:
     environment:
       - NODE_ENV=production
       - WHISPER_SERVICE_URL=http://whisper:9100
+      - OPENCODE_URL=http://opencode:4096
     volumes:
       - zync-data:/app/packages/server/data
       - zync-documents:/app/documents
@@ -44,6 +45,26 @@ services:
       - WAKEWORD_THRESHOLD=${WAKEWORD_THRESHOLD:-0.5}
     restart: unless-stopped
 
+  opencode:
+    build:
+      context: .
+      dockerfile: packages/opencode/Dockerfile
+    expose:
+      - "4096"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - CORS_ORIGINS=http://app:3001,http://localhost:3001
+      - OPENCODE_LOG_LEVEL=${OPENCODE_LOG_LEVEL:-INFO}
+    volumes:
+      - zync-data:/app/packages/server/data
+      - opencode-data:/home/node/.local/share/opencode
+      # Mount your opencode config with provider keys
+      # - ./opencode-config.json:/config/opencode.json:ro
+    restart: unless-stopped
+
 volumes:
   zync-data:
   zync-documents:
+  opencode-data:

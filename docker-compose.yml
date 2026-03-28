@@ -18,7 +18,7 @@ services:
     environment:
       - VITE_BACKEND_URL=http://backend:3001
       - VITE_WAKEWORD_URL=ws://wakeword:9000
-      - VITE_OPENCODE_URL=http://host.docker.internal:4096
+      - VITE_OPENCODE_URL=http://opencode:4096
     depends_on:
       - backend
     restart: unless-stopped
@@ -38,7 +38,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       - NODE_ENV=development
-      - OPENCODE_URL=http://host.docker.internal:4096
+      - OPENCODE_URL=http://opencode:4096
       - WHISPER_SERVICE_URL=http://whisper:9100
     volumes:
       - ./packages/server/src:/app/packages/server/src
@@ -83,3 +83,25 @@ services:
       - WAKEWORD_MODEL=${WAKEWORD_MODEL:-hey_jarvis}
       - WAKEWORD_THRESHOLD=${WAKEWORD_THRESHOLD:-0.5}
     restart: unless-stopped
+
+  opencode:
+    build:
+      context: .
+      dockerfile: packages/opencode/Dockerfile
+    ports:
+      - "4096:4096"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - CORS_ORIGINS=http://frontend:5173,http://localhost:5173,http://backend:3001
+      - OPENCODE_LOG_LEVEL=${OPENCODE_LOG_LEVEL:-INFO}
+    volumes:
+      - ./packages/server/data:/app/packages/server/data
+      - opencode-data:/home/node/.local/share/opencode
+      # Mount your opencode config with provider keys (optional)
+      # - ~/.config/opencode/opencode.json:/config/opencode.json:ro
+    restart: unless-stopped
+
+volumes:
+  opencode-data:
