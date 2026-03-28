@@ -31,6 +31,8 @@ ENV DOCUMENTS_PATH=/app/documents
 FROM base AS build-production
 RUN pnpm --filter @zync/app build
 RUN pnpm --filter @zync/server build
+# Create self-contained deployment with resolved dependencies (no symlinks)
+RUN pnpm --filter @zync/server deploy /app/server-deploy
 
 # ── Production: slim runtime ──
 FROM node:20-bookworm-slim AS production
@@ -38,10 +40,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends procps python3 
 WORKDIR /app/packages/server
 RUN corepack enable pnpm
 
-# Compiled server
+# Compiled server (deploy bundle has real node_modules, not pnpm symlinks)
+COPY --from=build-production /app/server-deploy/node_modules ./node_modules
+COPY --from=build-production /app/server-deploy/package.json ./
 COPY --from=build-production /app/packages/server/dist ./dist
-COPY --from=build-production /app/packages/server/node_modules ./node_modules
-COPY --from=build-production /app/packages/server/package.json ./
 
 # Built frontend (served by Express in production)
 COPY --from=build-production /app/packages/app/dist /app/packages/app/dist
