@@ -37,8 +37,9 @@ RUN mkdir -p /home/node/.config/opencode /home/node/.local/share/opencode \
     /app/packages/server/data && \
     chown -R node:node /home/node /app/packages/server/data
 
-# Copy the project-level opencode.json
-COPY opencode.json ./
+# Generate a production-safe project-level opencode.json
+# (The repo's opencode.json uses pnpm which doesn't work in the container)
+RUN echo '{"$schema":"https://opencode.ai/config.json","mcp":{}}' > opencode.json
 
 # Entrypoint script that generates config and starts opencode serve
 COPY packages/opencode/entrypoint.sh /entrypoint.sh

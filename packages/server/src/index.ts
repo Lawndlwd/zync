@@ -78,6 +78,43 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 app.use(cors())
+
+// Proxy /opencode/* BEFORE body parsers — express.json() consumes the raw stream,
+// which causes http-proxy-middleware to forward an empty body (POST hangs forever).
+const opencodeUrl = getConfig('OPENCODE_URL', 'http://localhost:4096') || 'http://localhost:4096'
+app.use(
+  '/opencode',
+  createProxyMiddleware({
+    target: opencodeUrl,
+    changeOrigin: true,
+    pathRewrite: { '^/opencode': '' },
+    ws: true,
+    timeout: 180_000,
+    proxyTimeout: 180_000,
+    on: {
+      proxyReq: (proxyReq) => {
+        // Strip browser Origin header so opencode CORS doesn't reject proxied requests
+        proxyReq.removeHeader('origin')
+      },
+      proxyRes: (proxyRes, req, res) => {
+        // Disable buffering for SSE endpoints
+        if (req.url?.includes('/event') || proxyRes.headers['content-type']?.includes('text/event-stream')) {
+          ;(res as import('http').ServerResponse).setHeader('X-Accel-Buffering', 'no')
+          ;(res as import('http').ServerResponse).setHeader('Cache-Control', 'no-cache')
+        }
+      },
+      error: (err, req, res) => {
+        logger.error({ err, url: (req as import('http').IncomingMessage).url }, 'OpenCode proxy error')
+        const response = res as import('http').ServerResponse
+        if (!response.headersSent) {
+          response.writeHead(502, { 'Content-Type': 'application/json' })
+          response.end(JSON.stringify({ error: 'OpenCode service unavailable' }))
+        }
+      },
+    },
+  }),
+)
+
 app.use(express.json({ limit: '1mb' }))
 
 // Request logging
@@ -113,41 +150,6 @@ app.use('/api/telegram', telegramRouter)
 app.use('/api/widgets', widgetsRouter)
 app.use('/api/memory', memoryRouter)
 app.use('/api/planner', plannerRouter)
-
-// Proxy /opencode/* to the OpenCode server (strips the /opencode prefix)
-const opencodeUrl = getConfig('OPENCODE_URL', 'http://localhost:4096') || 'http://localhost:4096'
-app.use(
-  '/opencode',
-  createProxyMiddleware({
-    target: opencodeUrl,
-    changeOrigin: true,
-    pathRewrite: { '^/opencode': '' },
-    ws: true,
-    timeout: 180_000,
-    proxyTimeout: 180_000,
-    on: {
-      proxyReq: (proxyReq) => {
-        // Strip browser Origin header so opencode CORS doesn't reject proxied requests
-        proxyReq.removeHeader('origin')
-      },
-      proxyRes: (proxyRes, req, res) => {
-        // Disable buffering for SSE endpoints
-        if (req.url?.includes('/event') || proxyRes.headers['content-type']?.includes('text/event-stream')) {
-          ;(res as import('http').ServerResponse).setHeader('X-Accel-Buffering', 'no')
-          ;(res as import('http').ServerResponse).setHeader('Cache-Control', 'no-cache')
-        }
-      },
-      error: (err, req, res) => {
-        logger.error({ err, url: (req as import('http').IncomingMessage).url }, 'OpenCode proxy error')
-        const response = res as import('http').ServerResponse
-        if (!response.headersSent) {
-          response.writeHead(502, { 'Content-Type': 'application/json' })
-          response.end(JSON.stringify({ error: 'OpenCode service unavailable' }))
-        }
-      },
-    },
-  }),
-)
 
 // In production, serve the built React frontend
 if (process.env.NODE_ENV === 'production') {
