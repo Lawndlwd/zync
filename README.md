@@ -36,13 +36,6 @@ This will:
 
 Open **http://localhost** once it's running.
 
-### Enable Voice (optional)
-
-```bash
-cd ~/.zync
-docker compose --profile voice up -d
-```
-
 ### Update
 
 ```bash
@@ -58,8 +51,8 @@ docker compose pull && docker compose up -d
 |----------|------|--------------------------------------|
 | App      | —    | Unified frontend + API server        |
 | Caddy    | 80   | Reverse proxy                        |
-| Whisper  | —    | Voice transcription (voice profile)  |
-| Wakeword | —    | Wake word detection (voice profile)  |
+| Whisper  | —    | Voice transcription                  |
+| Wakeword | —    | Wake word detection                  |
 
 ### Development (`docker-compose.yml`)
 

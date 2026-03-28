@@ -33,10 +33,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
-  # Voice services (optional) — enable with: docker compose --profile voice up -d
   whisper:
     image: ghcr.io/lawndlwd/zync-whisper:latest
-    profiles: ["voice"]
     expose:
       - "9100"
     environment:
@@ -53,7 +51,6 @@ services:
 
   wakeword:
     image: ghcr.io/lawndlwd/zync-wakeword:latest
-    profiles: ["voice"]
     environment:
       - WAKEWORD_PORT=9000
       - WAKEWORD_MODEL=${WAKEWORD_MODEL:-hey_jarvis}
