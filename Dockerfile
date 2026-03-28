@@ -29,6 +29,7 @@ ENV DOCUMENTS_PATH=/app/documents
 
 # ── Build: compile everything ──
 FROM base AS build-production
+RUN pnpm --filter @zync/shared build
 RUN pnpm --filter @zync/app build
 RUN pnpm --filter @zync/server build
 # Create self-contained deployment with resolved dependencies (no symlinks)
