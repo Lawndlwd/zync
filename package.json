@@ -2,16 +2,21 @@
   "name": "zync",
   "private": true,
   "version": "0.0.1",
+  "packageManager": "pnpm@10.29.2",
   "type": "module",
   "scripts": {
     "dev": "turbo dev",
-    "dev:all": "turbo dev --filter=@zync/app --filter=@zync/server",
+    "dev:all": "concurrently -n app,server,whisper,wakeword -c blue,green,yellow,magenta \"turbo dev --filter=@zync/app\" \"turbo dev --filter=@zync/server\" \"cd packages/whisper && pip3 install -q -r requirements.txt && python3 server.py\" \"cd packages/wakeword && pip3 install -q -r requirements.txt && python3 server.py\"",
     "build": "turbo build",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
   },
   "devDependencies": {
-    "turbo": "^2.5.0",
-    "concurrently": "^9.1.0"
+    "@biomejs/biome": "^2.4.9",
+    "concurrently": "^9.1.0",
+    "turbo": "^2.5.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

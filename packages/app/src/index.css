@@ -1,11 +1,71 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-
 @custom-variant dark (&:is(.dark *));
 
+/* BlockSuite editor: light theme */
+html[data-theme="light"] {
+  --affine-background-primary-color: #ffffff;
+  --affine-background-secondary-color: #f0f1f3;
+  --affine-background-tertiary-color: #e8eaed;
+  --affine-text-primary-color: #2e3132;
+  --affine-text-secondary-color: #6b7280;
+  --affine-divider-color: #e0e2e5;
+  --affine-hover-color: rgba(0, 0, 0, 0.04);
+  --affine-brand-color: #b91f02;
+
+  --affine-note-background-blue: #f0f1f3;
+  --affine-note-background-white: #ffffff;
+  --affine-note-background-black: #f0f1f3;
+  --affine-note-background-grey: #e8eaed;
+
+  --affine-white: #ffffff;
+  --affine-white-80: rgba(255, 255, 255, 0.8);
+  --affine-white-90: rgba(255, 255, 255, 0.9);
+}
+
+/* BlockSuite editor: dark theme overrides */
+html[data-theme="dark"] {
+  --affine-background-primary-color: #2e3132;
+  --affine-background-secondary-color: #3a3d3e;
+  --affine-background-tertiary-color: #454849;
+  --affine-text-primary-color: #f0f1f3;
+  --affine-text-secondary-color: #9ca3af;
+  --affine-divider-color: rgba(255, 255, 255, 0.08);
+  --affine-hover-color: rgba(255, 255, 255, 0.04);
+  --affine-brand-color: #ff5737;
+
+  --affine-note-background-blue: #3a3d3e;
+  --affine-note-background-white: #2e3132;
+  --affine-note-background-black: #3a3d3e;
+  --affine-note-background-grey: #454849;
+
+  --affine-white: #2e3132;
+  --affine-white-80: rgba(46, 49, 50, 0.8);
+  --affine-white-90: rgba(46, 49, 50, 0.9);
+}
+
+.blocksuite-editor-container {
+  min-height: 100%;
+}
+
+.blocksuite-editor-container affine-editor-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* Compact mode: hide only meta-tags chrome, keep title visible */
+.blocksuite-editor-compact .page-meta-tags,
+.blocksuite-editor-compact affine-page-meta-tags,
+.blocksuite-editor-compact affine-editor-container [class*="meta-tags"] {
+  display: none;
+}
+.blocksuite-editor-compact .affine-doc-viewport {
+  padding: 0 24px;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -18,7 +78,7 @@ body {
 .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #52525b;
+  color: var(--muted-foreground);
   pointer-events: none;
   height: 0;
 }
@@ -28,7 +88,7 @@ body {
   font-weight: 700;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
-  color: #e4e4e7;
+  color: var(--foreground);
 }
 
 .ProseMirror h3 {
@@ -36,7 +96,7 @@ body {
   font-weight: 600;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
-  color: #a1a1aa;
+  color: var(--muted-foreground);
 }
 
 .ProseMirror ul,
@@ -49,15 +109,15 @@ body {
 }
 
 .ProseMirror code {
-  background: #27272a;
+  background: var(--secondary);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
 }
 
 .ProseMirror pre {
-  background: #18181b;
-  border: 1px solid #27272a;
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 0.75rem;
   margin: 0.5rem 0;
@@ -96,8 +156,8 @@ body {
 .markdown-content details {
   margin: 0.75rem 0;
   border-radius: 0.5rem;
-  border: 1px solid var(--color-zinc-800, #27272a);
-  background: rgba(24, 24, 27, 0.5);
+  border: 1px solid var(--border);
+  background: var(--secondary);
   overflow: hidden;
 }
 
@@ -107,8 +167,8 @@ body {
   padding: 0.625rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-zinc-200, #e4e4e7);
-  background: rgba(24, 24, 27, 0.8);
+  color: var(--foreground);
+  background: var(--muted);
   list-style: none;
   display: flex;
   align-items: center;
@@ -117,7 +177,7 @@ body {
 }
 
 .markdown-content details > summary:hover {
-  background: rgba(39, 39, 42, 0.8);
+  background: var(--accent);
 }
 
 .markdown-content details > summary::-webkit-details-marker {
@@ -125,9 +185,9 @@ body {
 }
 
 .markdown-content details > summary::before {
-  content: "▶";
+  content: "\25B6";
   font-size: 0.625rem;
-  color: var(--color-zinc-500, #71717a);
+  color: var(--muted-foreground);
   transition: transform 0.15s;
 }
 
@@ -155,24 +215,24 @@ body {
 .markdown-content table td {
   padding: 0.5rem 0.75rem;
   text-align: left;
-  border: 1px solid var(--color-zinc-800, #27272a);
+  border: 1px solid var(--border);
 }
 
 .markdown-content table th {
-  background: var(--color-zinc-800, #27272a);
+  background: var(--muted);
   font-weight: 600;
-  color: var(--color-zinc-200, #e4e4e7);
+  color: var(--foreground);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
 
 .markdown-content table td {
-  color: var(--color-zinc-400, #a1a1aa);
+  color: var(--muted-foreground);
 }
 
 .markdown-content table tr:nth-child(even) td {
-  background: rgba(39, 39, 42, 0.3);
+  background: var(--secondary);
 }
 
 /* Renovate bot comment/checkbox styling */
@@ -180,21 +240,21 @@ body {
   appearance: none;
   width: 0.875rem;
   height: 0.875rem;
-  border: 1px solid var(--color-zinc-600, #52525b);
+  border: 1px solid var(--muted-foreground);
   border-radius: 0.25rem;
-  background: var(--color-zinc-900, #18181b);
+  background: var(--background);
   vertical-align: middle;
   margin-right: 0.375rem;
   position: relative;
 }
 
 .markdown-content input[type="checkbox"]:checked {
-  background: var(--color-indigo-500, #6366f1);
-  border-color: var(--color-indigo-500, #6366f1);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .markdown-content input[type="checkbox"]:checked::after {
-  content: "✓";
+  content: "\2713";
   color: white;
   font-size: 0.625rem;
   position: absolute;
@@ -204,7 +264,7 @@ body {
 
 /* Prose-like markdown styling for document editor & preview */
 .prose-docs .markdown-content {
-  color: var(--color-zinc-300, #d4d4d8);
+  color: var(--foreground);
   font-size: 0.875rem;
   line-height: 1.8;
 }
@@ -224,27 +284,27 @@ body {
 .prose-docs .markdown-content h1 {
   font-size: 1.375rem;
   font-weight: 700;
-  color: var(--color-zinc-100, #f4f4f5);
+  color: var(--foreground);
   margin-top: 2rem;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--color-zinc-800, #27272a);
+  border-bottom: 1px solid var(--border);
 }
 
 .prose-docs .markdown-content h2 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--color-zinc-100, #f4f4f5);
+  color: var(--foreground);
   margin-top: 1.75rem;
   margin-bottom: 0.625rem;
   padding-bottom: 0.375rem;
-  border-bottom: 1px solid var(--color-zinc-800, #27272a);
+  border-bottom: 1px solid var(--border);
 }
 
 .prose-docs .markdown-content h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--color-zinc-200, #e4e4e7);
+  color: var(--foreground);
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
 }
@@ -273,31 +333,31 @@ body {
 
 .prose-docs .markdown-content blockquote {
   border-left-width: 3px;
-  border-color: var(--color-teal-500, #14b8a6);
+  border-color: var(--primary);
   padding: 0.625rem 1rem;
   margin: 1rem 0;
-  background: rgba(20, 184, 166, 0.05);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
   border-radius: 0 0.375rem 0.375rem 0;
 }
 
 .prose-docs .markdown-content blockquote p {
-  color: var(--color-zinc-400, #a1a1aa);
+  color: var(--muted-foreground);
   font-style: italic;
   margin-bottom: 0.25rem;
 }
 
 .prose-docs .markdown-content code:not(pre code) {
-  background: var(--color-zinc-800, #27272a);
-  border: 1px solid var(--color-zinc-700, #3f3f46);
+  background: var(--secondary);
+  border: 1px solid var(--border);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.8125rem;
-  color: var(--color-teal-300, #5eead4);
+  color: var(--primary);
 }
 
 .prose-docs .markdown-content pre {
-  background: var(--color-zinc-950, #09090b);
-  border: 1px solid var(--color-zinc-800, #27272a);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 1rem;
   margin: 1rem 0;
@@ -310,23 +370,23 @@ body {
   padding: 0;
   font-size: 0.8125rem;
   line-height: 1.6;
-  color: var(--color-zinc-300, #d4d4d8);
+  color: var(--foreground);
 }
 
 .prose-docs .markdown-content hr {
   border: none;
-  border-top: 1px solid var(--color-zinc-800, #27272a);
+  border-top: 1px solid var(--border);
   margin: 1.5rem 0;
 }
 
 .prose-docs .markdown-content a {
-  color: var(--color-teal-400, #2dd4bf);
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .prose-docs .markdown-content a:hover {
-  color: var(--color-teal-300, #5eead4);
+  opacity: 0.8;
 }
 
 .prose-docs .markdown-content table {
@@ -337,22 +397,22 @@ body {
 }
 
 .prose-docs .markdown-content th {
-  background: var(--color-zinc-800, #27272a);
+  background: var(--muted);
   font-weight: 600;
   text-align: left;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-zinc-700, #3f3f46);
-  color: var(--color-zinc-200, #e4e4e7);
+  border: 1px solid var(--border);
+  color: var(--foreground);
 }
 
 .prose-docs .markdown-content td {
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-zinc-800, #27272a);
-  color: var(--color-zinc-400, #a1a1aa);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
 }
 
 .prose-docs .markdown-content tr:nth-child(even) td {
-  background: rgba(39, 39, 42, 0.3);
+  background: var(--secondary);
 }
 
 .prose-docs .markdown-content img {
@@ -365,9 +425,9 @@ body {
   appearance: none;
   width: 1rem;
   height: 1rem;
-  border: 1px solid var(--color-zinc-600, #52525b);
+  border: 1px solid var(--muted-foreground);
   border-radius: 0.25rem;
-  background: var(--color-zinc-900, #18181b);
+  background: var(--background);
   vertical-align: middle;
   margin-right: 0.375rem;
   position: relative;
@@ -375,12 +435,12 @@ body {
 }
 
 .prose-docs .markdown-content input[type="checkbox"]:checked {
-  background: var(--color-teal-500, #14b8a6);
-  border-color: var(--color-teal-500, #14b8a6);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .prose-docs .markdown-content input[type="checkbox"]:checked::after {
-  content: "✓";
+  content: "\2713";
   color: white;
   font-size: 0.75rem;
   position: absolute;
@@ -390,7 +450,7 @@ body {
 
 /* Prose-like markdown styling for GitLab MR descriptions & notes */
 .prose-gitlab .markdown-content {
-  color: var(--color-zinc-300, #d4d4d8);
+  color: var(--foreground);
   font-size: 0.875rem;
   line-height: 1.7;
 }
@@ -410,27 +470,27 @@ body {
 .prose-gitlab .markdown-content h1 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-zinc-100, #f4f4f5);
+  color: var(--foreground);
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
   padding-bottom: 0.375rem;
-  border-bottom: 1px solid var(--color-zinc-800, #27272a);
+  border-bottom: 1px solid var(--border);
 }
 
 .prose-gitlab .markdown-content h2 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-zinc-100, #f4f4f5);
+  color: var(--foreground);
   margin-top: 1.25rem;
   margin-bottom: 0.625rem;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--color-zinc-800, #27272a);
+  border-bottom: 1px solid var(--border);
 }
 
 .prose-gitlab .markdown-content h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--color-zinc-200, #e4e4e7);
+  color: var(--foreground);
   margin-top: 1rem;
   margin-bottom: 0.5rem;
 }
@@ -459,29 +519,29 @@ body {
 
 .prose-gitlab .markdown-content blockquote {
   border-left-width: 3px;
-  border-color: var(--color-indigo-500, #6366f1);
+  border-color: var(--primary);
   padding: 0.5rem 1rem;
   margin: 0.75rem 0;
-  background: rgba(99, 102, 241, 0.05);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
   border-radius: 0 0.375rem 0.375rem 0;
 }
 
 .prose-gitlab .markdown-content blockquote p {
-  color: var(--color-zinc-400, #a1a1aa);
+  color: var(--muted-foreground);
   font-style: italic;
 }
 
 .prose-gitlab .markdown-content code:not(pre code) {
-  background: var(--color-zinc-800, #27272a);
-  border: 1px solid var(--color-zinc-700, #3f3f46);
+  background: var(--secondary);
+  border: 1px solid var(--border);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.8125rem;
 }
 
 .prose-gitlab .markdown-content pre {
-  background: var(--color-zinc-950, #09090b);
-  border: 1px solid var(--color-zinc-800, #27272a);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 1rem;
   margin: 0.75rem 0;
@@ -494,7 +554,7 @@ body {
   padding: 0;
   font-size: 0.8125rem;
   line-height: 1.6;
-  color: var(--color-zinc-300, #d4d4d8);
+  color: var(--foreground);
 }
 
 .prose-gitlab .markdown-content table {
@@ -505,44 +565,44 @@ body {
 }
 
 .prose-gitlab .markdown-content th {
-  background: var(--color-zinc-800, #27272a);
+  background: var(--muted);
   font-weight: 600;
   text-align: left;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-zinc-700, #3f3f46);
-  color: var(--color-zinc-200, #e4e4e7);
+  border: 1px solid var(--border);
+  color: var(--foreground);
 }
 
 .prose-gitlab .markdown-content td {
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-zinc-800, #27272a);
-  color: var(--color-zinc-400, #a1a1aa);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
 }
 
 .prose-gitlab .markdown-content tr:nth-child(even) td {
-  background: rgba(39, 39, 42, 0.3);
+  background: var(--secondary);
 }
 
 .prose-gitlab .markdown-content hr {
-  border-color: var(--color-zinc-800, #27272a);
+  border-color: var(--border);
   margin: 1.25rem 0;
 }
 
 .prose-gitlab .markdown-content img {
   max-width: 100%;
   border-radius: 0.5rem;
-  border: 1px solid var(--color-zinc-800, #27272a);
+  border: 1px solid var(--border);
   margin: 0.75rem 0;
 }
 
 .prose-gitlab .markdown-content a {
-  color: var(--color-indigo-400, #818cf8);
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .prose-gitlab .markdown-content a:hover {
-  color: var(--color-indigo-300, #a5b4fc);
+  opacity: 0.8;
 }
 
 /* Task list checkboxes (GFM) */
@@ -550,9 +610,9 @@ body {
   appearance: none;
   width: 1rem;
   height: 1rem;
-  border: 1px solid var(--color-zinc-600, #52525b);
+  border: 1px solid var(--muted-foreground);
   border-radius: 0.25rem;
-  background: var(--color-zinc-900, #18181b);
+  background: var(--background);
   vertical-align: middle;
   margin-right: 0.375rem;
   position: relative;
@@ -560,12 +620,12 @@ body {
 }
 
 .prose-gitlab .markdown-content input[type="checkbox"]:checked {
-  background: var(--color-indigo-500, #6366f1);
-  border-color: var(--color-indigo-500, #6366f1);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .prose-gitlab .markdown-content input[type="checkbox"]:checked::after {
-  content: "✓";
+  content: "\2713";
   color: white;
   font-size: 0.75rem;
   position: absolute;
@@ -581,6 +641,7 @@ body {
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --font-display: 'Manrope', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -612,123 +673,78 @@ body {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-donut-surface: var(--donut-surface);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.75rem;
+  --background: #f8f9fa;
+  --foreground: #2e3132;
+  --card: #ffffff;
+  --card-foreground: #2e3132;
+  --popover: rgba(255, 255, 255, 0.95);
+  --popover-foreground: #2e3132;
+  --primary: #be4832;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f1f3;
+  --secondary-foreground: #2e3132;
+  --muted: #e8eaed;
+  --muted-foreground: #6b7280;
+  --accent: #f0f1f3;
+  --accent-foreground: #2e3132;
+  --destructive: #dc2626;
+  --border: #edeef0;
+  --input: rgba(0, 0, 0, 0.06);
+  --ring: #be4832;
+  --chart-1: #be4832;
+  --chart-2: #be4832;
+  --chart-3: #f59e0b;
+  --chart-4: #10b981;
+  --chart-5: #6366f1;
+  --sidebar: #f2f3f5;
+  --sidebar-foreground: #2e3132;
+  --sidebar-primary: #be4832;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8eaed;
+  --sidebar-accent-foreground: #2e3132;
+  --sidebar-border: rgba(0, 0, 0, 0.06);
+  --sidebar-ring: #be4832;
+  --donut-surface: #2e3132;
 }
 
 .dark {
-  --background: oklch(0.16 0.005 160);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(1 0 0 / 6%);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.17 0.005 160 / 95%);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(1 0 0 / 6%);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(1 0 0 / 6%);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(1 0 0 / 8%);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(1 0 0 / 3%);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(1 0 0 / 8%);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-/* PR Review HTML output (PR-Agent returns HTML tables) */
-.pr-review-html {
-  color: var(--color-zinc-300, #d4d4d8);
-  font-size: 0.875rem;
-  line-height: 1.7;
-}
-
-.pr-review-html table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.5rem 0;
-  font-size: 0.8125rem;
-}
-
-.pr-review-html table td {
-  padding: 0.625rem 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  color: var(--color-zinc-300, #d4d4d8);
-  vertical-align: top;
-}
-
-.pr-review-html table tr:last-child td {
-  border-bottom: none;
-}
-
-.pr-review-html a {
-  color: var(--color-indigo-400, #818cf8);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.pr-review-html a:hover {
-  color: var(--color-indigo-300, #a5b4fc);
-}
-
-.pr-review-html strong {
-  color: var(--color-zinc-200, #e4e4e7);
-  font-weight: 600;
-}
-
-.pr-review-html h2 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-zinc-100, #f4f4f5);
-  margin-top: 0.75rem;
-  margin-bottom: 0.5rem;
+  --background: #2e3132;
+  --foreground: #f0f1f3;
+  --card: #3a3d3e;
+  --card-foreground: #f0f1f3;
+  --popover: rgba(46, 49, 50, 0.95);
+  --popover-foreground: #f0f1f3;
+  --primary: #f4927e;
+  --primary-foreground: #1a1c1d;
+  --secondary: #3a3d3e;
+  --secondary-foreground: #f0f1f3;
+  --muted: #454849;
+  --muted-foreground: #9ca3af;
+  --accent: #454849;
+  --accent-foreground: #f0f1f3;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #f4927e;
+  --chart-1: #f4927e;
+  --chart-2: #ff9f8c;
+  --chart-3: #fbbf24;
+  --chart-4: #34d399;
+  --chart-5: #818cf8;
+  --sidebar: #353839;
+  --sidebar-foreground: #f0f1f3;
+  --sidebar-primary: #f4927e;
+  --sidebar-primary-foreground: #1a1c1d;
+  --sidebar-accent: #454849;
+  --sidebar-accent-foreground: #f0f1f3;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #f4927e;
+  --donut-surface: #1a1c1d;
 }
 
 @layer base {
@@ -738,4 +754,20 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@utility font-display {
+  font-family: 'Manrope', sans-serif;
+}
+
+@utility shadow-ambient {
+  box-shadow: 0 4px 2rem rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+@utility shadow-ambient-lg {
+  box-shadow: 0 8px 3rem rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+@utility bg-primary-gradient {
+  background: var(--primary);
 }

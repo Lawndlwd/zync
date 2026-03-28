@@ -1,15 +1,17 @@
-import { execFile } from 'child_process'
-import { promisify } from 'util'
-import { writeFileSync, unlinkSync, readFileSync, existsSync } from 'fs'
-import { resolve, basename, dirname } from 'path'
-import { randomUUID } from 'crypto'
-import { logger } from '../lib/logger.js'
+import { execFile } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { basename, dirname, resolve } from 'node:path'
+import { promisify } from 'node:util'
 import { getConfig } from '../config/index.js'
+import { logger } from '../lib/logger.js'
 
 const execFileAsync = promisify(execFile)
 
-// Whisper microservice URL (preferred in Docker)
-const WHISPER_SERVICE_URL = getConfig('WHISPER_SERVICE_URL') || ''
+// Whisper microservice URL (preferred in Docker) — read lazily so dotenv has loaded
+function getWhisperUrl(): string {
+  return getConfig('WHISPER_SERVICE_URL') || process.env.WHISPER_SERVICE_URL || ''
+}
 
 // faster-whisper (whisper-ctranslate2) settings (local fallback)
 const FASTER_WHISPER_PATH = getConfig('FASTER_WHISPER_PATH', 'whisper-ctranslate2') || 'whisper-ctranslate2'
@@ -28,19 +30,19 @@ async function detectBackend(): Promise<'service' | 'faster-whisper'> {
 
   // Always retry whisper service periodically (it may have come up)
   const now = Date.now()
-  if (WHISPER_SERVICE_URL && now - lastServiceCheck >= SERVICE_RETRY_INTERVAL) {
+  if (getWhisperUrl() && now - lastServiceCheck >= SERVICE_RETRY_INTERVAL) {
     lastServiceCheck = now
     try {
-      const res = await fetch(`${WHISPER_SERVICE_URL}/health`, { signal: AbortSignal.timeout(3000) })
+      const res = await fetch(`${getWhisperUrl()}/health`, { signal: AbortSignal.timeout(3000) })
       if (res.ok) {
-        if (resolvedBackend !== 'service') {
-          logger.info({ url: WHISPER_SERVICE_URL }, '[transcribe] Using whisper microservice')
+        if ((resolvedBackend as string) !== 'service') {
+          logger.info({ url: getWhisperUrl() }, '[transcribe] Using whisper microservice')
         }
         resolvedBackend = 'service'
         return resolvedBackend
       }
     } catch {
-      logger.warn('[transcribe] Whisper service unreachable at %s', WHISPER_SERVICE_URL)
+      logger.warn('[transcribe] Whisper service unreachable at %s', getWhisperUrl())
     }
   }
 
@@ -52,9 +54,7 @@ async function detectBackend(): Promise<'service' | 'faster-whisper'> {
     resolvedBackend = 'faster-whisper'
     logger.info('[transcribe] Using faster-whisper backend')
   } catch {
-    throw new Error(
-      'No transcription backend available. Whisper service unreachable and faster-whisper not installed.'
-    )
+    throw new Error('No transcription backend available. Whisper service unreachable and faster-whisper not installed.')
   }
 
   return resolvedBackend
@@ -67,7 +67,7 @@ async function transcribeViaService(audioBuffer: Buffer, format: string): Promis
   formData.append('audio', new Blob([new Uint8Array(audioBuffer)]), `audio.${format}`)
   formData.append('format', format)
 
-  const res = await fetch(`${WHISPER_SERVICE_URL}/transcribe`, {
+  const res = await fetch(`${getWhisperUrl()}/transcribe`, {
     method: 'POST',
     body: formData,
     signal: AbortSignal.timeout(60_000),
@@ -79,31 +79,44 @@ async function transcribeViaService(audioBuffer: Buffer, format: string): Promis
     throw new Error(`Whisper service error: ${body.error || res.statusText}`)
   }
 
-  const data = await res.json() as { text: string }
+  const data = (await res.json()) as { text: string }
   logger.info({ text: data.text }, '[transcribe] Transcription result')
   return data.text
 }
 
 async function convertToWav(inputPath: string, outputPath: string): Promise<void> {
-  await execFileAsync('ffmpeg', [
-    '-i', inputPath,
-    '-ar', '16000',    // 16kHz sample rate (what whisper expects)
-    '-ac', '1',        // mono
-    '-y',              // overwrite
-    outputPath,
-  ], { timeout: 30_000 })
+  await execFileAsync(
+    'ffmpeg',
+    [
+      '-i',
+      inputPath,
+      '-ar',
+      '16000', // 16kHz sample rate (what whisper expects)
+      '-ac',
+      '1', // mono
+      '-y', // overwrite
+      outputPath,
+    ],
+    { timeout: 30_000 },
+  )
 }
 
 async function transcribeWithFasterWhisper(wavPath: string): Promise<string> {
   const outputDir = dirname(wavPath)
   const args = [
     wavPath,
-    '--model', FASTER_WHISPER_MODEL,
-    '--output_format', 'txt',
-    '--output_dir', outputDir,
-    '--language', 'en',
-    '--beam_size', '1',
-    '--compute_type', 'int8',
+    '--model',
+    FASTER_WHISPER_MODEL,
+    '--output_format',
+    'txt',
+    '--output_dir',
+    outputDir,
+    '--language',
+    'en',
+    '--beam_size',
+    '1',
+    '--compute_type',
+    'int8',
   ]
 
   await execFileAsync(FASTER_WHISPER_PATH, args, { timeout: 60_000 })
@@ -144,7 +157,9 @@ export async function transcribeAudio(audioBuffer: Buffer, format = 'ogg'): Prom
     return await transcribeWithFasterWhisper(tempWav)
   } finally {
     for (const f of tempFiles) {
-      try { unlinkSync(f) } catch {}
+      try {
+        unlinkSync(f)
+      } catch {}
     }
   }
 }

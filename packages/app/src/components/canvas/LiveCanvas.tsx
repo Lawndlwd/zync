@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { Trash2, Send, Loader2, Plus, Pencil } from 'lucide-react'
+import { Loader2, Pencil, Plus, Send, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface CanvasUpdate {
   type: 'render' | 'update' | 'clear'
@@ -80,7 +80,7 @@ function buildDoc(html: string, css?: string | null, js?: string | null): string
 <style>${css || ''}</style>
 </head>
 <body class="animate-in">${html || ''}
-<script>${js || ''}<\/script>
+<script>${js || ''}</script>
 </body>
 </html>`
 }
@@ -107,7 +107,6 @@ export function LiveCanvas() {
     return []
   }, [])
 
-
   // Load history and show latest on mount (run once)
   const mountedRef = useRef(false)
   useEffect(() => {
@@ -123,12 +122,13 @@ export function LiveCanvas() {
         }
       }
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // WebSocket
   useEffect(() => {
-    const wsUrl = `ws://${window.location.hostname}:3001/ws/canvas`
+    const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const wsUrl = `${wsProto}://${window.location.host}/ws/canvas`
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => setConnected(true)
@@ -177,7 +177,7 @@ export function LiveCanvas() {
 
     try {
       // In edit mode, pass the current canvas ID so the AI gets its content as context
-      const canvasId = mode === 'edit' && selectedId ? selectedId : undefined
+      const canvasId = mode === 'edit' && selectedId ? Number(selectedId) : undefined
 
       await fetch('/api/canvas/prompt', {
         method: 'POST',
@@ -203,26 +203,32 @@ export function LiveCanvas() {
   const hasCanvas = history.length > 0
 
   const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr + 'Z')
+    const d = new Date(`${dateStr}Z`)
     return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06] bg-white/[0.02]">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-secondary">
         <div className="flex items-center gap-2">
           <select
             value={selectedId}
             onChange={(e) => handleSelect(e.target.value)}
-            className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-sm text-zinc-300 min-w-[240px] outline-none focus:border-white/[0.15] transition-colors cursor-pointer appearance-none"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+            className="bg-secondary border border-border rounded-lg px-3 py-1.5 text-sm text-foreground min-w-[240px] outline-none focus:border-ring transition-colors cursor-pointer appearance-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 10px center',
+            }}
           >
             {history.length === 0 && (
-              <option value="" className="bg-zinc-900 text-zinc-500">No canvases yet</option>
+              <option value="" className="bg-background text-muted-foreground">
+                No canvases yet
+              </option>
             )}
             {history.map((entry) => (
-              <option key={entry.id} value={String(entry.id)} className="bg-zinc-900 text-zinc-300">
+              <option key={entry.id} value={String(entry.id)} className="bg-background text-foreground">
                 {entry.title} — {formatTime(entry.created_at)}
               </option>
             ))}
@@ -231,7 +237,7 @@ export function LiveCanvas() {
           {selectedId && (
             <button
               onClick={handleDelete}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
             >
               <Trash2 size={13} />
             </button>
@@ -240,9 +246,7 @@ export function LiveCanvas() {
 
         <div className="flex items-center gap-1.5">
           <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-red-500'}`} />
-          <span className="text-[11px] text-zinc-600">
-            {connected ? 'Live' : 'Disconnected'}
-          </span>
+          <span className="text-[11px] text-muted-foreground">{connected ? 'Live' : 'Disconnected'}</span>
         </div>
       </div>
 
@@ -255,7 +259,7 @@ export function LiveCanvas() {
       />
 
       {/* Prompt input */}
-      <div className="border-t border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+      <div className="border-t border-border bg-secondary px-3 py-2.5">
         {/* Mode toggle */}
         <div className="flex items-center gap-1 mb-2">
           <button
@@ -263,7 +267,7 @@ export function LiveCanvas() {
             className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
               mode === 'new'
                 ? 'bg-blue-600/15 text-blue-400'
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
             }`}
           >
             <Plus size={13} />
@@ -275,7 +279,7 @@ export function LiveCanvas() {
             className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
               mode === 'edit'
                 ? 'bg-amber-500/15 text-amber-400'
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04] disabled:opacity-30 disabled:cursor-default'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 disabled:cursor-default'
             }`}
           >
             <Pencil size={12} />
@@ -284,7 +288,10 @@ export function LiveCanvas() {
         </div>
 
         <form
-          onSubmit={(e) => { e.preventDefault(); handlePrompt() }}
+          onSubmit={(e) => {
+            e.preventDefault()
+            handlePrompt()
+          }}
           className="flex items-center gap-2"
         >
           <input
@@ -298,22 +305,20 @@ export function LiveCanvas() {
                 : 'Change the chart colors to blue, add a footer...'
             }
             disabled={loading}
-            className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-white/[0.15] transition-colors disabled:opacity-50"
+            className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted-foreground outline-none focus:border-ring transition-colors disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={!prompt.trim() || loading}
             className={`flex items-center justify-center w-9 h-9 rounded-lg text-white disabled:opacity-30 disabled:cursor-default transition-colors ${
-              mode === 'new'
-                ? 'bg-blue-600 hover:bg-blue-500'
-                : 'bg-amber-600 hover:bg-amber-500'
+              mode === 'new' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-amber-600 hover:bg-amber-500'
             }`}
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           </button>
         </form>
         {loading && (
-          <p className="text-[11px] text-zinc-600 mt-1.5">
+          <p className="text-[11px] text-muted-foreground mt-1.5">
             {mode === 'new' ? 'Creating canvas...' : 'Updating canvas...'}
           </p>
         )}

@@ -24,7 +24,7 @@ export async function driveListFiles(input: z.infer<typeof driveListFilesSchema>
     fields: 'files(id, name, mimeType, size, modifiedTime, webViewLink, parents)',
   })
 
-  const files = (res.data.files || []).map(f => ({
+  const files = (res.data.files || []).map((f) => ({
     id: f.id,
     name: f.name,
     mimeType: f.mimeType,
@@ -54,7 +54,7 @@ export async function driveSearchFiles(input: z.infer<typeof driveSearchFilesSch
     orderBy: 'relevance',
   })
 
-  const files = (res.data.files || []).map(f => ({
+  const files = (res.data.files || []).map((f) => ({
     id: f.id,
     name: f.name,
     mimeType: f.mimeType,
@@ -96,10 +96,7 @@ export async function driveGetFileContent(input: z.infer<typeof driveGetFileCont
     content = String(res.data)
   } else {
     // Regular file — download as text
-    const res = await drive.files.get(
-      { fileId: input.file_id, alt: 'media' },
-      { responseType: 'text' }
-    )
+    const res = await drive.files.get({ fileId: input.file_id, alt: 'media' }, { responseType: 'text' })
     content = String(res.data)
   }
 
@@ -128,7 +125,7 @@ export const driveUploadFileSchema = z.object({
 
 export async function driveUploadFile(input: z.infer<typeof driveUploadFileSchema>): Promise<string> {
   const drive = getDriveClient()
-  const { Readable } = await import('stream')
+  const { Readable } = await import('node:stream')
 
   const fileMetadata: any = { name: input.name }
   if (input.folder_id) fileMetadata.parents = [input.folder_id]

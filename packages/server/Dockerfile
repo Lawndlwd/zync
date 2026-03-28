@@ -13,12 +13,6 @@ RUN cd packages/server && npx playwright install chromium --with-deps
 RUN mkdir -p /home/node/.cache && cp -r /root/.cache/ms-playwright /home/node/.cache/ms-playwright && chown -R node:node /home/node/.cache
 COPY packages/server/ packages/server/
 
-# ── Install PR-Agent Python venv ──
-COPY packages/pr-agent/requirements.txt packages/pr-agent/requirements.txt
-COPY packages/pr-agent/run_pr_agent.py packages/pr-agent/run_pr_agent.py
-RUN python3 -m venv /app/packages/pr-agent/.venv && \
-    /app/packages/pr-agent/.venv/bin/pip install --no-cache-dir -r packages/pr-agent/requirements.txt
-
 RUN mkdir -p /app/packages/server/data /app/documents && chown -R node:node /app/packages/server/data /app/documents
 ENV DOCUMENTS_PATH=/app/documents
 
@@ -34,7 +28,6 @@ COPY --from=build-production /app/packages/server/dist ./dist
 COPY --from=build-production /app/packages/server/node_modules ./node_modules
 COPY --from=build-production /app/packages/server/package.json ./
 COPY --from=base /home/node/.cache/ms-playwright /home/node/.cache/ms-playwright
-COPY --from=base /app/packages/pr-agent /app/packages/pr-agent
 RUN chown -R node:node /home/node/.cache
 RUN npx playwright install-deps chromium 2>/dev/null || true
 RUN mkdir -p /app/packages/server/data /app/documents && chown -R node:node /app/packages/server/data /app/documents

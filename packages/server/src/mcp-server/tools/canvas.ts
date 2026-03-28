@@ -7,8 +7,14 @@ const API_BASE = getConfig('API_BASE_URL', 'http://localhost:3001') || 'http://l
 let lastRenderTime = 0
 
 export const renderCanvasSchema = z.object({
-  title: z.string().describe('Short descriptive title for this render (e.g. "Email Overview Chart", "Sprint Burndown")'),
-  html: z.string().describe('COMPLETE HTML content to render. Must be the FULL final HTML — do NOT call this tool multiple times, send everything in ONE call.'),
+  title: z
+    .string()
+    .describe('Short descriptive title for this render (e.g. "Email Overview Chart", "Sprint Burndown")'),
+  html: z
+    .string()
+    .describe(
+      'COMPLETE HTML content to render. Must be the FULL final HTML — do NOT call this tool multiple times, send everything in ONE call.',
+    ),
   css: z.string().optional().describe('CSS styles for the canvas'),
   js: z.string().optional().describe('JavaScript to execute in the canvas (sandboxed)'),
 })

@@ -1,37 +1,38 @@
-import { Router } from 'express'
-import { z } from 'zod'
-import { validate } from '../lib/validate.js'
-import { errorResponse } from '../lib/errors.js'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
-  GmailReplySchema,
-  BriefingTriggerSchema,
-  ScheduleCreateSchema,
   BotChatSchema,
+  BriefingTriggerSchema,
+  GmailConfigSchema,
+  GmailReplySchema,
+  ScheduleCreateSchema,
   TelegramConfigSchema,
   WhatsAppConfigSchema,
-  GmailConfigSchema,
 } from '@zync/shared/schemas'
-import { getSecret, getSecrets } from '../secrets/index.js'
-import { getConfig, getConfigService } from '../config/index.js'
-import { getMemoryCount } from '../memory/memories.js'
+import { Router } from 'express'
+import { z } from 'zod'
 import { getAllSchedules } from '../bot/heartbeat/db.js'
 import { addSchedule, adminRemoveSchedule, adminToggleSchedule } from '../bot/heartbeat/scheduler.js'
-import { getOrCreateSession } from '../opencode/client.js'
-import { waitForResponse } from '../opencode/wait-for-response.js'
 import { getChannelManager } from '../channels/manager.js'
 import { TelegramAdapter } from '../channels/telegram.js'
-import { WhatsAppAdapter } from '../channels/whatsapp.js'
-import { sendMorningBriefing, sendEveningRecap, scheduleBriefings } from '../proactive/briefing.js'
-import { getRecommendations } from '../proactive/recommendations.js'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
-import { resolve } from 'path'
 import type { ChannelType } from '../channels/types.js'
+import { WhatsAppAdapter } from '../channels/whatsapp.js'
+import { getConfig, getConfigService } from '../config/index.js'
+import { errorResponse } from '../lib/errors.js'
 import { logger } from '../lib/logger.js'
+import { validate } from '../lib/validate.js'
+import { getMemoryCount } from '../memory/memories.js'
+import { getOrCreateSession } from '../opencode/client.js'
+import { waitForResponse } from '../opencode/wait-for-response.js'
+import { scheduleBriefings, sendEveningRecap, sendMorningBriefing } from '../proactive/briefing.js'
+import { getRecommendations } from '../proactive/recommendations.js'
+import { getSecret, getSecrets } from '../secrets/index.js'
 
 const DATA_DIR = resolve(import.meta.dirname, '../../data')
 
 const OAUTH_BASE_URL = getConfig('OAUTH_BASE_URL') || `http://localhost:${process.env.PORT || 3001}`
-const FRONTEND_BASE_URL = getConfig('FRONTEND_BASE_URL') || `http://localhost:${getConfig('FRONTEND_PORT', '5173') || '5173'}`
+const FRONTEND_BASE_URL =
+  getConfig('FRONTEND_BASE_URL') || `http://localhost:${getConfig('FRONTEND_PORT', '5173') || '5173'}`
 
 export const botRouter = Router()
 
@@ -78,9 +79,15 @@ botRouter.get('/channels', (_req, res) => {
     const channels: ChannelType[] = ['telegram', 'whatsapp', 'gmail']
     const result = channels.map((channel) => {
       let configured = false
-      if (channel === 'telegram') configured = !!(getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN'))
+      if (channel === 'telegram')
+        configured = !!(getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN'))
       if (channel === 'whatsapp') configured = !!getConfig('WHATSAPP_ALLOWED_NUMBERS')
-      if (channel === 'gmail') configured = !!(getSecret('CHANNEL_GMAIL_CLIENT_ID') && getSecret('CHANNEL_GMAIL_CLIENT_SECRET') && getSecret('CHANNEL_GMAIL_REFRESH_TOKEN'))
+      if (channel === 'gmail')
+        configured = !!(
+          getSecret('CHANNEL_GMAIL_CLIENT_ID') &&
+          getSecret('CHANNEL_GMAIL_CLIENT_SECRET') &&
+          getSecret('CHANNEL_GMAIL_REFRESH_TOKEN')
+        )
 
       const adapter = getChannelManager().getAdapter(channel)
       let connectionState = 'disconnected'
@@ -94,11 +101,12 @@ botRouter.get('/channels', (_req, res) => {
 
       // For WhatsApp, only report connected when actually authenticated (not just registered)
       // For Gmail, connected = credentials exist (on-demand, no polling adapter)
-      const connected = channel === 'gmail'
-        ? configured
-        : channel === 'whatsapp'
-          ? connectionState === 'connected'
-          : registered.includes(channel)
+      const connected =
+        channel === 'gmail'
+          ? configured
+          : channel === 'whatsapp'
+            ? connectionState === 'connected'
+            : registered.includes(channel)
 
       return { channel, connected, configured, connectionState }
     })
@@ -119,7 +127,7 @@ botRouter.get('/channels/config', (_req, res) => {
     const allowedUsers = getConfig('TELEGRAM_ALLOWED_USERS') || ''
     if (botToken || allowedUsers) {
       masked.telegram = {
-        botToken: botToken ? '••••' + botToken.slice(-6) : '',
+        botToken: botToken ? `••••${botToken.slice(-6)}` : '',
         allowedUsers,
         hasBotToken: !!botToken,
       }
@@ -185,14 +193,18 @@ botRouter.put('/channels/config/:channel', (req, res) => {
       if (configSvc) {
         if (allowedNumbers !== undefined) configSvc.set('WHATSAPP_ALLOWED_NUMBERS', allowedNumbers ?? '', 'channels')
         if (autoReply !== undefined) configSvc.set('WHATSAPP_AUTO_REPLY', String(autoReply), 'channels')
-        if (autoReplyInstructions !== undefined) configSvc.set('WHATSAPP_AUTO_REPLY_INSTRUCTIONS', autoReplyInstructions ?? '', 'channels')
+        if (autoReplyInstructions !== undefined)
+          configSvc.set('WHATSAPP_AUTO_REPLY_INSTRUCTIONS', autoReplyInstructions ?? '', 'channels')
       }
       // Hot-update the running adapter's allowed numbers filter
       if (allowedNumbers !== undefined) {
         const adapter = getChannelManager().getAdapter('whatsapp')
         if (adapter && adapter instanceof WhatsAppAdapter) {
-          const nums = (allowedNumbers ?? '').split(',').map(s => s.trim()).filter(Boolean)
-            .map(n => n.includes('@') ? n : `${n}@s.whatsapp.net`)
+          const nums = (allowedNumbers ?? '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((n) => (n.includes('@') ? n : `${n}@s.whatsapp.net`))
           adapter.setAllowedNumbers(nums.length > 0 ? nums : undefined)
         }
       }
@@ -200,7 +212,8 @@ botRouter.put('/channels/config/:channel', (req, res) => {
       const { clientId, clientSecret, refreshToken, enabledServices } = parsed.data as z.infer<typeof GmailConfigSchema>
       if (secretsSvc) {
         if (clientId) secretsSvc.set('CHANNEL_GMAIL_CLIENT_ID', clientId, 'channel')
-        if (clientSecret && !clientSecret.startsWith('••••')) secretsSvc.set('CHANNEL_GMAIL_CLIENT_SECRET', clientSecret, 'channel')
+        if (clientSecret && !clientSecret.startsWith('••••'))
+          secretsSvc.set('CHANNEL_GMAIL_CLIENT_SECRET', clientSecret, 'channel')
         if (refreshToken) secretsSvc.set('CHANNEL_GMAIL_REFRESH_TOKEN', refreshToken, 'channel')
       }
       if (enabledServices && configSvc) {
@@ -216,41 +229,38 @@ botRouter.put('/channels/config/:channel', (req, res) => {
 
 // Scope mapping for Google services
 const GOOGLE_SCOPE_MAP: Record<string, string[]> = {
-  gmail: [
-    'https://www.googleapis.com/auth/gmail.readonly',
-    'https://www.googleapis.com/auth/gmail.send',
-  ],
-  calendar: [
-    'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/calendar.events',
-  ],
-  drive: [
-    'https://www.googleapis.com/auth/drive.readonly',
-    'https://www.googleapis.com/auth/drive.file',
-  ],
-  contacts: [
-    'https://www.googleapis.com/auth/contacts.readonly',
-  ],
-  tasks: [
-    'https://www.googleapis.com/auth/tasks',
-  ],
+  gmail: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send'],
+  calendar: ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/calendar.events'],
+  drive: ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive.file'],
+  contacts: ['https://www.googleapis.com/auth/contacts.readonly'],
+  tasks: ['https://www.googleapis.com/auth/tasks'],
+  youtube: ['https://www.googleapis.com/auth/youtube.readonly'],
 }
 
 function getEnabledGoogleServices(): string[] {
   const raw = getConfig('GOOGLE_ENABLED_SERVICES')
   if (!raw) return ['gmail'] // default
-  try { return JSON.parse(raw) } catch { return ['gmail'] }
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return ['gmail']
+  }
 }
 
 function buildGoogleScopes(services: string[]): string {
   const scopes = new Set<string>()
   for (const svc of services) {
     const s = GOOGLE_SCOPE_MAP[svc]
-    if (s) s.forEach(scope => scopes.add(scope))
+    if (s)
+      s.forEach((scope) => {
+        scopes.add(scope)
+      })
   }
   // Always include at least gmail scopes as fallback
   if (scopes.size === 0) {
-    GOOGLE_SCOPE_MAP.gmail.forEach(scope => scopes.add(scope))
+    GOOGLE_SCOPE_MAP.gmail.forEach((scope) => {
+      scopes.add(scope)
+    })
   }
   return [...scopes].join(' ')
 }
@@ -266,7 +276,10 @@ botRouter.get('/channels/gmail/auth-url', (req, res) => {
     // Accept ?services=gmail,calendar,drive,contacts,tasks or use stored config
     const servicesParam = req.query.services as string | undefined
     const services = servicesParam
-      ? servicesParam.split(',').map(s => s.trim()).filter(Boolean)
+      ? servicesParam
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
       : getEnabledGoogleServices()
 
     const redirectUri = `${OAUTH_BASE_URL}/api/bot/channels/gmail/callback`
@@ -319,9 +332,11 @@ botRouter.get('/channels/gmail/callback', async (req, res) => {
       return res.status(400).send(`Token exchange failed: ${text}`)
     }
 
-    const tokens = await tokenRes.json() as { access_token: string; refresh_token?: string; expires_in: number }
+    const tokens = (await tokenRes.json()) as { access_token: string; refresh_token?: string; expires_in: number }
     if (!tokens.refresh_token) {
-      return res.status(400).send('No refresh token received. Try revoking access at myaccount.google.com/permissions and retry.')
+      return res
+        .status(400)
+        .send('No refresh token received. Try revoking access at myaccount.google.com/permissions and retry.')
     }
 
     // Save refresh token to vault
@@ -352,7 +367,10 @@ botRouter.post('/channels/:channel/connect', async (req, res) => {
       const botToken = getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN')
       if (!botToken) return res.status(400).json({ error: 'No bot token configured. Save a token first.' })
       const allowedUsers = (getConfig('TELEGRAM_ALLOWED_USERS') || getSecret('TELEGRAM_ALLOWED_USERS') || '')
-        .split(',').map(s => s.trim()).filter(Boolean).map(Number)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map(Number)
       const adapter = new TelegramAdapter({ botToken, allowedUsers })
       manager.register(adapter)
 
@@ -360,9 +378,14 @@ botRouter.post('/channels/:channel/connect', async (req, res) => {
     } else if (channel === 'whatsapp') {
       const authDir = getConfig('WHATSAPP_AUTH_DIR', './data/whatsapp-auth') || './data/whatsapp-auth'
       const allowedNumbers = (getConfig('WHATSAPP_ALLOWED_NUMBERS') || '')
-        .split(',').map(s => s.trim()).filter(Boolean)
-        .map(n => n.includes('@') ? n : `${n}@s.whatsapp.net`)
-      const adapter = new WhatsAppAdapter({ authDir, allowedNumbers: allowedNumbers.length > 0 ? allowedNumbers : undefined })
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((n) => (n.includes('@') ? n : `${n}@s.whatsapp.net`))
+      const adapter = new WhatsAppAdapter({
+        authDir,
+        allowedNumbers: allowedNumbers.length > 0 ? allowedNumbers : undefined,
+      })
       manager.register(adapter)
 
       await adapter.start()
@@ -407,11 +430,7 @@ botRouter.post('/channels/gmail/reply', validate(GmailReplySchema), async (req, 
     auth.setCredentials({ refresh_token: gmailRefreshToken })
     const gmail = google.gmail({ version: 'v1', auth })
 
-    const headers = [
-      `To: ${to}`,
-      `Subject: ${subject || 'Re:'}`,
-      'Content-Type: text/plain; charset=utf-8',
-    ]
+    const headers = [`To: ${to}`, `Subject: ${subject || 'Re:'}`, 'Content-Type: text/plain; charset=utf-8']
     if (messageId) {
       headers.push(`In-Reply-To: ${messageId}`)
       headers.push(`References: ${messageId}`)
@@ -441,7 +460,6 @@ botRouter.get('/channels/gmail/verify', async (_req, res) => {
     for (const svc of services) {
       try {
         if (svc === 'gmail') {
-          const { google } = await import('googleapis')
           const { getGmailClient } = await import('../mcp-server/tools/google-auth.js')
           const gmail = getGmailClient()
           await gmail.users.getProfile({ userId: 'me' })
@@ -507,25 +525,23 @@ botRouter.post('/channels/whatsapp/reset', async (_req, res) => {
   }
 })
 
-
 // GET /api/bot/briefing/config
 botRouter.get('/briefing/config', (_req, res) => {
   try {
     const defaultMorningItems = [
-      { id: 'jira', label: 'Jira issues', enabled: true },
-      { id: 'todos', label: 'To-do items', enabled: true },
+      { id: 'lifeos', label: 'Life OS snapshot', enabled: true },
+      { id: 'levers', label: 'Daily levers', enabled: true },
+      { id: 'goals', label: 'Active goals & projects', enabled: true },
       { id: 'calendar', label: 'Calendar events', enabled: true },
       { id: 'emails', label: 'Email digest', enabled: true },
-      { id: 'gtasks', label: 'Google Tasks', enabled: true },
-      { id: 'motivation', label: 'Motivational message', enabled: true },
+      { id: 'motivation', label: 'Motivational nudge', enabled: true },
     ]
     const defaultEveningItems = [
-      { id: 'completed', label: 'Completed tasks', enabled: true },
-      { id: 'messages', label: 'Messages handled', enabled: true },
-      { id: 'pending', label: 'Pending items', enabled: true },
-      { id: 'blockers', label: 'Blockers', enabled: true },
+      { id: 'lifeos', label: 'Life OS daily review', enabled: true },
+      { id: 'levers', label: 'Lever completion', enabled: true },
+      { id: 'goals', label: 'Goal progress', enabled: true },
+      { id: 'journal', label: 'Journal check', enabled: true },
       { id: 'emails', label: 'Email update', enabled: true },
-      { id: 'gtasks', label: 'Google Tasks', enabled: true },
     ]
 
     const rawMorningItems = getConfig('BRIEFING_MORNING_ITEMS')
@@ -582,8 +598,10 @@ botRouter.put('/briefing/config', (req, res) => {
       configSvc.set('BRIEFING_ENABLED', String(d.enabled), 'briefing')
       if (d.morningItems) configSvc.set('BRIEFING_MORNING_ITEMS', JSON.stringify(d.morningItems), 'briefing')
       if (d.eveningItems) configSvc.set('BRIEFING_EVENING_ITEMS', JSON.stringify(d.eveningItems), 'briefing')
-      if (d.morningInstructions !== undefined) configSvc.set('BRIEFING_MORNING_INSTRUCTIONS', d.morningInstructions, 'briefing')
-      if (d.eveningInstructions !== undefined) configSvc.set('BRIEFING_EVENING_INSTRUCTIONS', d.eveningInstructions, 'briefing')
+      if (d.morningInstructions !== undefined)
+        configSvc.set('BRIEFING_MORNING_INSTRUCTIONS', d.morningInstructions, 'briefing')
+      if (d.eveningInstructions !== undefined)
+        configSvc.set('BRIEFING_EVENING_INSTRUCTIONS', d.eveningInstructions, 'briefing')
     } else {
       // Fallback to JSON file if config service unavailable
       const cfgPath = resolve(DATA_DIR, 'briefing-config.json')
@@ -612,6 +630,20 @@ botRouter.post('/briefing/trigger', validate(BriefingTriggerSchema), async (req,
   }
 })
 
+// POST /api/bot/breaker/test — send a test autopilot breaker
+botRouter.post('/breaker/test', async (_req, res) => {
+  try {
+    const { sendTestBreaker } = await import('../planner/breaker-scheduler.js')
+    const question = await sendTestBreaker()
+    if (!question) {
+      return res.status(400).json({ error: 'No enabled breakers or no chat ID configured' })
+    }
+    res.json({ success: true, question })
+  } catch (err) {
+    errorResponse(res, err)
+  }
+})
+
 // GET /api/bot/tool-config
 botRouter.get('/tool-config', (_req, res) => {
   try {
@@ -631,15 +663,19 @@ botRouter.get('/tool-config', (_req, res) => {
 
 // PUT /api/bot/tool-config
 const ToolConfigSchema = z.object({
-  shell: z.object({
-    allowlist: z.array(z.string()),
-    timeout_ms: z.number().optional(),
-    max_output_bytes: z.number().optional(),
-  }).optional(),
-  files: z.object({
-    allowed_paths: z.array(z.string()),
-    max_file_size_bytes: z.number().optional(),
-  }).optional(),
+  shell: z
+    .object({
+      allowlist: z.array(z.string()),
+      timeout_ms: z.number().optional(),
+      max_output_bytes: z.number().optional(),
+    })
+    .optional(),
+  files: z
+    .object({
+      allowed_paths: z.array(z.string()),
+      max_file_size_bytes: z.number().optional(),
+    })
+    .optional(),
 })
 
 botRouter.put('/tool-config', (req, res) => {
@@ -692,7 +728,7 @@ botRouter.post('/schedules', validate(ScheduleCreateSchema), (req, res) => {
 // DELETE /api/bot/schedules/:id
 botRouter.delete('/schedules/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id, 10)
     const success = adminRemoveSchedule(id)
     res.json({ success })
   } catch (err) {
@@ -703,7 +739,7 @@ botRouter.delete('/schedules/:id', (req, res) => {
 // PATCH /api/bot/schedules/:id
 botRouter.patch('/schedules/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id, 10)
     const { enabled } = req.body
     if (typeof enabled !== 'boolean') {
       return res.status(400).json({ error: 'enabled (boolean) is required' })
@@ -723,8 +759,8 @@ botRouter.get('/tools', async (_req, res) => {
   const allGroups = getToolGroups()
 
   const tools = allGroups
-    .filter(g => g.alwaysOn || enabledGroups.includes(g.id))
-    .flatMap(g => g.tools.map(t => ({ name: t.name, description: t.description })))
+    .filter((g) => g.alwaysOn || enabledGroups.includes(g.id))
+    .flatMap((g) => g.tools.map((t) => ({ name: t.name, description: t.description })))
 
   res.json(tools)
 })

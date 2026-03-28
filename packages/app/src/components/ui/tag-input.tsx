@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
-import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 interface TagInputProps {
   value: string[]
@@ -37,22 +37,15 @@ export function TagInput({ value, onChange, placeholder = 'Add label...', classN
   return (
     <div
       className={cn(
-        'flex min-h-[36px] w-full flex-wrap items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-2.5 py-1.5 text-sm focus-within:ring-2 focus-within:ring-indigo-500',
-        className
+        'flex min-h-[36px] w-full flex-wrap items-center gap-1.5 rounded-2xl bg-secondary px-2.5 py-1.5 text-sm focus-within:ring-2 focus-within:ring-primary',
+        className,
       )}
       onClick={() => inputRef.current?.focus()}
     >
       {value.map((tag) => (
-        <span
-          key={tag}
-          className="flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-0.5 text-xs text-zinc-300"
-        >
+        <span key={tag} className="flex items-center gap-1 rounded-lg bg-muted px-2 py-0.5 text-xs text-foreground">
           {tag}
-          <button
-            type="button"
-            onClick={() => removeTag(tag)}
-            className="rounded hover:bg-white/[0.1] p-0.5"
-          >
+          <button type="button" onClick={() => removeTag(tag)} className="rounded hover:bg-accent p-0.5">
             <X size={10} />
           </button>
         </span>
@@ -64,7 +57,7 @@ export function TagInput({ value, onChange, placeholder = 'Add label...', classN
         onKeyDown={handleKeyDown}
         onBlur={() => input && addTag(input)}
         placeholder={value.length === 0 ? placeholder : ''}
-        className="flex-1 min-w-[80px] bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 outline-none"
+        className="flex-1 min-w-[80px] bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
       />
     </div>
   )

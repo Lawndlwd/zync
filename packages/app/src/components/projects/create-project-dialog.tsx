@@ -1,52 +1,36 @@
+import type { LucideIcon } from 'lucide-react'
+import { BookOpen, Code, FolderOpen, Globe, Heart, Loader2, Rocket, Star, Zap } from 'lucide-react'
 import { useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
 import { useCreateProject } from '@/hooks/useProjects'
-import {
-  FolderOpen,
-  Rocket,
-  Code,
-  Globe,
-  BookOpen,
-  Zap,
-  Star,
-  Heart,
-  Loader2,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { cn } from '@/lib/utils'
 
 // ─── Options ───
 
 const COLOR_OPTIONS = [
-  { name: 'indigo',  bg: 'bg-indigo-500',  ring: 'ring-indigo-400' },
-  { name: 'blue',    bg: 'bg-blue-500',    ring: 'ring-blue-400' },
+  { name: 'indigo', bg: 'bg-indigo-500', ring: 'ring-indigo-400' },
+  { name: 'blue', bg: 'bg-blue-500', ring: 'ring-blue-400' },
   { name: 'emerald', bg: 'bg-emerald-500', ring: 'ring-emerald-400' },
-  { name: 'amber',   bg: 'bg-amber-500',   ring: 'ring-amber-400' },
-  { name: 'rose',    bg: 'bg-rose-500',    ring: 'ring-rose-400' },
-  { name: 'violet',  bg: 'bg-violet-500',  ring: 'ring-violet-400' },
-  { name: 'teal',    bg: 'bg-teal-500',    ring: 'ring-teal-400' },
-  { name: 'cyan',    bg: 'bg-cyan-500',    ring: 'ring-cyan-400' },
+  { name: 'amber', bg: 'bg-amber-500', ring: 'ring-amber-400' },
+  { name: 'rose', bg: 'bg-rose-500', ring: 'ring-rose-400' },
+  { name: 'violet', bg: 'bg-violet-500', ring: 'ring-violet-400' },
+  { name: 'teal', bg: 'bg-teal-500', ring: 'ring-teal-400' },
+  { name: 'cyan', bg: 'bg-cyan-500', ring: 'ring-cyan-400' },
 ] as const
 
 const ICON_OPTIONS: { name: string; icon: LucideIcon }[] = [
   { name: 'folder', icon: FolderOpen },
   { name: 'rocket', icon: Rocket },
-  { name: 'code',   icon: Code },
-  { name: 'globe',  icon: Globe },
-  { name: 'book',   icon: BookOpen },
-  { name: 'zap',    icon: Zap },
-  { name: 'star',   icon: Star },
-  { name: 'heart',  icon: Heart },
+  { name: 'code', icon: Code },
+  { name: 'globe', icon: Globe },
+  { name: 'book', icon: BookOpen },
+  { name: 'zap', icon: Zap },
+  { name: 'star', icon: Star },
+  { name: 'heart', icon: Heart },
 ]
 
 // ─── Component ───
@@ -162,11 +146,11 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
                     className={cn(
                       'flex items-center justify-center w-10 h-10 rounded-lg border transition-all',
                       icon === opt.name
-                        ? 'border-zinc-400 bg-white/[0.08] ring-2 ring-zinc-400 ring-offset-1 ring-offset-zinc-900'
-                        : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400',
+                        ? 'border-primary bg-foreground/[0.08] ring-2 ring-primary ring-offset-1 ring-offset-background'
+                        : 'border-foreground/[0.08] bg-foreground/[0.03] hover:bg-foreground/[0.06] text-muted-foreground',
                     )}
                   >
-                    <IconComp size={20} className={icon === opt.name ? 'text-zinc-100' : ''} />
+                    <IconComp size={20} className={icon === opt.name ? 'text-foreground' : ''} />
                   </button>
                 )
               })}
@@ -174,17 +158,11 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={!name.trim() || createProject.isPending}>
-              {createProject.isPending ? (
-                <Loader2 size={16} className="animate-spin mr-2" />
-              ) : null}
+              {createProject.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
               Create
             </Button>
           </DialogFooter>

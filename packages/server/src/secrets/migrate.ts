@@ -1,6 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { config } from 'dotenv'
-import { readFileSync, existsSync } from 'fs'
-import { resolve } from 'path'
 import { SecretsService } from './SecretsService.js'
 
 config({ path: resolve(import.meta.dirname, '../../.env') })

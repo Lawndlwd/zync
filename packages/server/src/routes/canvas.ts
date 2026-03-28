@@ -1,11 +1,11 @@
+import { CanvasPromptSchema, CanvasRenderSchema } from '@zync/shared/schemas'
 import { Router } from 'express'
-import { renderCanvas, clearCanvas } from '../canvas/renderer.js'
-import { getBrainDb as getDb } from '../memory/brain-db.js'
-import { getOrCreateSession, sendPromptAsync, getSessionMessages, isSessionIdle } from '../opencode/client.js'
-import { validate } from '../lib/validate.js'
+import { clearCanvas, renderCanvas } from '../canvas/renderer.js'
 import { errorResponse } from '../lib/errors.js'
-import { loadPromptContent, interpolate } from '../skills/prompts.js'
-import { CanvasRenderSchema, CanvasPromptSchema } from '@zync/shared/schemas'
+import { validate } from '../lib/validate.js'
+import { getBrainDb as getDb } from '../memory/brain-db.js'
+import { getOrCreateSession, getSessionMessages, isSessionIdle, sendPromptAsync } from '../opencode/client.js'
+import { interpolate, loadPromptContent } from '../skills/prompts.js'
 
 export const canvasRouter = Router()
 
@@ -51,11 +51,21 @@ function flushRender(): void {
   ensureTable()
   const db = getDb()
   if (editingCanvasId) {
-    db.prepare('UPDATE canvas_history SET title = ?, html = ?, css = ?, js = ? WHERE id = ?')
-      .run(title, html, css || null, js || null, editingCanvasId)
+    db.prepare('UPDATE canvas_history SET title = ?, html = ?, css = ?, js = ? WHERE id = ?').run(
+      title,
+      html,
+      css || null,
+      js || null,
+      editingCanvasId,
+    )
     editingCanvasId = null
   } else {
-    db.prepare('INSERT INTO canvas_history (title, html, css, js) VALUES (?, ?, ?, ?)').run(title, html, css || null, js || null)
+    db.prepare('INSERT INTO canvas_history (title, html, css, js) VALUES (?, ?, ?, ?)').run(
+      title,
+      html,
+      css || null,
+      js || null,
+    )
   }
 }
 
@@ -103,7 +113,9 @@ canvasRouter.get('/history/:id', (req, res) => {
   try {
     ensureTable()
     const db = getDb()
-    const row = db.prepare('SELECT id, title, html, css, js, created_at FROM canvas_history WHERE id = ?').get(req.params.id)
+    const row = db
+      .prepare('SELECT id, title, html, css, js, created_at FROM canvas_history WHERE id = ?')
+      .get(req.params.id)
     if (!row) return res.status(404).json({ error: 'Not found' })
     res.json(row)
   } catch (err) {
@@ -168,7 +180,7 @@ Modify the above based on the user's request. Keep the same title unless the cha
     let pollMs = 500
     let checks = 0
     while (Date.now() < deadline) {
-      await new Promise(r => setTimeout(r, pollMs))
+      await new Promise((r) => setTimeout(r, pollMs))
       checks++
       if (checks > 5) pollMs = 1500
 

@@ -1,87 +1,43 @@
-import { useState, useEffect } from 'react'
+import {
+  Activity,
+  FileText,
+  Gamepad2,
+  KanbanSquare,
+  Laptop,
+  MessageCircle,
+  Monitor,
+  Moon,
+  Settings,
+  Shield,
+  Sun,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  KanbanSquare,
-  Settings,
-  BarChart3,
-  FileText,
-  Monitor,
-  MessageCircle,
-  Send,
-  Mail,
-  ChevronDown,
-  ChevronRight,
-  GraduationCap,
-  Share2,
-  Shield,
-} from 'lucide-react'
 import { useOpenCodeStore } from '@/store/opencode'
+import { type Theme, useThemeStore } from '@/store/theme'
 
-import { useBotChannels } from '@/hooks/useBot'
+const themeIcon = { light: Sun, dark: Moon, system: Laptop } as const
+const themeNext: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' }
 
 type NavItem = {
   to: string
-  icon: typeof LayoutDashboard
+  icon: typeof MessageCircle
   label: string
-  color: string
 }
 
-type NavGroup = {
-  id: string
-  label: string
-  items: NavItem[]
-}
-
-const navGroups: NavGroup[] = [
-  {
-    id: 'home',
-    label: 'Home',
-    items: [
-      { to: '/', icon: LayoutDashboard, label: 'Dashboard', color: 'text-indigo-400' },
-      { to: '/productivity', icon: BarChart3, label: 'Productivity', color: 'text-orange-400' },
-      { to: '/tasks', icon: KanbanSquare, label: 'Tasks & Projects', color: 'text-emerald-400' },
-      { to: '/chat', icon: MessageCircle, label: 'Chat', color: 'text-sky-400' },
-    ],
-  },
-  {
-    id: 'workspace',
-    label: 'Workspace',
-    items: [
-      { to: '/documents', icon: FileText, label: 'Documents', color: 'text-teal-400' },
-      { to: '/canvas', icon: Monitor, label: 'Canvas', color: 'text-pink-400' },
-      { to: '/vault', icon: Shield, label: 'Vault', color: 'text-amber-400' },
-    ],
-  },
-  {
-    id: 'connect',
-    label: 'Connect',
-    items: [
-      { to: '/social', icon: Share2, label: 'Social Media', color: 'text-fuchsia-400' },
-      { to: '/career', icon: GraduationCap, label: 'Career', color: 'text-teal-400' },
-    ],
-  },
+const navItems: NavItem[] = [
+  { to: '/s/game-board', icon: Gamepad2, label: 'Life OS' },
+  { to: '/chat', icon: MessageCircle, label: 'Chat' },
+  { to: '/tasks', icon: KanbanSquare, label: 'Projects' },
+  { to: '/activity', icon: Activity, label: 'Activity' },
+  { to: '/documents', icon: FileText, label: 'Documents' },
+  { to: '/canvas', icon: Monitor, label: 'Canvas' },
+  { to: '/vault', icon: Shield, label: 'Vault' },
 ]
-
-const channelIcons: Record<string, typeof MessageCircle> = {
-  whatsapp: MessageCircle,
-  telegram: Send,
-  gmail: Mail,
-}
-
-const channelColors: Record<string, string> = {
-  whatsapp: 'text-green-400',
-  telegram: 'text-blue-400',
-  gmail: 'text-red-400',
-}
 
 export function Sidebar() {
   const ocConnected = useOpenCodeStore((s) => s.connectionStatus.connected)
-  const ocServerUrl = useOpenCodeStore((s) => s.serverUrl)
-  const { data: channels } = useBotChannels()
-  const connectedChannels = channels?.filter((c) => c.connected) || []
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [version, setVersion] = useState<string | null>(null)
 
   useEffect(() => {
@@ -91,145 +47,71 @@ export function Sidebar() {
       .catch(() => {})
   }, [])
 
-  const toggleGroup = (groupId: string) => {
-    setCollapsedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }))
-  }
-
   return (
-    <aside className="flex h-screen w-16 flex-col items-center border-r border-white/[0.06] bg-black/40 backdrop-blur-xl py-4 lg:w-60">
-      <div className="mb-6 px-3 w-full">
-        <div
-          className={cn(
-            'rounded-xl border px-3 py-3 transition-colors',
-            ocConnected
-              ? 'border-emerald-500/20 bg-emerald-500/5'
-              : 'border-red-400/20 bg-red-400/5'
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                'flex h-3 w-3 shrink-0 rounded-full',
-                ocConnected ? 'bg-emerald-400/80' : 'bg-red-400/70'
-              )}
-            />
-            <div className="hidden lg:block min-w-0">
-              <p className="text-sm font-medium text-zinc-200 truncate">
-                {ocConnected ? 'OpenCode' : 'Offline'}
-              </p>
-              <p
-                className={cn(
-                  'text-xs',
-                  ocConnected ? 'text-emerald-400/80' : 'text-red-400/70'
-                )}
-              >
-                {ocConnected
-                  ? `${ocServerUrl} · Local`
-                  : 'Server unreachable'}
-              </p>
-            </div>
-          </div>
-        </div>
+    <aside className="flex h-screen w-14 shrink-0 flex-col items-center border-r border-border bg-card py-4">
+      {/* Status dot */}
+      <div className="mb-3">
+        <div className={cn('h-2 w-2 rounded-full', ocConnected ? 'bg-primary' : 'bg-muted-foreground/20')} />
       </div>
 
-      {connectedChannels.length > 0 && (
-        <div className="mb-4 px-3 w-full">
-          <div className="flex items-center gap-2 lg:gap-0 lg:flex-col lg:items-stretch">
-            {connectedChannels.map((ch) => {
-              const Icon = channelIcons[ch.channel] || MessageCircle
-              const color = channelColors[ch.channel] || 'text-zinc-400'
-              return (
-                <div
-                  key={ch.channel}
-                  className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 lg:mb-1"
-                >
-                  <Icon size={14} className={cn('shrink-0', color)} />
-                  <span className={cn('hidden lg:block text-xs font-medium capitalize', color)}>
-                    {ch.channel}
-                  </span>
-                  <div className="hidden lg:flex ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                </div>
+      <nav className="flex flex-col items-center gap-0.5">
+        {navItems.map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            title={label}
+            className={({ isActive }) =>
+              cn(
+                'grid h-9 w-9 place-items-center rounded-lg transition-colors',
+                isActive
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground/60 hover:bg-accent hover:text-foreground',
               )
-            })}
-          </div>
-        </div>
-      )}
-
-      <nav className="flex flex-1 flex-col gap-1 px-3 w-full overflow-y-auto">
-        {navGroups.map((group, groupIndex) => (
-          <div key={group.id}>
-            {groupIndex > 0 && (
-              <div className="my-2 border-t border-white/[0.06] lg:my-3" />
-            )}
-            <button
-              onClick={() => toggleGroup(group.id)}
-              className={cn(
-                'mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-zinc-500 transition-colors lg:mb-2 hover:text-zinc-400',
-                'hidden lg:flex'
-              )}
-            >
-              {collapsedGroups[group.id] ? (
-                <ChevronRight size={12} />
-              ) : (
-                <ChevronDown size={12} />
-              )}
-              {group.label}
-            </button>
-            <div className="flex flex-col gap-1">
-              {group.items.map(({ to, icon: Icon, label, color }) => {
-                const isCollapsed = collapsedGroups[group.id]
-                if (isCollapsed) return null
-                return (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={to === '/'}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                        isActive
-                          ? 'bg-white/[0.08] text-zinc-100'
-                          : 'text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-300'
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <Icon size={20} className={cn('shrink-0', isActive ? color : '')} />
-                        <span className="hidden lg:block truncate">{label}</span>
-                      </>
-                    )}
-                  </NavLink>
-                )
-              })}
-            </div>
-          </div>
+            }
+          >
+            <Icon size={18} strokeWidth={1.5} />
+          </NavLink>
         ))}
       </nav>
 
-      <div className="flex flex-col gap-1 px-3 w-full border-t border-white/[0.06] pt-3">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-zinc-800/80 text-zinc-100'
-                : 'text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300'
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Settings size={20} className={cn('shrink-0', isActive ? 'text-zinc-300' : '')} />
-              <span className="hidden lg:block">Settings</span>
-            </>
-          )}
-        </NavLink>
-        {version && (
-          <p className="mt-2 text-center text-[10px] text-zinc-600 hidden lg:block">v{version}</p>
-        )}
-      </div>
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Theme toggle */}
+      <ThemeToggle />
+
+      {/* Settings */}
+      <NavLink
+        to="/settings"
+        title="Settings"
+        className={({ isActive }) =>
+          cn(
+            'grid h-9 w-9 place-items-center rounded-lg transition-colors',
+            isActive ? 'bg-accent text-foreground' : 'text-muted-foreground/60 hover:bg-accent hover:text-foreground',
+          )
+        }
+      >
+        <Settings size={18} strokeWidth={1.5} />
+      </NavLink>
+
+      {version && <p className="mt-2 text-[9px] text-muted-foreground">v{version}</p>}
     </aside>
+  )
+}
+
+function ThemeToggle() {
+  const theme = useThemeStore((s) => s.theme)
+  const setTheme = useThemeStore((s) => s.setTheme)
+  const Icon = themeIcon[theme]
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(themeNext[theme])}
+      title={`Theme: ${theme}`}
+      className="mb-1 grid h-9 w-9 place-items-center rounded-lg text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+    >
+      <Icon size={18} strokeWidth={1.5} />
+    </button>
   )
 }

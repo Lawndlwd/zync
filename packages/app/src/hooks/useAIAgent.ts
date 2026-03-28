@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
-import { useChatStore } from '@/store/chat'
-import { streamChat } from '@/services/llm'
 import type { LLMMessage } from '@/services/llm'
+import { streamChat } from '@/services/llm'
+import { useChatStore } from '@/store/chat'
 
 export function useAIAgent() {
   const { messages, addMessage, appendToMessage, updateMessage, setLoading } = useChatStore()
@@ -19,24 +19,21 @@ export function useAIAgent() {
       ]
 
       try {
-        await streamChat(
-          llmMessages,
-          {
-            onToken: (token) => appendToMessage(assistantMsg.id, token),
-            onToolCall: (toolCall) => {
-              appendToMessage(assistantMsg.id, `\n\n*Using ${toolCall.name}...*\n\n`)
-            },
-            onToolResult: () => {},
-            onDone: () => {},
-            onError: (error) => {
-              updateMessage(assistantMsg.id, {
-                content: `Error: ${error.message}`,
-                isStreaming: false,
-              })
-              setLoading(false)
-            },
-          }
-        )
+        await streamChat(llmMessages, {
+          onToken: (token) => appendToMessage(assistantMsg.id, token),
+          onToolCall: (toolCall) => {
+            appendToMessage(assistantMsg.id, `\n\n*Using ${toolCall.name}...*\n\n`)
+          },
+          onToolResult: () => {},
+          onDone: () => {},
+          onError: (error) => {
+            updateMessage(assistantMsg.id, {
+              content: `Error: ${error.message}`,
+              isStreaming: false,
+            })
+            setLoading(false)
+          },
+        })
 
         updateMessage(assistantMsg.id, { isStreaming: false })
         setLoading(false)
@@ -48,7 +45,7 @@ export function useAIAgent() {
         setLoading(false)
       }
     },
-    [messages, addMessage, appendToMessage, updateMessage, setLoading]
+    [messages, addMessage, appendToMessage, updateMessage, setLoading],
   )
 
   return { sendMessage }

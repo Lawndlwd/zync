@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark" style="background: #131917; overflow: hidden;">
+<html lang="en" class="overflow-hidden">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -8,9 +8,18 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+    <meta name="description" content="Zync — personal dashboard for goals, productivity, and life management.">
     <title>Zync</title>
+    <script>
+      (function(){var s=localStorage.getItem('zync-theme');var t='system';if(s){try{t=JSON.parse(s).state.theme}catch(e){}}var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(d){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark')}else{document.documentElement.setAttribute('data-theme','light')}})();
+    </script>
   </head>
-  <body class="text-zinc-100" style="background: linear-gradient(145deg, #141b1a 0%, #1a1d1e 30%, #171c1b 60%, #131917 100%); background-attachment: fixed;">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

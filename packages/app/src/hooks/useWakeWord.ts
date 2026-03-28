@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface UseWakeWordOptions {
   phrase?: string
@@ -71,10 +71,12 @@ export function useWakeWord({ phrase = 'ok zinc', onDetected, enabled: _enabled 
       // Use enabledRef for current value (avoids stale closure)
       if (recognitionRef.current && !detectedRef.current && enabledRef.current) {
         // Exponential backoff based on fail count
-        const delay = Math.min(BASE_RETRY_MS * Math.pow(2, failCountRef.current), MAX_RETRY_MS)
+        const delay = Math.min(BASE_RETRY_MS * 2 ** failCountRef.current, MAX_RETRY_MS)
         setTimeout(() => {
           if (recognitionRef.current && !detectedRef.current && enabledRef.current) {
-            try { recognition.start() } catch {}
+            try {
+              recognition.start()
+            } catch {}
           }
         }, delay)
       } else {

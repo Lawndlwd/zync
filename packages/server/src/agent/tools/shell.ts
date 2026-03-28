@@ -1,7 +1,7 @@
-import { execFile } from 'child_process'
-import { promisify } from 'util'
-import { readFileSync, existsSync } from 'fs'
-import { resolve } from 'path'
+import { execFile } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 const CONFIG_PATH = resolve(import.meta.dirname, '../../../data/tool-config.json')
@@ -20,7 +20,24 @@ function loadConfig(): ToolConfig {
   }
   return {
     shell: {
-      allowlist: ['ls', 'cat', 'echo', 'date', 'pwd', 'whoami', 'uname', 'df', 'du', 'wc', 'grep', 'find', 'head', 'tail', 'curl', 'git'],
+      allowlist: [
+        'ls',
+        'cat',
+        'echo',
+        'date',
+        'pwd',
+        'whoami',
+        'uname',
+        'df',
+        'du',
+        'wc',
+        'grep',
+        'find',
+        'head',
+        'tail',
+        'curl',
+        'git',
+      ],
       timeout_ms: 30_000,
       max_output_bytes: 100_000,
     },
@@ -29,16 +46,29 @@ function loadConfig(): ToolConfig {
 
 function resolveCommand(cmd: string): string {
   const knownPaths: Record<string, string> = {
-    ls: '/bin/ls', cat: '/bin/cat', echo: '/bin/echo', date: '/bin/date',
-    pwd: '/bin/pwd', whoami: '/usr/bin/whoami', uname: '/usr/bin/uname',
-    df: '/bin/df', du: '/usr/bin/du', wc: '/usr/bin/wc', grep: '/usr/bin/grep',
-    find: '/usr/bin/find', head: '/usr/bin/head', tail: '/usr/bin/tail',
-    curl: '/usr/bin/curl', git: '/usr/bin/git',
+    ls: '/bin/ls',
+    cat: '/bin/cat',
+    echo: '/bin/echo',
+    date: '/bin/date',
+    pwd: '/bin/pwd',
+    whoami: '/usr/bin/whoami',
+    uname: '/usr/bin/uname',
+    df: '/bin/df',
+    du: '/usr/bin/du',
+    wc: '/usr/bin/wc',
+    grep: '/usr/bin/grep',
+    find: '/usr/bin/find',
+    head: '/usr/bin/head',
+    tail: '/usr/bin/tail',
+    curl: '/usr/bin/curl',
+    git: '/usr/bin/git',
   }
   return knownPaths[cmd] || cmd
 }
 
-export async function executeShellCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+export async function executeShellCommand(
+  command: string,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const config = loadConfig()
   const parts = command.trim().split(/\s+/)
   const cmd = parts[0]

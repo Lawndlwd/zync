@@ -16,7 +16,8 @@ export async function webSearch(query: string, maxResults = 5): Promise<SearchRe
   const html = await response.text()
 
   const results: SearchResult[] = []
-  const resultPattern = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi
+  const resultPattern =
+    /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi
 
   let match: RegExpExecArray | null
   while ((match = resultPattern.exec(html)) !== null && results.length < maxResults) {

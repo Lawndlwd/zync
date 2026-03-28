@@ -25,7 +25,9 @@ export function getProfile(): ProfileEntry[] {
 
 export function getProfileSection(section: ProfileSection): ProfileEntry | null {
   const db = getBrainDb()
-  const row = db.prepare('SELECT section, content, updated_at FROM core_profile WHERE section = ?').get(section) as ProfileEntry | undefined
+  const row = db.prepare('SELECT section, content, updated_at FROM core_profile WHERE section = ?').get(section) as
+    | ProfileEntry
+    | undefined
   return row ?? null
 }
 
@@ -34,16 +36,17 @@ export function updateProfileSection(section: ProfileSection, content: string): 
     throw new Error(`Invalid profile section: ${section}`)
   }
   const db = getBrainDb()
-  db.prepare("UPDATE core_profile SET content = ?, updated_at = datetime('now') WHERE section = ?").run(content, section)
+  db.prepare("UPDATE core_profile SET content = ?, updated_at = datetime('now') WHERE section = ?").run(
+    content,
+    section,
+  )
 }
 
 export function buildProfileBlock(): string {
-  const entries = getProfile().filter(e => e.content.trim().length > 0)
+  const entries = getProfile().filter((e) => e.content.trim().length > 0)
   if (entries.length === 0) return ''
 
-  const sections = entries
-    .map(e => `### ${SECTION_LABELS[e.section]}\n${e.content}`)
-    .join('\n\n')
+  const sections = entries.map((e) => `### ${SECTION_LABELS[e.section]}\n${e.content}`).join('\n\n')
 
   return `## About the User\n${sections}`
 }

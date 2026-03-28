@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAudioAnalyser } from '@/hooks/useAudioAnalyser'
-import { useChatStore } from '@/store/chat'
-import { streamChat, type LLMMessage } from '@/services/llm'
-import { useVoiceSettings } from '@/hooks/useVoiceSettings'
 import { useOpenWakeWord } from '@/hooks/useOpenWakeWord'
+import { useVoiceSettings } from '@/hooks/useVoiceSettings'
 import { useWakeWord } from '@/hooks/useWakeWord'
+import { type LLMMessage, streamChat } from '@/services/llm'
+import { useChatStore } from '@/store/chat'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,24 +22,22 @@ export interface VoiceMessage {
 const HARD_TIMEOUT_MS = 15_000
 
 // Phrases that close the voice conversation
-const CLOSE_PHRASES = ['done', 'close', 'that\'s all', 'goodbye', 'bye', 'stop', 'never mind']
+const CLOSE_PHRASES = ['done', 'close', "that's all", 'goodbye', 'bye', 'stop', 'never mind']
 
 // Known Whisper hallucinations on silence / noise
 const HALLUCINATION_PATTERNS = [
   /^thanks?\s*(for\s+watching|for\s+listening)/i,
   /^(please\s+)?(like\s+and\s+)?subscribe/i,
   /^(be\s+sure\s+to\s+)?subscribe/i,
-  /^\[.*\]$/,                    // [BLANK_AUDIO], [silence], etc.
-  /^\(.*\)$/,                    // (silence), (music), etc.
-  /^♪+$/,                        // music notes
-  /^\.{2,}$/,                    // just dots
-  /^[\s\p{P}]*$/u,              // only whitespace / punctuation
+  /^\[.*\]$/, // [BLANK_AUDIO], [silence], etc.
+  /^\(.*\)$/, // (silence), (music), etc.
+  /^♪+$/, // music notes
+  /^\.{2,}$/, // just dots
+  /^[\s\p{P}]*$/u, // only whitespace / punctuation
 ]
 
 // Single-word noise artifacts (NOT used for multi-word — user needs "done", "go", etc.)
-const SINGLE_WORD_NOISE = new Set([
-  'um', 'uh', 'hmm', 'hm', 'mm', 'mhm', 'ah', 'ahh', 'oh', 'ohh', 'eh',
-])
+const SINGLE_WORD_NOISE = new Set(['um', 'uh', 'hmm', 'hm', 'mm', 'mhm', 'ah', 'ahh', 'oh', 'ohh', 'eh'])
 
 // Minimum audio blob size in bytes — below this it's almost certainly silence.
 // ~2 KB is about 0.1s of webm audio; real speech is typically 10KB+.
@@ -63,7 +61,10 @@ function isNoiseTranscription(text: string): boolean {
 
   // Highly repetitive text — same short phrase looped (Whisper looping artifact)
   // e.g. "Okay. Okay. Okay. Okay." or "Thank you. Thank you. Thank you."
-  const sentences = trimmed.split(/[.!?]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)
+  const sentences = trimmed
+    .split(/[.!?]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
   if (sentences.length >= 4) {
     const unique = new Set(sentences)
     if (unique.size <= 2) return true
@@ -134,7 +135,10 @@ export function useVoiceConversation() {
   }, [])
 
   const isCloseCommand = useCallback((text: string) => {
-    const lower = text.toLowerCase().trim().replace(/[.!?,;:…]+$/, '')
+    const lower = text
+      .toLowerCase()
+      .trim()
+      .replace(/[.!?,;:…]+$/, '')
     return CLOSE_PHRASES.some((phrase) => lower === phrase)
   }, [])
 
@@ -152,7 +156,9 @@ export function useVoiceConversation() {
     mediaRecorderRef.current = null
 
     if (persistentStreamRef.current) {
-      persistentStreamRef.current.getTracks().forEach((t) => t.stop())
+      persistentStreamRef.current.getTracks().forEach((t) => {
+        t.stop()
+      })
       persistentStreamRef.current = null
     }
     analyser.stop()
@@ -310,7 +316,10 @@ export function useVoiceConversation() {
         // Show error to user so the conversation doesn't silently hang
         const errMsg = err instanceof Error ? err.message : 'Transcription failed'
         if (errMsg.includes('500') || errMsg.includes('Transcribe error')) {
-          setMessages((prev) => [...prev, { role: 'assistant', content: `⚠ Could not transcribe audio. Please try again.` }])
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: `⚠ Could not transcribe audio. Please try again.` },
+          ])
         }
 
         if (audioQueueRef.current.length > 0) {
@@ -385,91 +394,90 @@ export function useVoiceConversation() {
   //   transcribing "Hey Jarvis" itself).
   // When triggered manually (mic click): start recording immediately.
   // ---------------------------------------------------------------------------
-  const openConversation = useCallback(async (fromWakeWord = false) => {
-    closedRef.current = false
-    setState('recording')
-    setElapsed(0)
-    setMessages([])
+  const openConversation = useCallback(
+    async (fromWakeWord = false) => {
+      closedRef.current = false
+      setState('recording')
+      setElapsed(0)
+      setMessages([])
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      })
-      if (closedRef.current) return
-      persistentStreamRef.current = stream
-      analyser.start(stream)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        })
+        if (closedRef.current) return
+        persistentStreamRef.current = stream
+        analyser.start(stream)
 
-      if (fromWakeWord) {
-        // Wake word uses a separate mic stream, so "Hey Jarvis" audio never
-        // reaches this MediaRecorder. Mark calibrated immediately so the
-        // speech detection effect starts capture as soon as sound is detected.
+        if (fromWakeWord) {
+          // Wake word uses a separate mic stream, so "Hey Jarvis" audio never
+          // reaches this MediaRecorder. Mark calibrated immediately so the
+          // speech detection effect starts capture as soon as sound is detected.
+          calibratedRef.current = true
+          return
+        }
+
+        // Manual activation: start recording immediately
         calibratedRef.current = true
-        return
-      }
-
-      // Manual activation: start recording immediately
-      calibratedRef.current = true
-      chunksRef.current = []
-      isCapturingRef.current = true
-
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
-      }
-
-      mediaRecorder.onstop = () => {
-        isCapturingRef.current = false
-        mediaRecorderRef.current = null
-        clearTimers()
-
-        const chunks = chunksRef.current
         chunksRef.current = []
+        isCapturingRef.current = true
 
-        if (chunks.length === 0) {
-          if (conversationRef.current.length === 0) {
-            closeConversation()
+        const mediaRecorder = new MediaRecorder(stream)
+        mediaRecorderRef.current = mediaRecorder
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunksRef.current.push(e.data)
+        }
+
+        mediaRecorder.onstop = () => {
+          isCapturingRef.current = false
+          mediaRecorderRef.current = null
+          clearTimers()
+
+          const chunks = chunksRef.current
+          chunksRef.current = []
+
+          if (chunks.length === 0) {
+            if (conversationRef.current.length === 0) {
+              closeConversation()
+            }
+            return
           }
-          return
+
+          const blob = new Blob(chunks, { type: 'audio/webm' })
+
+          if (isProcessingRef.current) {
+            audioQueueRef.current.push(blob)
+            return
+          }
+
+          processAudio(blob)
         }
 
-        const blob = new Blob(chunks, { type: 'audio/webm' })
+        mediaRecorder.start()
 
-        if (isProcessingRef.current) {
-          audioQueueRef.current.push(blob)
-          return
-        }
+        elapsedTimerRef.current = setInterval(() => {
+          setElapsed((prev) => prev + 1)
+        }, 1_000)
 
-        processAudio(blob)
+        hardTimeoutRef.current = setTimeout(() => {
+          if (mediaRecorderRef.current?.state === 'recording') {
+            mediaRecorderRef.current.stop()
+          }
+        }, HARD_TIMEOUT_MS)
+      } catch (err) {
+        console.error('Mic access failed:', err)
+        closeConversation()
       }
-
-      mediaRecorder.start()
-
-      elapsedTimerRef.current = setInterval(() => {
-        setElapsed((prev) => prev + 1)
-      }, 1_000)
-
-      hardTimeoutRef.current = setTimeout(() => {
-        if (mediaRecorderRef.current?.state === 'recording') {
-          mediaRecorderRef.current.stop()
-        }
-      }, HARD_TIMEOUT_MS)
-    } catch (err) {
-      console.error('Mic access failed:', err)
-      closeConversation()
-    }
-  }, [analyser, clearTimers, closeConversation, processAudio])
+    },
+    [analyser, clearTimers, closeConversation, processAudio],
+  )
 
   // ---------------------------------------------------------------------------
   // Silence detection -> stop current capture
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (
-      isCapturingRef.current &&
-      analyser.isSilent &&
-      mediaRecorderRef.current?.state === 'recording'
-    ) {
+    if (isCapturingRef.current && analyser.isSilent && mediaRecorderRef.current?.state === 'recording') {
       mediaRecorderRef.current.stop()
     }
   }, [analyser.isSilent])
@@ -567,7 +575,9 @@ export function useVoiceConversation() {
         mediaRecorderRef.current.stop()
       }
       if (persistentStreamRef.current) {
-        persistentStreamRef.current.getTracks().forEach((t) => t.stop())
+        persistentStreamRef.current.getTracks().forEach((t) => {
+          t.stop()
+        })
       }
       openWakeWord.stop()
       webSpeechWakeWord.stop()

@@ -1,5 +1,5 @@
-import { readFileSync, existsSync } from 'fs'
-import { join, resolve } from 'path'
+import { existsSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { getConfig } from '../config/index.js'
 
 const BUNDLED_SKILLS_DIR = resolve(import.meta.dirname, '../../skills')

@@ -1,14 +1,14 @@
-import { useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AgentModelConfig } from '@zync/shared/types'
+import { useMemo } from 'react'
 import {
+  abortSession,
   checkConnection,
-  fetchProviders,
-  fetchSessions,
-  fetchMessages,
   createSession,
   deleteSession,
-  abortSession,
+  fetchMessages,
+  fetchProviders,
+  fetchSessions,
 } from '@/services/opencode'
 import { useOpenCodeStore } from '@/store/opencode'
 
@@ -109,7 +109,11 @@ export function useSessionTokens(sessionId: string | null) {
 
   return useMemo(() => {
     if (!messages) return null
-    let outputTotal = 0, reasoningTotal = 0, cacheRead = 0, cacheWrite = 0, cost = 0
+    let outputTotal = 0,
+      reasoningTotal = 0,
+      cacheRead = 0,
+      cacheWrite = 0,
+      cost = 0
     let contextInput = 0
     const models = new Set<string>()
 
@@ -128,8 +132,12 @@ export function useSessionTokens(sessionId: string | null) {
     }
 
     return {
-      input: contextInput, output: outputTotal, reasoning: reasoningTotal,
-      cacheRead, cacheWrite, cost,
+      input: contextInput,
+      output: outputTotal,
+      reasoning: reasoningTotal,
+      cacheRead,
+      cacheWrite,
+      cost,
       total: contextInput + outputTotal + reasoningTotal,
       models: Array.from(models),
     }
@@ -139,8 +147,15 @@ export function useSessionTokens(sessionId: string | null) {
 export type SessionSource = 'all' | 'dashboard' | 'external'
 
 const EMPTY_TOKEN_STATS = {
-  input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0,
-  cost: 0, total: 0, models: [] as string[], sessionCount: 0,
+  input: 0,
+  output: 0,
+  reasoning: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  cost: 0,
+  total: 0,
+  models: [] as string[],
+  sessionCount: 0,
 }
 
 export function useAllSessionsTokens(days?: number, _source: SessionSource = 'all') {

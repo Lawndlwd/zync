@@ -1,12 +1,12 @@
+import type { Bot } from 'grammy'
+import { extractUsageFromSession, insertLLMCall } from '../bot/memory/activity.js'
+import { getConfig } from '../config/index.js'
+import { logger } from '../lib/logger.js'
 import { getOrCreateSession } from '../opencode/client.js'
 import { waitForResponse } from '../opencode/wait-for-response.js'
-import { insertLLMCall, extractUsageFromSession } from '../bot/memory/activity.js'
 import { loadPromptContent } from '../skills/prompts.js'
 import { insertDM } from './db.js'
 import { isRateLimited } from './rate-limit.js'
-import { logger } from '../lib/logger.js'
-import { getConfig } from '../config/index.js'
-import type { Bot } from 'grammy'
 
 const CATEGORIES = ['urgent', 'business', 'support', 'spam', 'fan'] as const
 type DMCategory = (typeof CATEGORIES)[number]
@@ -15,7 +15,7 @@ function getSupportPrompt(): string {
   try {
     return loadPromptContent('telegram-support')
   } catch {
-    return 'You are a helpful assistant. Respond in the user\'s language. Be concise.'
+    return "You are a helpful assistant. Respond in the user's language. Be concise."
   }
 }
 
@@ -39,13 +39,7 @@ async function generateReply(senderName: string, text: string): Promise<string> 
   const sessionId = await getOrCreateSession('telegram-dm')
   const prompt = getSupportPrompt()
 
-  const fullPrompt = [
-    prompt,
-    '',
-    `DM from ${senderName}: "${text}"`,
-    '',
-    'Reply:',
-  ].join('\n')
+  const fullPrompt = [prompt, '', `DM from ${senderName}: "${text}"`, '', 'Reply:'].join('\n')
 
   return waitForResponse(sessionId, fullPrompt, { timeoutMs: 30_000 })
 }

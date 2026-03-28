@@ -1,26 +1,14 @@
-import { useState, useEffect } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import { Bot, Loader2, User } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { cn } from '@/lib/utils'
 import { useProjects } from '@/hooks/useProjects'
 import { useCreateTask } from '@/hooks/useTasks'
-import { User, Bot, Loader2 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { cn } from '@/lib/utils'
 
 // ─── Component ───
 
@@ -30,11 +18,7 @@ interface CreateTaskDialogProps {
   defaultProject?: string
 }
 
-export function CreateTaskDialog({
-  open,
-  onOpenChange,
-  defaultProject,
-}: CreateTaskDialogProps) {
+export function CreateTaskDialog({ open, onOpenChange, defaultProject }: CreateTaskDialogProps) {
   const { data: projects = [] } = useProjects()
   const createTask = useCreateTask()
 
@@ -183,20 +167,11 @@ export function CreateTaskDialog({
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={!title.trim() || !project || createTask.isPending}
-            >
-              {createTask.isPending ? (
-                <Loader2 size={16} className="animate-spin mr-2" />
-              ) : null}
+            <Button type="submit" disabled={!title.trim() || !project || createTask.isPending}>
+              {createTask.isPending ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
               Create
             </Button>
           </DialogFooter>

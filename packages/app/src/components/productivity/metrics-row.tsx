@@ -1,7 +1,7 @@
-import { useHabitsStore } from '@/store/habits'
-import { Card, CardContent } from '@/components/ui/card'
 import { format } from 'date-fns'
-import { Target, Flame, Hash, TrendingUp } from 'lucide-react'
+import { Flame, Hash, Target, TrendingUp } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { useHabitsStore } from '@/store/habits'
 
 export function MetricsRow() {
   const { logs, getWeeklyScore, getStreak, isHabitDueToday } = useHabitsStore()
@@ -26,7 +26,7 @@ export function MetricsRow() {
       label: 'Completion Rate',
       value: `${completionPct}%`,
       sub: `${completedToday}/${dueToday.length} due today`,
-      color: 'text-indigo-400 bg-indigo-500/10',
+      color: 'text-primary bg-primary/10',
     },
     {
       icon: <Flame size={24} />,
@@ -56,12 +56,10 @@ export function MetricsRow() {
       {metrics.map((m) => (
         <Card key={m.label}>
           <CardContent className="flex items-center gap-4 py-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${m.color}`}>
-              {m.icon}
-            </div>
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${m.color}`}>{m.icon}</div>
             <div>
-              <p className="text-xl font-bold text-zinc-100">{m.value}</p>
-              <p className="text-sm text-zinc-500">{m.label}</p>
+              <p className="text-xl font-bold text-foreground">{m.value}</p>
+              <p className="text-sm text-muted-foreground">{m.label}</p>
             </div>
           </CardContent>
         </Card>

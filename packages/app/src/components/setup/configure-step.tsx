@@ -1,18 +1,15 @@
-import { useState, useCallback, useEffect } from 'react'
-import { useSetupStore } from '@/store/setup'
-import { verifyIntegration } from '@/services/setup'
-import { setSecret } from '@/services/secrets'
-import { setConfig } from '@/services/config'
-import { useOpenCodeProviders, useAgentModels, useSaveAgentModels } from '@/hooks/useOpenCode'
 import type { AgentModelConfig } from '@zync/shared/types'
-import { Input } from '@/components/ui/input'
+import { Bell, CheckCircle2, ChevronDown, Cpu, Loader2, Mail, MessageCircle, Send, XCircle } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
-import {
-  Loader2, CheckCircle2, XCircle, ChevronDown,
-  Ticket, GitMerge, Send, MessageCircle, Mail, Bell, Cpu,
-} from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { useAgentModels, useOpenCodeProviders, useSaveAgentModels } from '@/hooks/useOpenCode'
 import { cn } from '@/lib/utils'
+import { setConfig } from '@/services/config'
+import { setSecret } from '@/services/secrets'
+import { verifyIntegration } from '@/services/setup'
+import { useSetupStore } from '@/store/setup'
 
 interface FieldConfig {
   key: string
@@ -37,32 +34,6 @@ interface FormConfig {
 
 const integrationConfigs: FormConfig[] = [
   {
-    id: 'jira',
-    name: 'Jira',
-    icon: Ticket,
-    color: 'text-blue-400',
-    verifiable: true,
-    verifyFields: ['baseUrl', 'apiToken'],
-    fields: [
-      { key: 'baseUrl', label: 'Base URL', placeholder: 'https://your-domain.atlassian.net', storage: 'config', storageName: 'JIRA_BASE_URL', category: 'jira' },
-      { key: 'email', label: 'Email (Cloud only)', placeholder: 'you@company.com', storage: 'config', storageName: 'JIRA_EMAIL', category: 'jira' },
-      { key: 'apiToken', label: 'API Token / PAT', placeholder: 'Your Jira API token or Personal Access Token', type: 'password', storage: 'secret', storageName: 'JIRA_API_TOKEN', category: 'jira' },
-      { key: 'projectKey', label: 'Project Key', placeholder: 'PROJ', storage: 'config', storageName: 'JIRA_PROJECT_KEY', category: 'jira' },
-    ],
-  },
-  {
-    id: 'gitlab',
-    name: 'GitLab',
-    icon: GitMerge,
-    color: 'text-violet-400',
-    verifiable: true,
-    verifyFields: ['baseUrl', 'pat'],
-    fields: [
-      { key: 'baseUrl', label: 'Base URL', placeholder: 'https://gitlab.com', storage: 'config', storageName: 'GITLAB_BASE_URL', category: 'gitlab' },
-      { key: 'pat', label: 'Personal Access Token', placeholder: 'glpat-xxxxxxxxxxxx', type: 'password', storage: 'secret', storageName: 'GITLAB_PAT', category: 'gitlab' },
-    ],
-  },
-  {
     id: 'telegram',
     name: 'Telegram',
     icon: Send,
@@ -70,8 +41,23 @@ const integrationConfigs: FormConfig[] = [
     verifiable: true,
     verifyFields: ['botToken'],
     fields: [
-      { key: 'botToken', label: 'Bot Token', placeholder: '123456:ABC-DEF1234...', type: 'password', storage: 'secret', storageName: 'TELEGRAM_BOT_TOKEN', category: 'telegram' },
-      { key: 'allowedUsers', label: 'Allowed User IDs', placeholder: '123456789 (comma-separated)', storage: 'config', storageName: 'TELEGRAM_ALLOWED_USERS', category: 'telegram' },
+      {
+        key: 'botToken',
+        label: 'Bot Token',
+        placeholder: '123456:ABC-DEF1234...',
+        type: 'password',
+        storage: 'secret',
+        storageName: 'TELEGRAM_BOT_TOKEN',
+        category: 'telegram',
+      },
+      {
+        key: 'allowedUsers',
+        label: 'Allowed User IDs',
+        placeholder: '123456789 (comma-separated)',
+        storage: 'config',
+        storageName: 'TELEGRAM_ALLOWED_USERS',
+        category: 'telegram',
+      },
     ],
   },
   {
@@ -82,7 +68,14 @@ const integrationConfigs: FormConfig[] = [
     verifiable: false,
     description: 'WhatsApp connects via QR code on first message. Configure allowed numbers here.',
     fields: [
-      { key: 'allowedNumbers', label: 'Allowed Numbers', placeholder: '+1234567890 (comma-separated, with country code)', storage: 'config', storageName: 'WHATSAPP_ALLOWED_NUMBERS', category: 'whatsapp' },
+      {
+        key: 'allowedNumbers',
+        label: 'Allowed Numbers',
+        placeholder: '+1234567890 (comma-separated, with country code)',
+        storage: 'config',
+        storageName: 'WHATSAPP_ALLOWED_NUMBERS',
+        category: 'whatsapp',
+      },
     ],
   },
   {
@@ -93,8 +86,23 @@ const integrationConfigs: FormConfig[] = [
     verifiable: false,
     description: 'Gmail uses OAuth. Enter your Google Cloud credentials, then authorize in Settings after setup.',
     fields: [
-      { key: 'clientId', label: 'Client ID', placeholder: 'xxxxxx.apps.googleusercontent.com', storage: 'secret', storageName: 'CHANNEL_GMAIL_CLIENT_ID', category: 'channel' },
-      { key: 'clientSecret', label: 'Client Secret', placeholder: 'GOCSPX-...', type: 'password', storage: 'secret', storageName: 'CHANNEL_GMAIL_CLIENT_SECRET', category: 'channel' },
+      {
+        key: 'clientId',
+        label: 'Client ID',
+        placeholder: 'xxxxxx.apps.googleusercontent.com',
+        storage: 'secret',
+        storageName: 'CHANNEL_GMAIL_CLIENT_ID',
+        category: 'channel',
+      },
+      {
+        key: 'clientSecret',
+        label: 'Client Secret',
+        placeholder: 'GOCSPX-...',
+        type: 'password',
+        storage: 'secret',
+        storageName: 'CHANNEL_GMAIL_CLIENT_SECRET',
+        category: 'channel',
+      },
     ],
   },
 ]
@@ -107,9 +115,30 @@ const briefingsConfig: FormConfig = {
   verifiable: false,
   description: 'Automated morning and evening summaries sent to your chat channel.',
   fields: [
-    { key: 'morningCron', label: 'Morning Schedule', placeholder: '0 8 * * 1-5 (8 AM weekdays)', storage: 'config', storageName: 'MORNING_BRIEFING_CRON', category: 'briefings' },
-    { key: 'eveningCron', label: 'Evening Schedule', placeholder: '0 18 * * 1-5 (6 PM weekdays)', storage: 'config', storageName: 'EVENING_RECAP_CRON', category: 'briefings' },
-    { key: 'chatId', label: 'Chat ID', placeholder: 'Telegram chat ID to send briefings to', storage: 'config', storageName: 'DEFAULT_CHAT_ID', category: 'briefings' },
+    {
+      key: 'morningCron',
+      label: 'Morning Schedule',
+      placeholder: '0 8 * * 1-5 (8 AM weekdays)',
+      storage: 'config',
+      storageName: 'MORNING_BRIEFING_CRON',
+      category: 'briefings',
+    },
+    {
+      key: 'eveningCron',
+      label: 'Evening Schedule',
+      placeholder: '0 18 * * 1-5 (6 PM weekdays)',
+      storage: 'config',
+      storageName: 'EVENING_RECAP_CRON',
+      category: 'briefings',
+    },
+    {
+      key: 'chatId',
+      label: 'Chat ID',
+      placeholder: 'Telegram chat ID to send briefings to',
+      storage: 'config',
+      storageName: 'DEFAULT_CHAT_ID',
+      category: 'briefings',
+    },
   ],
 }
 
@@ -123,12 +152,13 @@ function DefaultModelForm() {
   const [saved, setSaved] = useState(false)
   const alreadyConfigured = configuredSettings['default-model']
 
-  const allModels = providers?.flatMap((p) =>
-    p.models.map((m) => ({
-      value: `${p.id}/${m.id}`,
-      label: `${p.name || p.id} / ${m.name || m.id}`,
-    }))
-  ) ?? []
+  const allModels =
+    providers?.flatMap((p) =>
+      p.models.map((m) => ({
+        value: `${p.id}/${m.id}`,
+        label: `${p.name || p.id} / ${m.name || m.id}`,
+      })),
+    ) ?? []
 
   // Current default: use bot model as the "default" since it's the most general
   const currentModel = agentModels?.bot?.model || agentModels?.opencode?.model || ''
@@ -138,7 +168,6 @@ function DefaultModelForm() {
       ...agentModels,
       bot: { model: value },
       opencode: { model: value },
-      prAgent: { model: value },
     }
     saveAgentModels.mutate(updated, {
       onSuccess: () => setSaved(true),
@@ -146,12 +175,12 @@ function DefaultModelForm() {
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
+    <div className="bg-card rounded-3xl border border-border p-5">
       <div className="flex items-center gap-3 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
           <Cpu className="h-4 w-4 text-amber-400" />
         </div>
-        <h3 className="text-sm font-medium text-zinc-200">Default Model</h3>
+        <h3 className="text-sm font-medium text-foreground">Default Model</h3>
         {saved && (
           <div className="ml-auto flex items-center gap-1.5">
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
@@ -166,20 +195,18 @@ function DefaultModelForm() {
         )}
       </div>
 
-      <p className="text-xs text-zinc-500 mb-4">
-        Select the default LLM used across all AI features (bot, PR agent, OpenCode).
-        You can override per-feature later in Settings.
+      <p className="text-xs text-muted-foreground mb-4">
+        Select the default LLM used across all AI features (bot, PR agent, OpenCode). You can override per-feature later
+        in Settings.
       </p>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" />
           Loading models from OpenCode...
         </div>
       ) : allModels.length === 0 ? (
-        <p className="text-xs text-zinc-500">
-          No models found. Make sure OpenCode is running.
-        </p>
+        <p className="text-xs text-muted-foreground">No models found. Make sure OpenCode is running.</p>
       ) : (
         <Combobox
           options={allModels}
@@ -260,16 +287,16 @@ function IntegrationForm({ config }: { config: FormConfig }) {
   }, [config, values, verification, handleVerify, setVerification])
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.03]">
+    <div className="bg-card rounded-3xl border border-border">
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
         className="flex w-full items-center gap-3 p-5 text-left"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
           <Icon className={cn('h-4 w-4', config.color)} />
         </div>
-        <h3 className="text-sm font-medium text-zinc-200">{config.name}</h3>
+        <h3 className="text-sm font-medium text-foreground">{config.name}</h3>
         {verification && (
           <div className="ml-auto flex items-center gap-1.5">
             {verification.ok ? (
@@ -294,22 +321,22 @@ function IntegrationForm({ config }: { config: FormConfig }) {
             Already configured
           </span>
         )}
-        <ChevronDown className={cn(
-          'h-4 w-4 text-zinc-500 transition-transform shrink-0',
-          collapsed ? '-rotate-90' : 'rotate-0'
-        )} />
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 text-muted-foreground transition-transform shrink-0',
+            collapsed ? '-rotate-90' : 'rotate-0',
+          )}
+        />
       </button>
 
       {!collapsed && (
         <div className="px-5 pb-5">
-          {config.description && (
-            <p className="text-xs text-zinc-500 mb-4">{config.description}</p>
-          )}
+          {config.description && <p className="text-xs text-muted-foreground mb-4">{config.description}</p>}
 
           <div className="grid gap-3 sm:grid-cols-2">
             {config.fields.map((field) => (
               <div key={field.key} className={config.fields.length === 1 ? 'sm:col-span-2' : ''}>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-400">{field.label}</label>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{field.label}</label>
                 <Input
                   type={field.type || 'text'}
                   value={values[field.key] || ''}
@@ -325,12 +352,7 @@ function IntegrationForm({ config }: { config: FormConfig }) {
 
           <div className="flex gap-2 mt-4">
             {config.verifiable && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleVerify}
-                disabled={!canVerify || verifying}
-              >
+              <Button variant="outline" size="sm" onClick={handleVerify} disabled={!canVerify || verifying}>
                 {verifying && <Loader2 className="h-3 w-3 animate-spin" />}
                 Test Connection
               </Button>
@@ -341,7 +363,11 @@ function IntegrationForm({ config }: { config: FormConfig }) {
               onClick={handleSave}
               disabled={!hasValues || saving}
             >
-              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : saved ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : null}
+              {saving ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : saved ? (
+                <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+              ) : null}
               {saved ? 'Saved' : 'Save'}
             </Button>
           </div>
@@ -360,15 +386,15 @@ export function ConfigureStep() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-zinc-100 mb-2">Configuration</h2>
-        <p className="text-zinc-400 text-sm">
+        <h2 className="text-2xl font-bold text-foreground mb-2">Configuration</h2>
+        <p className="text-muted-foreground text-sm">
           Secrets are encrypted and stored in your local vault. Other settings are saved to the config database.
         </p>
       </div>
 
       {activeIntegrations.length > 0 && (
         <div className="space-y-4 mb-6">
-          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Integrations</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Integrations</p>
           {activeIntegrations.map((config) => (
             <IntegrationForm key={config.id} config={config} />
           ))}
@@ -376,7 +402,7 @@ export function ConfigureStep() {
       )}
 
       <div className="space-y-4">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">App Settings</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">App Settings</p>
         <DefaultModelForm />
         <IntegrationForm config={briefingsConfig} />
       </div>

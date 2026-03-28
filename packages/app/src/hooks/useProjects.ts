@@ -1,11 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  fetchProjects,
-  fetchProject,
-  createProject,
-  updateProject,
-  deleteProject,
-} from '@/services/projects'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createProject, deleteProject, fetchProject, fetchProjects, updateProject } from '@/services/projects'
 
 export function useProjects() {
   return useQuery({
@@ -25,8 +19,15 @@ export function useProject(name: string) {
 export function useCreateProject() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { name: string; title?: string; description?: string; tags?: string[]; color?: string; icon?: string; content?: string }) =>
-      createProject(input),
+    mutationFn: (input: {
+      name: string
+      title?: string
+      description?: string
+      tags?: string[]
+      color?: string
+      icon?: string
+      content?: string
+    }) => createProject(input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] })
     },
@@ -36,8 +37,18 @@ export function useCreateProject() {
 export function useUpdateProject() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, ...updates }: { name: string; title?: string; description?: string; tags?: string[]; color?: string; icon?: string; content?: string }) =>
-      updateProject(name, updates),
+    mutationFn: ({
+      name,
+      ...updates
+    }: {
+      name: string
+      title?: string
+      description?: string
+      tags?: string[]
+      color?: string
+      icon?: string
+      content?: string
+    }) => updateProject(name, updates),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] })
     },

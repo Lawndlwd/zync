@@ -45,11 +45,7 @@ export async function fetchDocuments(folder?: string): Promise<Document[]> {
   return res.json()
 }
 
-export async function createDocument(input: {
-  folder: string
-  title: string
-  content?: string
-}): Promise<Document> {
+export async function createDocument(input: { folder: string; title: string; content?: string }): Promise<Document> {
   const res = await fetch(API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -61,7 +57,7 @@ export async function createDocument(input: {
 
 export async function updateDocument(
   path: string,
-  updates: Partial<{ title: string; content: string; folder: string }>
+  updates: Partial<{ title: string; content: string; folder: string }>,
 ): Promise<Document> {
   const res = await fetch(`${API}/file/${path}`, {
     method: 'PUT',

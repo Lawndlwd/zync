@@ -17,9 +17,7 @@ function decodeBody(payload: any): string {
 
 function markProcessed(messageId: string, action: string): void {
   const db = getDb()
-  db.prepare(
-    `INSERT OR IGNORE INTO processed_emails (message_id, action) VALUES (?, ?)`
-  ).run(messageId, action)
+  db.prepare(`INSERT OR IGNORE INTO processed_emails (message_id, action) VALUES (?, ?)`).run(messageId, action)
 }
 
 function isProcessed(messageId: string): boolean {
@@ -59,9 +57,9 @@ export async function gmailGetUnread(input: z.infer<typeof gmailGetUnreadSchema>
         metadataHeaders: ['From', 'Subject', 'Date'],
       })
       const headers = msg.data.payload?.headers || []
-      const from = headers.find(h => h.name === 'From')?.value || 'unknown'
-      const subject = headers.find(h => h.name === 'Subject')?.value || '(no subject)'
-      const date = headers.find(h => h.name === 'Date')?.value || ''
+      const from = headers.find((h) => h.name === 'From')?.value || 'unknown'
+      const subject = headers.find((h) => h.name === 'Subject')?.value || '(no subject)'
+      const date = headers.find((h) => h.name === 'Date')?.value || ''
 
       if (input.mark_processed && msg.data.id) {
         markProcessed(msg.data.id, 'briefed')
@@ -76,7 +74,7 @@ export async function gmailGetUnread(input: z.infer<typeof gmailGetUnreadSchema>
         date: date ? new Date(date).toISOString() : new Date(Number(msg.data.internalDate)).toISOString(),
         alreadyProcessed: msg.data.id ? isProcessed(msg.data.id) : false,
       }
-    })
+    }),
   )
 
   return JSON.stringify({ count: emails.length, emails })
@@ -99,11 +97,11 @@ export async function gmailGetThread(input: z.infer<typeof gmailGetThreadSchema>
 
   const messages = (thread.data.messages || []).map((msg) => {
     const headers = msg.payload?.headers || []
-    const from = headers.find(h => h.name?.toLowerCase() === 'from')?.value || 'unknown'
-    const to = headers.find(h => h.name?.toLowerCase() === 'to')?.value || ''
-    const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || '(no subject)'
-    const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || ''
-    const messageId = headers.find(h => h.name?.toLowerCase() === 'message-id')?.value || ''
+    const from = headers.find((h) => h.name?.toLowerCase() === 'from')?.value || 'unknown'
+    const to = headers.find((h) => h.name?.toLowerCase() === 'to')?.value || ''
+    const subject = headers.find((h) => h.name?.toLowerCase() === 'subject')?.value || '(no subject)'
+    const date = headers.find((h) => h.name?.toLowerCase() === 'date')?.value || ''
+    const messageId = headers.find((h) => h.name?.toLowerCase() === 'message-id')?.value || ''
 
     return {
       id: msg.id,
@@ -132,11 +130,7 @@ export const gmailSendReplySchema = z.object({
 export async function gmailSendReply(input: z.infer<typeof gmailSendReplySchema>): Promise<string> {
   const gmail = getGmailClient()
 
-  const headers = [
-    `To: ${input.to}`,
-    `Subject: ${input.subject}`,
-    'Content-Type: text/plain; charset=utf-8',
-  ]
+  const headers = [`To: ${input.to}`, `Subject: ${input.subject}`, 'Content-Type: text/plain; charset=utf-8']
   if (input.message_id) {
     headers.push(`In-Reply-To: ${input.message_id}`)
     headers.push(`References: ${input.message_id}`)
@@ -212,9 +206,9 @@ export async function gmailSearch(input: z.infer<typeof gmailSearchSchema>): Pro
         metadataHeaders: ['From', 'Subject', 'Date'],
       })
       const headers = msg.data.payload?.headers || []
-      const from = headers.find(h => h.name === 'From')?.value || 'unknown'
-      const subject = headers.find(h => h.name === 'Subject')?.value || '(no subject)'
-      const date = headers.find(h => h.name === 'Date')?.value || ''
+      const from = headers.find((h) => h.name === 'From')?.value || 'unknown'
+      const subject = headers.find((h) => h.name === 'Subject')?.value || '(no subject)'
+      const date = headers.find((h) => h.name === 'Date')?.value || ''
       const isUnread = (msg.data.labelIds || []).includes('UNREAD')
 
       return {
@@ -226,7 +220,7 @@ export async function gmailSearch(input: z.infer<typeof gmailSearchSchema>): Pro
         date: date ? new Date(date).toISOString() : new Date(Number(msg.data.internalDate)).toISOString(),
         isUnread,
       }
-    })
+    }),
   )
 
   return JSON.stringify({ count: emails.length, emails })

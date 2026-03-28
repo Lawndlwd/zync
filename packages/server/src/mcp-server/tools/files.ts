@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { readFileTool, writeFileTool, deleteFileTool, listFilesTool, searchFilesTool } from '../../agent/tools/files.js'
+import { deleteFileTool, listFilesTool, readFileTool, searchFilesTool, writeFileTool } from '../../agent/tools/files.js'
 
 export const readFileSchema = z.object({
   path: z.string().describe('Path to the file to read'),

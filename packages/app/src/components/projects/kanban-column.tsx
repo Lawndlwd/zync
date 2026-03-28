@@ -1,7 +1,7 @@
 import { useDroppable } from '@dnd-kit/core'
+import type { Task, TaskStatus } from '@zync/shared/types'
 import { cn } from '@/lib/utils'
 import { TaskCard } from './task-card'
-import type { Task, TaskStatus } from '@zync/shared/types'
 
 interface KanbanColumnProps {
   id: TaskStatus
@@ -13,25 +13,18 @@ interface KanbanColumnProps {
 }
 
 const headerStyles: Record<string, string> = {
-  zinc: 'bg-zinc-500/10 text-zinc-300',
-  blue: 'bg-blue-500/10 text-blue-300',
-  emerald: 'bg-emerald-500/10 text-emerald-300',
+  zinc: 'bg-muted text-muted-foreground',
+  blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-300',
+  emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
 }
 
 const countStyles: Record<string, string> = {
-  zinc: 'bg-zinc-500/20 text-zinc-400',
-  blue: 'bg-blue-500/20 text-blue-400',
-  emerald: 'bg-emerald-500/20 text-emerald-400',
+  zinc: 'bg-muted text-muted-foreground',
+  blue: 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+  emerald: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
 }
 
-export function KanbanColumn({
-  id,
-  title,
-  tasks,
-  onSelectTask,
-  showProject,
-  color,
-}: KanbanColumnProps) {
+export function KanbanColumn({ id, title, tasks, onSelectTask, showProject, color }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   return (
@@ -39,17 +32,12 @@ export function KanbanColumn({
       {/* Header */}
       <div
         className={cn(
-          'rounded-lg border border-white/[0.06] px-4 py-3 mb-3 flex items-center justify-between',
+          'rounded-lg border border-border px-4 py-3 mb-3 flex items-center justify-between',
           headerStyles[color] ?? headerStyles.zinc,
         )}
       >
         <span className="text-sm font-semibold">{title}</span>
-        <span
-          className={cn(
-            'rounded-full px-2 py-0.5 text-xs font-medium',
-            countStyles[color] ?? countStyles.zinc,
-          )}
-        >
+        <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', countStyles[color] ?? countStyles.zinc)}>
           {tasks.length}
         </span>
       </div>
@@ -59,7 +47,7 @@ export function KanbanColumn({
         ref={setNodeRef}
         className={cn(
           'flex-1 overflow-y-auto space-y-2 p-2 rounded-lg min-h-[120px] transition-colors',
-          isOver && 'bg-white/[0.03] border border-dashed border-white/[0.1]',
+          isOver && 'bg-accent/50 border border-dashed border-border',
         )}
       >
         {tasks.map((task) => (

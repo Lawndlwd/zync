@@ -1,8 +1,15 @@
 import { Router } from 'express'
+import { extractUsageFromSession, insertLLMCall } from '../bot/memory/activity.js'
 import { errorResponse } from '../lib/errors.js'
-import { checkConnection, getProviderConfig, getOpenCodeUrl, getTokenStats, setActiveDashboardSession, getOrCreateSession } from '../opencode/client.js'
-import { insertLLMCall, extractUsageFromSession } from '../bot/memory/activity.js'
 import { getBrainDb as getDb } from '../memory/brain-db.js'
+import {
+  checkConnection,
+  getOpenCodeUrl,
+  getOrCreateSession,
+  getProviderConfig,
+  getTokenStats,
+  setActiveDashboardSession,
+} from '../opencode/client.js'
 
 const opencodeRouter = Router()
 

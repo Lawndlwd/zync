@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Brain, Search, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { useMemories, useDeleteMemory, useMemoryCategories } from '@/hooks/useMemory'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { useDeleteMemory, useMemories, useMemoryCategories } from '@/hooks/useMemory'
 
 export function MemoriesSettingsCard() {
   const [search, setSearch] = useState('')
@@ -28,12 +28,12 @@ export function MemoriesSettingsCard() {
           <Brain size={16} />
           Learned Memories
         </CardTitle>
-        <p className="text-xs text-zinc-500">Facts and observations the AI has learned about you.</p>
+        <p className="text-xs text-muted-foreground">Facts and observations the AI has learned about you.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -44,7 +44,7 @@ export function MemoriesSettingsCard() {
           <select
             value={selectedCategory ?? ''}
             onChange={(e) => setSelectedCategory(e.target.value || undefined)}
-            className="bg-transparent border border-white/[0.08] text-zinc-300 text-xs rounded-md px-2 py-1.5"
+            className="bg-transparent border border-border text-foreground text-xs rounded-md px-2 py-1.5"
           >
             <option value="">All categories</option>
             {categories?.map((cat) => (
@@ -57,17 +57,14 @@ export function MemoriesSettingsCard() {
 
         <div className="max-h-80 overflow-y-auto space-y-2">
           {isLoading ? (
-            <p className="text-sm text-zinc-500">Loading...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : !memories?.length ? (
-            <p className="text-sm text-zinc-500">No memories found.</p>
+            <p className="text-sm text-muted-foreground">No memories found.</p>
           ) : (
             memories.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-start gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] p-3"
-              >
+              <div key={m.id} className="flex items-start gap-2 rounded-lg border border-border bg-secondary p-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-zinc-300">{m.content}</p>
+                  <p className="text-sm text-foreground">{m.content}</p>
                   <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                     <Badge variant="default" className="text-[10px]">
                       {m.category}
@@ -76,7 +73,7 @@ export function MemoriesSettingsCard() {
                       {m.source}
                     </Badge>
                     {m.access_count > 0 && (
-                      <span className="text-[10px] text-zinc-600">
+                      <span className="text-[10px] text-muted-foreground">
                         accessed {m.access_count} {m.access_count === 1 ? 'time' : 'times'}
                       </span>
                     )}
@@ -85,7 +82,7 @@ export function MemoriesSettingsCard() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 shrink-0 text-zinc-500 hover:text-red-400"
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-red-400"
                   onClick={() =>
                     deleteMemory.mutate(m.id, {
                       onSuccess: () => toast.success('Memory deleted'),

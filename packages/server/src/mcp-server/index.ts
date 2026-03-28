@@ -1,23 +1,24 @@
 #!/usr/bin/env node
-import pino from 'pino'
+import { resolve } from 'node:path'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { config } from 'dotenv'
-import { resolve } from 'path'
+import pino from 'pino'
 
 const mcpLogger = pino({ level: 'info' }, pino.destination(2))
 
 // Load .env from project root (server/.env)
-config({ path: resolve(import.meta.dirname, '../../.env') })
+config({ path: resolve(import.meta.dirname, '../../.env'), quiet: true })
 
 // Initialize databases before tools that use them
 import { initBrainDb } from '../memory/brain-db.js'
 import { initTodosTable } from './tools/todos.js'
+
 initBrainDb()
 initTodosTable()
 
-import { getToolGroups, DEFAULT_ENABLED_GROUPS } from './groups.js'
 import { getConfig } from '../config/index.js'
+import { DEFAULT_ENABLED_GROUPS, getToolGroups } from './groups.js'
 
 const server = new McpServer({
   name: 'zync',

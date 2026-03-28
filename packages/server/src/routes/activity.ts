@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getRecentCalls, getActivityStats, isSessionSynced, insertOpenCodeSession } from '../bot/memory/activity.js'
+import { getActivityStats, getRecentCalls, insertOpenCodeSession, isSessionSynced } from '../bot/memory/activity.js'
 import { errorResponse } from '../lib/errors.js'
 import * as opencode from '../opencode/client.js'
 
@@ -27,7 +27,8 @@ activityRouter.post('/sync-opencode', async (_req, res) => {
     if (!sessionsRes.ok) {
       return res.json({ synced: 0, message: 'Failed to fetch sessions' })
     }
-    const sessions: Array<{ id: string; title: string; createdAt: string; updatedAt: string }> = await sessionsRes.json()
+    const sessions: Array<{ id: string; title: string; createdAt: string; updatedAt: string }> =
+      await sessionsRes.json()
 
     let synced = 0
     for (const session of sessions) {
@@ -35,7 +36,9 @@ activityRouter.post('/sync-opencode', async (_req, res) => {
 
       const messages = await opencode.getSessionMessages(session.id)
 
-      let promptTokens = 0, completionTokens = 0, cost = 0
+      let promptTokens = 0,
+        completionTokens = 0,
+        cost = 0
       const models = new Set<string>()
 
       for (const msg of messages) {

@@ -33,10 +33,7 @@ export async function completeSetup(): Promise<{ success: boolean }> {
   return fetchJSON('/api/setup/complete', { method: 'POST' })
 }
 
-export async function verifyIntegration(
-  service: string,
-  config: Record<string, unknown>
-): Promise<VerifyResult> {
+export async function verifyIntegration(service: string, config: Record<string, unknown>): Promise<VerifyResult> {
   return fetchJSON('/api/setup/verify', {
     method: 'POST',
     body: JSON.stringify({ service, config }),

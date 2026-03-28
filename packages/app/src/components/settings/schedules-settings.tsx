@@ -1,12 +1,12 @@
-import { useState } from 'react'
 import cronstrue from 'cronstrue'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Clock, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { useBotSchedules, useCreateSchedule, useDeleteSchedule, useToggleSchedule } from '@/hooks/useBot'
 import { SchedulePicker } from '@/components/settings/schedule-picker'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { useBotSchedules, useCreateSchedule, useDeleteSchedule, useToggleSchedule } from '@/hooks/useBot'
 
 export function SchedulesSettingsCard() {
   const [cronExpr, setCronExpr] = useState('0 9 * * 1-5')
@@ -21,7 +21,7 @@ export function SchedulesSettingsCard() {
   const handleAdd = () => {
     if (!cronExpr.trim() || !prompt.trim() || !chatId.trim()) return
     createSchedule.mutate(
-      { cronExpression: cronExpr.trim(), prompt: prompt.trim(), chatId: parseInt(chatId) },
+      { cronExpression: cronExpr.trim(), prompt: prompt.trim(), chatId: parseInt(chatId, 10) },
       {
         onSuccess: () => {
           setCronExpr('')
@@ -30,7 +30,7 @@ export function SchedulesSettingsCard() {
           toast.success('Schedule created')
         },
         onError: () => toast.error('Failed to create schedule'),
-      }
+      },
     )
   }
 
@@ -53,13 +53,12 @@ export function SchedulesSettingsCard() {
               className="sm:col-span-2"
             />
             <div className="flex gap-2">
-              <Input
-                value={chatId}
-                onChange={(e) => setChatId(e.target.value)}
-                placeholder="Chat ID"
-                type="number"
-              />
-              <Button size="sm" onClick={handleAdd} disabled={!cronExpr.trim() || !prompt.trim() || !chatId.trim() || createSchedule.isPending}>
+              <Input value={chatId} onChange={(e) => setChatId(e.target.value)} placeholder="Chat ID" type="number" />
+              <Button
+                size="sm"
+                onClick={handleAdd}
+                disabled={!cronExpr.trim() || !prompt.trim() || !chatId.trim() || createSchedule.isPending}
+              >
                 <Plus size={14} />
               </Button>
             </div>
@@ -67,31 +66,40 @@ export function SchedulesSettingsCard() {
         </div>
         <div className="max-h-64 overflow-y-auto space-y-2">
           {isLoading ? (
-            <p className="text-sm text-zinc-500">Loading...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : !schedules?.length ? (
-            <p className="text-sm text-zinc-500">No schedules.</p>
+            <p className="text-sm text-muted-foreground">No schedules.</p>
           ) : (
             schedules.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 rounded-lg border border-white/[0.08] bg-white/[0.03] p-3">
+              <div key={s.id} className="flex items-center gap-3 rounded-lg border border-border bg-secondary p-3">
                 <button
                   onClick={() => toggleSchedule.mutate({ id: s.id, enabled: !s.enabled })}
-                  className={`h-4 w-4 shrink-0 rounded border ${s.enabled ? 'border-indigo-500 bg-indigo-500' : 'border-zinc-600'
-                    }`}
+                  className={`h-4 w-4 shrink-0 rounded border ${
+                    s.enabled ? 'border-primary bg-primary' : 'border-muted-foreground'
+                  }`}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-zinc-300 truncate">{s.prompt}</p>
-                  <p className="text-xs text-zinc-500">
-                    {(() => { try { return cronstrue.toString(s.cron_expression, { use24HourTimeFormat: false }) } catch { return s.cron_expression } })()}
+                  <p className="text-sm text-foreground truncate">{s.prompt}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(() => {
+                      try {
+                        return cronstrue.toString(s.cron_expression, { use24HourTimeFormat: false })
+                      } catch {
+                        return s.cron_expression
+                      }
+                    })()}
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 shrink-0 text-zinc-500 hover:text-red-400"
-                  onClick={() => deleteSchedule.mutate(s.id, {
-                    onSuccess: () => toast.success('Schedule deleted'),
-                    onError: () => toast.error('Failed to delete'),
-                  })}
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-red-400"
+                  onClick={() =>
+                    deleteSchedule.mutate(s.id, {
+                      onSuccess: () => toast.success('Schedule deleted'),
+                      onError: () => toast.error('Failed to delete'),
+                    })
+                  }
                 >
                   <Trash2 size={14} />
                 </Button>

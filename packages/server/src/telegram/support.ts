@@ -1,11 +1,11 @@
+import { extractUsageFromSession, insertLLMCall } from '../bot/memory/activity.js'
+import { getChannelManager } from '../channels/manager.js'
+import type { InboundMessage } from '../channels/types.js'
+import { logger } from '../lib/logger.js'
 import { getOrCreateSession } from '../opencode/client.js'
 import { waitForResponse } from '../opencode/wait-for-response.js'
-import { insertLLMCall, extractUsageFromSession } from '../bot/memory/activity.js'
 import { loadPromptContent } from '../skills/prompts.js'
 import { isRateLimited } from './rate-limit.js'
-import { logger } from '../lib/logger.js'
-import type { InboundMessage } from '../channels/types.js'
-import { getChannelManager } from '../channels/manager.js'
 
 let supportPrompt: string | null = null
 
@@ -14,7 +14,7 @@ function getSupportPrompt(): string {
     try {
       supportPrompt = loadPromptContent('telegram-support')
     } catch {
-      supportPrompt = 'You are a helpful support assistant. Respond in the user\'s language. Be concise.'
+      supportPrompt = "You are a helpful support assistant. Respond in the user's language. Be concise."
     }
   }
   return supportPrompt
@@ -45,13 +45,7 @@ export async function handleSupportMessage(msg: InboundMessage): Promise<void> {
     const startTime = Date.now()
     const prompt = getSupportPrompt()
 
-    const fullPrompt = [
-      prompt,
-      '',
-      `User (${msg.senderName}): "${msg.text}"`,
-      '',
-      'Reply:',
-    ].join('\n')
+    const fullPrompt = [prompt, '', `User (${msg.senderName}): "${msg.text}"`, '', 'Reply:'].join('\n')
 
     const sessionId = await getOrCreateSession('telegram-support')
     const reply = await waitForResponse(sessionId, fullPrompt, { timeoutMs: 30_000 })
@@ -73,7 +67,9 @@ export async function handleSupportMessage(msg: InboundMessage): Promise<void> {
     await manager.send(msg.channelType, msg.chatId, { text: reply || 'Sorry, I could not process your message.' })
   } catch (err) {
     logger.error({ err, senderId: msg.senderId }, 'Telegram support handler error')
-    await manager.send(msg.channelType, msg.chatId, { text: 'Something went wrong. Please try again later.' }).catch(() => {})
+    await manager
+      .send(msg.channelType, msg.chatId, { text: 'Something went wrong. Please try again later.' })
+      .catch(() => {})
   } finally {
     clearInterval(typingInterval)
   }

@@ -36,7 +36,14 @@ export async function createProject(input: {
 
 export async function updateProject(
   name: string,
-  updates: Partial<{ title: string; description: string; tags: string[]; color: string; icon: string; content: string }>
+  updates: Partial<{
+    title: string
+    description: string
+    tags: string[]
+    color: string
+    icon: string
+    content: string
+  }>,
 ): Promise<Project> {
   const res = await fetch(`${API}/${encodeURIComponent(name)}`, {
     method: 'PUT',
@@ -74,7 +81,7 @@ export async function createTask(
     priority?: string
     tags?: string[]
     content?: string
-  }
+  },
 ): Promise<Task> {
   const res = await fetch(`${API}/${encodeURIComponent(projectName)}/tasks`, {
     method: 'POST',
@@ -88,7 +95,14 @@ export async function createTask(
 export async function updateTask(
   projectName: string,
   taskFile: string,
-  updates: Partial<{ title: string; status: string; assignee: string; priority: string; tags: string[]; content: string }>
+  updates: Partial<{
+    title: string
+    status: string
+    assignee: string
+    priority: string
+    tags: string[]
+    content: string
+  }>,
 ): Promise<Task> {
   // Server expects { metadata: {...}, content } — separate metadata fields from content
   const { content, ...metadataFields } = updates
@@ -105,11 +119,7 @@ export async function updateTask(
   return res.json()
 }
 
-export async function updateTaskStatus(
-  projectName: string,
-  taskFile: string,
-  status: TaskStatus
-): Promise<Task> {
+export async function updateTaskStatus(projectName: string, taskFile: string, status: TaskStatus): Promise<Task> {
   const res = await fetch(`${API}/${encodeURIComponent(projectName)}/tasks/${encodeURIComponent(taskFile)}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

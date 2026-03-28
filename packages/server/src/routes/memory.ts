@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import { errorResponse } from '../lib/errors.js'
-import { getProfile, updateProfileSection, type ProfileSection } from '../memory/profile.js'
-import { getAllInstructions, addInstruction, updateInstruction, deleteInstruction } from '../memory/instructions.js'
-import { listMemories, deleteMemoryById, getMemoryCount, listMemoryCategories } from '../memory/memories.js'
-import { hybridSearch } from '../memory/search.js'
 import { checkpointBrainDb } from '../memory/brain-db.js'
+import { addInstruction, deleteInstruction, getAllInstructions, updateInstruction } from '../memory/instructions.js'
+import { deleteMemoryById, getMemoryCount, listMemories, listMemoryCategories } from '../memory/memories.js'
+import { getProfile, type ProfileSection, updateProfileSection } from '../memory/profile.js'
+import { hybridSearch } from '../memory/search.js'
 
 export const memoryRouter = Router()
 
@@ -65,7 +65,7 @@ memoryRouter.post('/instructions', (req, res) => {
 
 memoryRouter.put('/instructions/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id, 10)
     const { content, active } = req.body
     const success = updateInstruction(id, { content, active })
     res.json({ success })
@@ -76,7 +76,7 @@ memoryRouter.put('/instructions/:id', (req, res) => {
 
 memoryRouter.delete('/instructions/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id, 10)
     const success = deleteInstruction(id)
     res.json({ success })
   } catch (err) {
@@ -126,7 +126,7 @@ memoryRouter.get('/memories/count', (_req, res) => {
 
 memoryRouter.delete('/memories/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id, 10)
     const success = deleteMemoryById(id)
     res.json({ success })
   } catch (err) {

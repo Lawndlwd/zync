@@ -1,10 +1,11 @@
-import { getOrCreateSession } from '../opencode/client.js'
-import { waitForResponse } from '../opencode/wait-for-response.js'
-import { insertLLMCall, extractUsageFromSession } from '../bot/memory/activity.js'
-import type { InboundMessage } from '../channels/types.js'
+import { extractUsageFromSession, insertLLMCall } from '../bot/memory/activity.js'
 import { getChannelManager } from '../channels/manager.js'
+import type { InboundMessage } from '../channels/types.js'
 import { getConfig } from '../config/index.js'
 import { logger } from '../lib/logger.js'
+import { getOrCreateSession } from '../opencode/client.js'
+import { waitForResponse } from '../opencode/wait-for-response.js'
+import { handleBreakerReply } from '../planner/breaker-scheduler.js'
 
 export async function handleMessage(msg: InboundMessage): Promise<void> {
   // Auto-capture chat ID for briefings on first Telegram message
@@ -19,6 +20,16 @@ export async function handleMessage(msg: InboundMessage): Promise<void> {
         logger.info({ chatId: msg.chatId }, 'Auto-captured Telegram chat ID for briefings')
       }
     }
+  }
+
+  // Check if this is a reply to an autopilot breaker
+  if (msg.replyToId && msg.text && handleBreakerReply(msg.replyToId, msg.text)) {
+    const manager = getChannelManager()
+    await manager.send(msg.channelType, msg.chatId, {
+      text: '✅ Reflection saved. +50 XP',
+      replyToId: msg.id,
+    })
+    return
   }
 
   // Check if auto-reply is enabled for this channel

@@ -1,6 +1,6 @@
+import { logger } from '../../lib/logger.js'
 import { getOrCreateSession } from '../../opencode/client.js'
 import { waitForResponse } from '../../opencode/wait-for-response.js'
-import { logger } from '../../lib/logger.js'
 
 export interface FinanceTip {
   title: string

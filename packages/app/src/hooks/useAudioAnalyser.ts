@@ -1,9 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export interface UseAudioAnalyserOptions {
-  silenceThreshold?: number   // RMS threshold (0-255 scale), default 10
-  silenceDuration?: number    // ms of silence before isSilent=true, default 2500
-  fftSize?: number            // default 64 (32 frequency bars)
+  silenceThreshold?: number // RMS threshold (0-255 scale), default 10
+  silenceDuration?: number // ms of silence before isSilent=true, default 2500
+  fftSize?: number // default 64 (32 frequency bars)
 }
 
 export interface UseAudioAnalyserReturn {
@@ -46,7 +46,7 @@ export function useAudioAnalyser({
     }
 
     if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => { })
+      audioContextRef.current.close().catch(() => {})
       audioContextRef.current = null
     }
 
@@ -55,60 +55,63 @@ export function useAudioAnalyser({
     setIsSilent(false)
   }, [])
 
-  const start = useCallback((stream: MediaStream) => {
-    // Clean up any previous session
-    cleanup()
+  const start = useCallback(
+    (stream: MediaStream) => {
+      // Clean up any previous session
+      cleanup()
 
-    const audioContext = new AudioContext()
-    const analyser = audioContext.createAnalyser()
-    analyser.fftSize = fftSize
-    analyser.smoothingTimeConstant = 0.8
+      const audioContext = new AudioContext()
+      const analyser = audioContext.createAnalyser()
+      analyser.fftSize = fftSize
+      analyser.smoothingTimeConstant = 0.8
 
-    const source = audioContext.createMediaStreamSource(stream)
-    source.connect(analyser)
+      const source = audioContext.createMediaStreamSource(stream)
+      source.connect(analyser)
 
-    audioContextRef.current = audioContext
-    analyserRef.current = analyser
-    sourceRef.current = source
-    silenceSinceRef.current = null
+      audioContextRef.current = audioContext
+      analyserRef.current = analyser
+      sourceRef.current = source
+      silenceSinceRef.current = null
 
-    const bufferLength = analyser.frequencyBinCount
-    const dataArray = new Uint8Array(bufferLength)
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
 
-    const tick = () => {
-      if (!analyserRef.current) return
+      const tick = () => {
+        if (!analyserRef.current) return
 
-      analyserRef.current.getByteFrequencyData(dataArray)
+        analyserRef.current.getByteFrequencyData(dataArray)
 
-      // Copy so React sees a new reference on each tick
-      setFrequencyData(new Uint8Array(dataArray))
+        // Copy so React sees a new reference on each tick
+        setFrequencyData(new Uint8Array(dataArray))
 
-      // Compute RMS over the frequency bins
-      let sumSquares = 0
-      for (let i = 0; i < bufferLength; i++) {
-        sumSquares += dataArray[i] * dataArray[i]
-      }
-      const rms = Math.sqrt(sumSquares / bufferLength)
-
-      const now = performance.now()
-
-      if (rms < silenceThreshold) {
-        if (silenceSinceRef.current === null) {
-          silenceSinceRef.current = now
+        // Compute RMS over the frequency bins
+        let sumSquares = 0
+        for (let i = 0; i < bufferLength; i++) {
+          sumSquares += dataArray[i] * dataArray[i]
         }
-        if (now - silenceSinceRef.current >= silenceDuration) {
-          setIsSilent(true)
+        const rms = Math.sqrt(sumSquares / bufferLength)
+
+        const now = performance.now()
+
+        if (rms < silenceThreshold) {
+          if (silenceSinceRef.current === null) {
+            silenceSinceRef.current = now
+          }
+          if (now - silenceSinceRef.current >= silenceDuration) {
+            setIsSilent(true)
+          }
+        } else {
+          silenceSinceRef.current = null
+          setIsSilent(false)
         }
-      } else {
-        silenceSinceRef.current = null
-        setIsSilent(false)
+
+        rafRef.current = requestAnimationFrame(tick)
       }
 
       rafRef.current = requestAnimationFrame(tick)
-    }
-
-    rafRef.current = requestAnimationFrame(tick)
-  }, [fftSize, silenceThreshold, silenceDuration, cleanup])
+    },
+    [fftSize, silenceThreshold, silenceDuration, cleanup],
+  )
 
   const stop = useCallback(() => {
     cleanup()

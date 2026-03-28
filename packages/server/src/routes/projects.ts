@@ -1,11 +1,11 @@
-import { Router } from 'express'
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmSync, statSync, existsSync } from 'fs'
-import { join, relative } from 'path'
-import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
-import { validate } from '../lib/validate.js'
-import { errorResponse } from '../lib/errors.js'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { ProjectCreateSchema, ProjectUpdateSchema, TaskCreateSchema, TaskUpdateSchema } from '@zync/shared/schemas'
+import { Router } from 'express'
 import { getConfig } from '../config/index.js'
+import { errorResponse } from '../lib/errors.js'
+import { validate } from '../lib/validate.js'
+import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
 
 export const projectsRouter = Router()
 
@@ -60,8 +60,8 @@ projectsRouter.get('/', (_req, res) => {
     const root = getProjectsRoot()
     const entries = readdirSync(root, { withFileTypes: true })
     const projects = entries
-      .filter(e => e.isDirectory())
-      .map(e => {
+      .filter((e) => e.isDirectory())
+      .map((e) => {
         const dirPath = join(root, e.name)
         const readmePath = join(dirPath, 'README.md')
         let metadata: Record<string, any> = {}
@@ -72,7 +72,7 @@ projectsRouter.get('/', (_req, res) => {
           metadata = parsed.metadata
           content = parsed.content
         }
-        const files = readdirSync(dirPath).filter(f => f.endsWith('.md') && f !== 'README.md')
+        const files = readdirSync(dirPath).filter((f) => f.endsWith('.md') && f !== 'README.md')
         const stat = statSync(dirPath)
         return {
           name: e.name,
@@ -133,7 +133,7 @@ projectsRouter.get('/all-tasks', (_req, res) => {
     for (const entry of entries) {
       if (!entry.isDirectory()) continue
       const dirPath = join(root, entry.name)
-      const files = readdirSync(dirPath).filter(f => f.endsWith('.md') && f !== 'README.md')
+      const files = readdirSync(dirPath).filter((f) => f.endsWith('.md') && f !== 'README.md')
       for (const file of files) {
         try {
           tasks.push(readTask(entry.name, file, root))
@@ -167,7 +167,7 @@ projectsRouter.get('/:name', (req, res) => {
       metadata = parsed.metadata
       content = parsed.content
     }
-    const files = readdirSync(dirPath).filter(f => f.endsWith('.md') && f !== 'README.md')
+    const files = readdirSync(dirPath).filter((f) => f.endsWith('.md') && f !== 'README.md')
     const stat = statSync(dirPath)
     res.json({
       name: req.params.name,
@@ -218,7 +218,7 @@ projectsRouter.put('/:name', validate(ProjectUpdateSchema), (req, res) => {
     }
 
     const finalDirPath = safePath(root, finalName)
-    const files = readdirSync(finalDirPath).filter(f => f.endsWith('.md') && f !== 'README.md')
+    const files = readdirSync(finalDirPath).filter((f) => f.endsWith('.md') && f !== 'README.md')
     const stat = statSync(finalDirPath)
     res.json({
       name: finalName,
@@ -257,8 +257,8 @@ projectsRouter.get('/:name/tasks', (req, res) => {
       res.status(404).json({ error: 'Project not found' })
       return
     }
-    const files = readdirSync(dirPath).filter(f => f.endsWith('.md') && f !== 'README.md')
-    const tasks = files.map(f => readTask(req.params.name, f, root))
+    const files = readdirSync(dirPath).filter((f) => f.endsWith('.md') && f !== 'README.md')
+    const tasks = files.map((f) => readTask(req.params.name, f, root))
     tasks.sort((a, b) => new Date(b.updatedAt as string).getTime() - new Date(a.updatedAt as string).getTime())
     res.json(tasks)
   } catch (err) {

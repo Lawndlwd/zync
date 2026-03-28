@@ -1,14 +1,14 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Pencil, Plus, Settings, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Settings, Plus, Trash2, Pencil, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { listConfig, setConfig, deleteConfig } from '@/services/config'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { deleteConfig, listConfig, setConfig } from '@/services/config'
 
-const CONFIG_CATEGORIES = ['general', 'server', 'gitlab', 'jira', 'briefing', 'llm', 'voice', 'channels'] as const
+const CONFIG_CATEGORIES = ['general', 'server', 'briefing', 'llm', 'voice', 'channels'] as const
 
 export function ConfigSettingsCard() {
   const queryClient = useQueryClient()
@@ -90,8 +90,8 @@ export function ConfigSettingsCard() {
 
   return (
     <Card>
-      <CardHeader className="cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
-        <CardTitle className="flex items-center gap-2 text-zinc-100">
+      <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((o) => !o)}>
+        <CardTitle className="flex items-center gap-2 text-foreground">
           <Settings size={18} className="text-blue-400" />
           Configuration
           <Badge variant="default" className="ml-2 text-xs">
@@ -105,32 +105,34 @@ export function ConfigSettingsCard() {
           <div className="space-y-4">
             <div className="flex flex-wrap items-end gap-2">
               <div className="flex-1 min-w-[140px]">
-                <label className="mb-1 block text-xs text-zinc-400">Key</label>
+                <label className="mb-1 block text-xs text-muted-foreground">Key</label>
                 <Input
                   value={key}
-                  onChange={e => setKey(e.target.value)}
+                  onChange={(e) => setKey(e.target.value)}
                   placeholder="setting.key"
                   className="h-8 text-sm"
                 />
               </div>
               <div className="flex-1 min-w-[140px]">
-                <label className="mb-1 block text-xs text-zinc-400">Value</label>
+                <label className="mb-1 block text-xs text-muted-foreground">Value</label>
                 <Input
                   value={value}
-                  onChange={e => setValue(e.target.value)}
+                  onChange={(e) => setValue(e.target.value)}
                   placeholder="value"
                   className="h-8 text-sm"
                 />
               </div>
               <div className="w-[130px]">
-                <label className="mb-1 block text-xs text-zinc-400">Category</label>
+                <label className="mb-1 block text-xs text-muted-foreground">Category</label>
                 <select
                   value={category}
-                  onChange={e => setCategory(e.target.value)}
-                  className="h-8 w-full rounded-md border border-zinc-700/50 bg-zinc-800/50 px-2 text-sm text-zinc-100"
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="h-8 w-full rounded-md border border-border bg-secondary px-2 text-sm text-foreground"
                 >
-                  {CONFIG_CATEGORIES.map(c => (
-                    <option key={c} value={c}>{c}</option>
+                  {CONFIG_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -141,23 +143,26 @@ export function ConfigSettingsCard() {
             </div>
 
             {Object.keys(grouped).length === 0 ? (
-              <p className="text-sm text-zinc-500">No settings configured yet.</p>
+              <p className="text-sm text-muted-foreground">No settings configured yet.</p>
             ) : (
               <div className="space-y-3">
                 {Object.entries(grouped).map(([cat, items]) => (
                   <div key={cat}>
-                    <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500">{cat}</h4>
+                    <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{cat}</h4>
                     <div className="space-y-1">
-                      {items!.map(s => (
-                        <div key={s.key} className="flex items-center justify-between rounded-md bg-zinc-800/50 px-3 py-1.5">
+                      {items!.map((s) => (
+                        <div
+                          key={s.key}
+                          className="flex items-center justify-between rounded-md bg-secondary px-3 py-1.5"
+                        >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <span className="text-sm font-mono text-zinc-100 shrink-0">{s.key}</span>
+                            <span className="text-sm font-mono text-foreground shrink-0">{s.key}</span>
                             {editingKey === s.key ? (
                               <div className="flex items-center gap-1 flex-1 min-w-0">
                                 <Input
                                   value={editValue}
-                                  onChange={e => setEditValue(e.target.value)}
-                                  onKeyDown={e => {
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onKeyDown={(e) => {
                                     if (e.key === 'Enter') saveEdit(s.key, s.category)
                                     if (e.key === 'Escape') cancelEdit()
                                   }}
@@ -169,7 +174,7 @@ export function ConfigSettingsCard() {
                                   variant="ghost"
                                   size="sm"
                                   className="h-6 w-6 p-0 text-emerald-400 hover:text-emerald-300"
-                                  onMouseDown={e => e.preventDefault()}
+                                  onMouseDown={(e) => e.preventDefault()}
                                   onClick={() => saveEdit(s.key, s.category)}
                                 >
                                   <Check size={12} />
@@ -177,8 +182,8 @@ export function ConfigSettingsCard() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 w-6 p-0 text-zinc-500 hover:text-zinc-300"
-                                  onMouseDown={e => e.preventDefault()}
+                                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                  onMouseDown={(e) => e.preventDefault()}
                                   onClick={cancelEdit}
                                 >
                                   <X size={12} />
@@ -186,7 +191,7 @@ export function ConfigSettingsCard() {
                               </div>
                             ) : (
                               <span
-                                className="text-xs text-zinc-400 truncate cursor-pointer hover:text-zinc-200 transition-colors"
+                                className="text-xs text-muted-foreground truncate cursor-pointer hover:text-foreground transition-colors"
                                 onClick={() => startEditing(s.key, s.value)}
                                 title="Click to edit"
                               >
@@ -194,14 +199,14 @@ export function ConfigSettingsCard() {
                                 <Pencil size={10} className="inline ml-1 opacity-0 group-hover:opacity-100" />
                               </span>
                             )}
-                            <span className="text-xs text-zinc-600 shrink-0">
+                            <span className="text-xs text-muted-foreground shrink-0">
                               {new Date(s.updatedAt).toLocaleDateString()}
                             </span>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 text-zinc-500 hover:text-red-400 shrink-0 ml-2"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-red-400 shrink-0 ml-2"
                             onClick={() => handleDelete(s.key)}
                             disabled={deleteMutation.isPending}
                           >
@@ -216,7 +221,7 @@ export function ConfigSettingsCard() {
             )}
           </div>
         ) : (
-          <p className="text-sm text-zinc-500">Click header to manage configuration settings</p>
+          <p className="text-sm text-muted-foreground">Click header to manage configuration settings</p>
         )}
       </CardContent>
     </Card>

@@ -51,3 +51,5 @@ packages/server/.env
 packages/server/data/secrets.db
 packages/server/data/secrets.db-shm
 packages/server/data/secrets.db-wal
+
+.claude

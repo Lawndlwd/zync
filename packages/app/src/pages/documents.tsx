@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useFolders, useDocuments, useCreateFolder, useRenameFolder, useDeleteFolder, useCreateDocument, useUpdateDocument, useDeleteDocument } from '@/hooks/useDocuments'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import type { Document } from '@zync/shared/types'
+import { ArrowLeft, ChevronRight, FileText, FolderOpen, Loader2, Lock, Pencil, Plus, Save, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,10 +13,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { MilkdownEditor } from '@/components/ui/milkdown-editor'
+import {
+  useCreateDocument,
+  useCreateFolder,
+  useDeleteDocument,
+  useDeleteFolder,
+  useDocuments,
+  useFolders,
+  useRenameFolder,
+  useUpdateDocument,
+} from '@/hooks/useDocuments'
 import { cn } from '@/lib/utils'
-import { FolderOpen, Plus, FileText, Pencil, Trash2, Save, Loader2, ArrowLeft, ChevronRight, Lock } from 'lucide-react'
-import type { Document } from '@zync/shared/types'
 
 // ─── View: Folders ───
 
@@ -45,15 +54,21 @@ function FoldersView({
     if (!newFolderName.trim()) return
     const fullName = parent ? `${parent}/${newFolderName.trim()}` : newFolderName.trim()
     createFolderMut.mutate(fullName, {
-      onSuccess: () => { setNewFolderName(''); setShowNewFolder(false) },
+      onSuccess: () => {
+        setNewFolderName('')
+        setShowNewFolder(false)
+      },
     })
   }
 
   const handleRename = (oldName: string) => {
     if (!renameFolderName.trim()) return
-    renameFolderMut.mutate({ oldName, newName: renameFolderName.trim() }, {
-      onSuccess: () => setRenamingFolder(null),
-    })
+    renameFolderMut.mutate(
+      { oldName, newName: renameFolderName.trim() },
+      {
+        onSuccess: () => setRenamingFolder(null),
+      },
+    )
   }
 
   const displayName = parent?.split('/').pop() || 'Folders'
@@ -68,9 +83,11 @@ function FoldersView({
             </Button>
           )}
           <div>
-            <h2 className="text-2xl font-bold text-zinc-100">{parent ? displayName : 'Folders'}</h2>
-            <p className="text-base text-zinc-500 mt-1">
-              {parent ? `${folders.length} subfolder${folders.length !== 1 ? 's' : ''}` : 'Organize your rules and guidelines'}
+            <h2 className="text-2xl font-bold text-foreground">{parent ? displayName : 'Folders'}</h2>
+            <p className="text-base text-muted-foreground mt-1">
+              {parent
+                ? `${folders.length} subfolder${folders.length !== 1 ? 's' : ''}`
+                : 'Organize your rules and guidelines'}
             </p>
           </div>
         </div>
@@ -86,10 +103,13 @@ function FoldersView({
             <FolderOpen size={24} className="text-teal-400 shrink-0" />
             <Input
               value={newFolderName}
-              onChange={e => setNewFolderName(e.target.value)}
-              onKeyDown={e => {
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') handleCreate()
-                if (e.key === 'Escape') { setShowNewFolder(false); setNewFolderName('') }
+                if (e.key === 'Escape') {
+                  setShowNewFolder(false)
+                  setNewFolderName('')
+                }
               }}
               placeholder="Folder name..."
               className="text-base h-11 flex-1"
@@ -98,7 +118,14 @@ function FoldersView({
             <Button onClick={handleCreate} disabled={createFolderMut.isPending} className="h-11 px-5">
               {createFolderMut.isPending ? <Loader2 size={18} className="animate-spin" /> : 'Create'}
             </Button>
-            <Button variant="ghost" className="h-11" onClick={() => { setShowNewFolder(false); setNewFolderName('') }}>
+            <Button
+              variant="ghost"
+              className="h-11"
+              onClick={() => {
+                setShowNewFolder(false)
+                setNewFolderName('')
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -107,28 +134,28 @@ function FoldersView({
 
       {isLoading && (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={28} className="animate-spin text-zinc-500" />
+          <Loader2 size={28} className="animate-spin text-muted-foreground" />
         </div>
       )}
 
       {!isLoading && folders.length === 0 && !showNewFolder && (
-        <div className="flex flex-col items-center justify-center py-24 text-zinc-500">
-          <FolderOpen size={64} className="mb-4 text-zinc-700" />
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+          <FolderOpen size={64} className="mb-4 text-muted-foreground" />
           <p className="text-lg">No folders yet</p>
-          <p className="text-base text-zinc-600 mt-1">Create a folder to start organizing your documents</p>
+          <p className="text-base text-muted-foreground mt-1">Create a folder to start organizing your documents</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {folders.map(folder => (
+        {folders.map((folder) => (
           <div key={folder.name} className="group">
             {renamingFolder === folder.name ? (
               <Card className="p-5 border-teal-500/30">
                 <div className="flex items-center gap-3">
                   <Input
                     value={renameFolderName}
-                    onChange={e => setRenameFolderName(e.target.value)}
-                    onKeyDown={e => {
+                    onChange={(e) => setRenameFolderName(e.target.value)}
+                    onKeyDown={(e) => {
                       if (e.key === 'Enter') handleRename(folder.name)
                       if (e.key === 'Escape') setRenamingFolder(null)
                     }}
@@ -142,22 +169,26 @@ function FoldersView({
               </Card>
             ) : (
               <Card
-                className="p-6 cursor-pointer hover:border-teal-500/30 hover:bg-white/[0.04] transition-all"
+                className="p-6 cursor-pointer hover:border-teal-500/30 hover:bg-accent transition-all"
                 onClick={() => onSelectFolder(folder.name)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className={cn(
-                      'flex items-center justify-center w-14 h-14 rounded-xl',
-                      folder.system ? 'bg-amber-500/10' : 'bg-teal-500/10'
-                    )}>
-                      {folder.system
-                        ? <Lock size={28} className="text-amber-400" />
-                        : <FolderOpen size={28} className="text-teal-400" />}
+                    <div
+                      className={cn(
+                        'flex items-center justify-center w-14 h-14 rounded-xl',
+                        folder.system ? 'bg-amber-500/10' : 'bg-teal-500/10',
+                      )}
+                    >
+                      {folder.system ? (
+                        <Lock size={28} className="text-amber-400" />
+                      ) : (
+                        <FolderOpen size={28} className="text-teal-400" />
+                      )}
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-zinc-100">{folder.label || folder.name}</h3>
-                      <p className="text-sm text-zinc-500 mt-0.5">
+                      <h3 className="text-lg font-semibold text-foreground">{folder.label || folder.name}</h3>
+                      <p className="text-sm text-muted-foreground mt-0.5">
                         {folder.docCount} document{folder.docCount !== 1 ? 's' : ''}
                         {folder.system && <span className="ml-2 text-amber-500/70 text-xs">system</span>}
                       </p>
@@ -165,31 +196,38 @@ function FoldersView({
                   </div>
                   <div className="flex items-center gap-1">
                     {!folder.system && (
-                      <div className="hidden group-hover:flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <div className="hidden group-hover:flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-9 w-9 p-0"
-                          onClick={() => { setRenamingFolder(folder.name); setRenameFolderName(folder.label || folder.name) }}
+                          onClick={() => {
+                            setRenamingFolder(folder.name)
+                            setRenameFolderName(folder.label || folder.name)
+                          }}
                         >
-                          <Pencil size={16} className="text-zinc-400" />
+                          <Pencil size={16} className="text-muted-foreground" />
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
-                              <Trash2 size={16} className="text-zinc-400" />
+                              <Trash2 size={16} className="text-muted-foreground" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete folder "{folder.label || folder.name}"?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will permanently delete the folder and all {folder.docCount} document{folder.docCount !== 1 ? 's' : ''} inside it.
+                                This will permanently delete the folder and all {folder.docCount} document
+                                {folder.docCount !== 1 ? 's' : ''} inside it.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction variant="destructive" onClick={() => deleteFolderMut.mutate(folder.name)}>
+                              <AlertDialogAction
+                                variant="destructive"
+                                onClick={() => deleteFolderMut.mutate(folder.name)}
+                              >
                                 Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -197,7 +235,7 @@ function FoldersView({
                         </AlertDialog>
                       </div>
                     )}
-                    <ChevronRight size={20} className="text-zinc-600 ml-2" />
+                    <ChevronRight size={20} className="text-muted-foreground ml-2" />
                   </div>
                 </div>
               </Card>
@@ -243,7 +281,7 @@ function DocumentsView({
     if (selectedDoc) return
 
     if (initialDoc && !initialDocApplied) {
-      const doc = documents.find(d => d.title === initialDoc)
+      const doc = documents.find((d) => d.title === initialDoc)
       if (doc) {
         setSelectedDoc(doc)
         setDocTitle(doc.title)
@@ -280,26 +318,32 @@ function DocumentsView({
   const handleSave = () => {
     if (!docTitle.trim()) return
     if (isCreating) {
-      createDocument.mutate({ folder, title: docTitle.trim(), content: docContent }, {
-        onSuccess: (doc) => {
-          setIsCreating(false)
-          setSelectedDoc(doc)
-          onNavigateDoc(doc.title)
+      createDocument.mutate(
+        { folder, title: docTitle.trim(), content: docContent },
+        {
+          onSuccess: (doc) => {
+            setIsCreating(false)
+            setSelectedDoc(doc)
+            onNavigateDoc(doc.title)
+          },
         },
-      })
+      )
     } else if (selectedDoc) {
       const isDocSystem = selectedDoc.system || isSystemFolder
-      updateDocument.mutate({
-        path: selectedDoc.path,
-        // Don't send title for system docs — keep filename unchanged
-        ...(isDocSystem ? {} : { title: docTitle.trim() }),
-        content: docContent,
-      }, {
-        onSuccess: (doc) => {
-          setSelectedDoc(doc)
-          onNavigateDoc(doc.title)
+      updateDocument.mutate(
+        {
+          path: selectedDoc.path,
+          // Don't send title for system docs — keep filename unchanged
+          ...(isDocSystem ? {} : { title: docTitle.trim() }),
+          content: docContent,
         },
-      })
+        {
+          onSuccess: (doc) => {
+            setSelectedDoc(doc)
+            onNavigateDoc(doc.title)
+          },
+        },
+      )
     }
   }
 
@@ -324,17 +368,21 @@ function DocumentsView({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={onBack} className="h-10 w-10 p-0">
             <ArrowLeft size={22} />
           </Button>
-          {isSystemFolder
-            ? <Lock size={24} className="text-amber-400" />
-            : <FolderOpen size={24} className="text-teal-400" />}
-          <h2 className="text-xl font-bold text-zinc-100">{folderLabel}</h2>
-          <span className="text-base text-zinc-500">({documents.length} docs)</span>
-          {isSystemFolder && <span className="text-xs text-amber-500/70 bg-amber-500/10 px-2 py-0.5 rounded">system</span>}
+          {isSystemFolder ? (
+            <Lock size={24} className="text-amber-400" />
+          ) : (
+            <FolderOpen size={24} className="text-teal-400" />
+          )}
+          <h2 className="text-xl font-bold text-foreground">{folderLabel}</h2>
+          <span className="text-base text-muted-foreground">({documents.length} docs)</span>
+          {isSystemFolder && (
+            <span className="text-xs text-amber-500/70 bg-amber-500/10 px-2 py-0.5 rounded">system</span>
+          )}
         </div>
         {!isSystemFolder && (
           <Button onClick={startNew} className="gap-2 text-base h-10 px-5">
@@ -345,67 +393,68 @@ function DocumentsView({
 
       <div className="flex flex-1 min-h-0">
         {/* Document list sidebar */}
-        <div className="w-72 shrink-0 border-r border-white/[0.06] flex flex-col">
+        <div className="w-72 shrink-0 border-r border-border flex flex-col">
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
             {/* Subfolders */}
-            {subfolders.map(sf => (
+            {subfolders.map((sf) => (
               <button
                 key={sf.name}
                 onClick={() => navigate(`/documents/${encodeURIComponent(sf.name)}`)}
-                className="flex items-center gap-3 w-full rounded-lg px-4 py-3 text-left text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200 transition-colors"
+                className="flex items-center gap-3 w-full rounded-lg px-4 py-3 text-left text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
-                {sf.system
-                  ? <Lock size={18} className="shrink-0 text-amber-400" />
-                  : <FolderOpen size={18} className="shrink-0 text-teal-400" />}
+                {sf.system ? (
+                  <Lock size={18} className="shrink-0 text-amber-400" />
+                ) : (
+                  <FolderOpen size={18} className="shrink-0 text-teal-400" />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="text-base font-medium truncate">{sf.label || sf.name}</p>
-                  <p className="text-xs text-zinc-600 mt-0.5">{sf.docCount} docs</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{sf.docCount} docs</p>
                 </div>
-                <ChevronRight size={16} className="text-zinc-600 shrink-0" />
+                <ChevronRight size={16} className="text-muted-foreground shrink-0" />
               </button>
             ))}
 
-            {subfolders.length > 0 && documents.length > 0 && (
-              <div className="border-t border-white/[0.06] my-2" />
-            )}
+            {subfolders.length > 0 && documents.length > 0 && <div className="border-t border-border my-2" />}
 
             {isLoading && (
               <div className="flex items-center justify-center py-12">
-                <Loader2 size={22} className="animate-spin text-zinc-500" />
+                <Loader2 size={22} className="animate-spin text-muted-foreground" />
               </div>
             )}
 
             {!isLoading && documents.length === 0 && subfolders.length === 0 && !isCreating && (
-              <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
-                <FileText size={36} className="mb-3 text-zinc-700" />
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <FileText size={36} className="mb-3 text-muted-foreground" />
                 <p className="text-base">No documents</p>
               </div>
             )}
 
             {isCreating && (
-              <div
-                className="flex items-center gap-3 w-full rounded-lg px-4 py-3 bg-teal-500/10 text-teal-300 border border-teal-500/20"
-              >
+              <div className="flex items-center gap-3 w-full rounded-lg px-4 py-3 bg-teal-500/10 text-teal-300 border border-teal-500/20">
                 <FileText size={20} className="shrink-0" />
                 <span className="text-base font-medium truncate">New document</span>
               </div>
             )}
 
-            {documents.map(doc => (
+            {documents.map((doc) => (
               <button
                 key={doc.path}
                 onClick={() => selectDoc(doc)}
                 className={cn(
                   'flex items-center gap-3 w-full rounded-lg px-4 py-3 text-left transition-colors',
                   selectedDoc?.path === doc.path && !isCreating
-                    ? 'bg-white/[0.08] text-zinc-100'
-                    : 'text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200'
+                    ? 'bg-accent text-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >
-                <FileText size={20} className={cn('shrink-0', selectedDoc?.path === doc.path && !isCreating ? 'text-teal-400' : '')} />
+                <FileText
+                  size={20}
+                  className={cn('shrink-0', selectedDoc?.path === doc.path && !isCreating ? 'text-teal-400' : '')}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="text-base font-medium truncate">{doc.title}</p>
-                  <p className="text-xs text-zinc-600 mt-0.5 truncate">
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {new Date(doc.updatedAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -420,20 +469,24 @@ function DocumentsView({
             <div className="flex flex-col h-full">
               <div className="flex items-center gap-4 shrink-0 p-5 pb-3">
                 {isDocSystem ? (
-                  <div className="flex items-center gap-2 flex-1 h-12 px-3 rounded-md bg-white/[0.04] border border-white/[0.06]">
+                  <div className="flex items-center gap-2 flex-1 h-12 px-3 rounded-md bg-secondary border border-border">
                     <Lock size={16} className="text-amber-400 shrink-0" />
-                    <span className="text-lg font-semibold text-zinc-300">{docTitle}</span>
+                    <span className="text-lg font-semibold text-foreground">{docTitle}</span>
                   </div>
                 ) : (
                   <Input
                     value={docTitle}
-                    onChange={e => setDocTitle(e.target.value)}
+                    onChange={(e) => setDocTitle(e.target.value)}
                     placeholder="Document title..."
                     className="text-lg font-semibold flex-1 h-12"
                   />
                 )}
                 <div className="flex items-center gap-2 shrink-0">
-                  <Button onClick={handleSave} disabled={!docTitle.trim() || isSaving} className="h-10 px-5 gap-2 text-base">
+                  <Button
+                    onClick={handleSave}
+                    disabled={!docTitle.trim() || isSaving}
+                    className="h-10 px-5 gap-2 text-base"
+                  >
                     {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                     Save
                   </Button>
@@ -441,7 +494,7 @@ function DocumentsView({
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-10 w-10 p-0">
-                          <Trash2 size={18} className="text-zinc-400" />
+                          <Trash2 size={18} className="text-muted-foreground" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
@@ -468,17 +521,20 @@ function DocumentsView({
                   value={docContent}
                   onChange={setDocContent}
                   placeholder="Write your rules, guidelines, or coding standards in markdown..."
-                  className='pl-5'
+                  className="pl-5"
                 />
               </div>
 
-              <p className="text-sm text-zinc-600 shrink-0 px-5 py-3">
-                Saves as <code className="bg-white/[0.06] px-1.5 py-0.5 rounded text-sm">{folder}/{docTitle.trim() || 'untitled'}.md</code>
+              <p className="text-sm text-muted-foreground shrink-0 px-5 py-3">
+                Saves as{' '}
+                <code className="bg-accent px-1.5 py-0.5 rounded text-sm">
+                  {folder}/{docTitle.trim() || 'untitled'}.md
+                </code>
               </p>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center flex-1 text-zinc-500">
-              <FileText size={56} className="mb-4 text-zinc-700" />
+            <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
+              <FileText size={56} className="mb-4 text-muted-foreground" />
               <p className="text-lg">Select a document or create a new one</p>
             </div>
           )}
@@ -518,14 +574,17 @@ export function DocumentsPage() {
     }
   }
 
-  const handleNavigateDoc = useCallback((docTitle: string | null) => {
-    if (!folder) return
-    if (docTitle) {
-      navigate(`/documents/${encodeURIComponent(folder)}?doc=${encodeURIComponent(docTitle)}`, { replace: true })
-    } else {
-      navigate(`/documents/${encodeURIComponent(folder)}`, { replace: true })
-    }
-  }, [folder, navigate])
+  const handleNavigateDoc = useCallback(
+    (docTitle: string | null) => {
+      if (!folder) return
+      if (docTitle) {
+        navigate(`/documents/${encodeURIComponent(folder)}?doc=${encodeURIComponent(docTitle)}`, { replace: true })
+      } else {
+        navigate(`/documents/${encodeURIComponent(folder)}`, { replace: true })
+      }
+    },
+    [folder, navigate],
+  )
 
   const { data: documents = [] } = useDocuments(folder)
   const showDocumentsView = folder && (documents.length > 0 || docParam !== null)
@@ -534,9 +593,9 @@ export function DocumentsPage() {
     <div className="flex h-full flex-col">
       {/* Page header — only on root folders view */}
       {!folder && (
-        <div className="flex items-center gap-3 border-b border-white/[0.06] px-8 py-5">
+        <div className="flex items-center gap-3 border-b border-border px-8 py-5">
           <FileText size={26} className="text-teal-400" />
-          <h1 className="text-2xl font-bold text-zinc-100">Documents</h1>
+          <h1 className="text-2xl font-bold text-foreground">Documents</h1>
         </div>
       )}
 

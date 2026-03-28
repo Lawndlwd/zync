@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { TagInput } from '@/components/ui/tag-input'
-import { Shield, Save } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { useBotToolConfig, useUpdateToolConfig } from '@/hooks/useBot'
 import type { ToolConfig } from '@zync/shared/types'
+import { Save, Shield } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TagInput } from '@/components/ui/tag-input'
+import { useBotToolConfig, useUpdateToolConfig } from '@/hooks/useBot'
 
 export function ToolConfigSettingsCard() {
   const { data: config, isLoading } = useBotToolConfig()
@@ -37,8 +37,8 @@ export function ToolConfigSettingsCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Shell Allowlist</label>
-          <p className="mb-2 text-xs text-zinc-600">Commands the AI agent can execute.</p>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Shell Allowlist</label>
+          <p className="mb-2 text-xs text-muted-foreground">Commands the AI agent can execute.</p>
           <TagInput
             value={draft.shell.allowlist}
             onChange={(allowlist) => setDraft({ ...draft, shell: { ...draft.shell, allowlist } })}
@@ -46,8 +46,8 @@ export function ToolConfigSettingsCard() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">File Allowed Paths</label>
-          <p className="mb-2 text-xs text-zinc-600">Directories the AI agent can read/write.</p>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">File Allowed Paths</label>
+          <p className="mb-2 text-xs text-muted-foreground">Directories the AI agent can read/write.</p>
           <TagInput
             value={draft.files.allowed_paths}
             onChange={(allowed_paths) => setDraft({ ...draft, files: { ...draft.files, allowed_paths } })}

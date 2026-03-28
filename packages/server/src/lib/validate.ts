@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express'
+import type { NextFunction, Request, Response } from 'express'
 import type { ZodType } from 'zod'
 
 export function validate<T extends ZodType>(schema: T) {

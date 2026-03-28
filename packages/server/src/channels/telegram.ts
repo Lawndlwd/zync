@@ -1,14 +1,8 @@
 import { Bot } from 'grammy'
-import type {
-  ChannelAdapter,
-  ChannelType,
-  InboundMessage,
-  MessageHandler,
-  OutboundMessage,
-} from './types.js'
 import { logger } from '../lib/logger.js'
 import { handleSupportMessage } from '../telegram/support.js'
 import { handleTelegramDM } from '../telegram/triage.js'
+import type { ChannelAdapter, ChannelType, InboundMessage, MessageHandler, OutboundMessage } from './types.js'
 
 interface TelegramAdapterConfig {
   botToken: string
@@ -60,7 +54,8 @@ export class TelegramAdapter implements ChannelAdapter {
 
     // Log all updates for debugging
     bot.use(async (ctx, next) => {
-      logger.info({ updateType: ctx.updateType, from: ctx.from?.id }, 'Telegram: received update')
+      const updateType = Object.keys(ctx.update).find((k) => k !== 'update_id') ?? 'unknown'
+      logger.info({ updateType, from: ctx.from?.id }, 'Telegram: received update')
       await next()
     })
 
@@ -71,13 +66,9 @@ export class TelegramAdapter implements ChannelAdapter {
         channelType: 'telegram',
         chatId: String(ctx.chat.id),
         senderId: String(ctx.from.id),
-        senderName:
-          ctx.from.first_name +
-          (ctx.from.last_name ? ` ${ctx.from.last_name}` : ''),
+        senderName: ctx.from.first_name + (ctx.from.last_name ? ` ${ctx.from.last_name}` : ''),
         text: ctx.message.text,
-        replyToId: ctx.message.reply_to_message
-          ? String(ctx.message.reply_to_message.message_id)
-          : undefined,
+        replyToId: ctx.message.reply_to_message ? String(ctx.message.reply_to_message.message_id) : undefined,
         timestamp: new Date(ctx.message.date * 1000),
         raw: ctx,
       }
@@ -94,14 +85,10 @@ export class TelegramAdapter implements ChannelAdapter {
         channelType: 'telegram',
         chatId: String(ctx.chat.id),
         senderId: String(ctx.from.id),
-        senderName:
-          ctx.from.first_name +
-          (ctx.from.last_name ? ` ${ctx.from.last_name}` : ''),
+        senderName: ctx.from.first_name + (ctx.from.last_name ? ` ${ctx.from.last_name}` : ''),
         mediaType: 'audio',
         mediaUrl: fileUrl,
-        replyToId: ctx.message.reply_to_message
-          ? String(ctx.message.reply_to_message.message_id)
-          : undefined,
+        replyToId: ctx.message.reply_to_message ? String(ctx.message.reply_to_message.message_id) : undefined,
         timestamp: new Date(ctx.message.date * 1000),
         raw: ctx,
       }
@@ -120,15 +107,11 @@ export class TelegramAdapter implements ChannelAdapter {
         channelType: 'telegram',
         chatId: String(ctx.chat.id),
         senderId: String(ctx.from.id),
-        senderName:
-          ctx.from.first_name +
-          (ctx.from.last_name ? ` ${ctx.from.last_name}` : ''),
+        senderName: ctx.from.first_name + (ctx.from.last_name ? ` ${ctx.from.last_name}` : ''),
         text: ctx.message.caption ?? undefined,
         mediaType: 'image',
         mediaUrl: fileUrl,
-        replyToId: ctx.message.reply_to_message
-          ? String(ctx.message.reply_to_message.message_id)
-          : undefined,
+        replyToId: ctx.message.reply_to_message ? String(ctx.message.reply_to_message.message_id) : undefined,
         timestamp: new Date(ctx.message.date * 1000),
         raw: ctx,
       }
@@ -182,15 +165,11 @@ export class TelegramAdapter implements ChannelAdapter {
     if (message.mediaUrl && message.mediaType === 'image') {
       await this.bot.api.sendPhoto(chatId, message.mediaUrl, {
         caption: message.text,
-        ...(message.replyToId
-          ? { reply_parameters: { message_id: Number(message.replyToId) } }
-          : {}),
+        ...(message.replyToId ? { reply_parameters: { message_id: Number(message.replyToId) } } : {}),
       })
     } else if (message.text) {
       await this.bot.api.sendMessage(chatId, message.text, {
-        ...(message.replyToId
-          ? { reply_parameters: { message_id: Number(message.replyToId) } }
-          : {}),
+        ...(message.replyToId ? { reply_parameters: { message_id: Number(message.replyToId) } } : {}),
       })
     }
   }

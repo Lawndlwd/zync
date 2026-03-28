@@ -1,11 +1,11 @@
-import { useHabitsStore } from '@/store/habits'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { HabitIcon } from './habit-icon'
-import { format } from 'date-fns'
-import { cn } from '@/lib/utils'
-import { CheckCircle2, Flame, RotateCcw, Trophy, Trash2 } from 'lucide-react'
 import type { Habit } from '@zync/shared/types'
+import { format } from 'date-fns'
+import { CheckCircle2, Flame, RotateCcw, Trash2, Trophy } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+import { useHabitsStore } from '@/store/habits'
+import { HabitIcon } from './habit-icon'
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
@@ -24,15 +24,8 @@ interface HabitCardProps {
 
 export function HabitCard({ habit, variant = 'active' }: HabitCardProps) {
   const today = format(new Date(), 'yyyy-MM-dd')
-  const {
-    logs,
-    toggleHabitForDate,
-    getStreak,
-    getCompletionRate,
-    getCycleProgress,
-    restartHabit,
-    removeHabit,
-  } = useHabitsStore()
+  const { logs, toggleHabitForDate, getStreak, getCompletionRate, getCycleProgress, restartHabit, removeHabit } =
+    useHabitsStore()
 
   const done = logs.some((l) => l.habitId === habit.id && l.date === today)
   const streak = getStreak(habit.id)
@@ -44,17 +37,19 @@ export function HabitCard({ habit, variant = 'active' }: HabitCardProps) {
     <Card className={cn('p-4', variant === 'archived' && 'opacity-60')}>
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className={cn(
-          'flex h-12 w-12 shrink-0 items-center justify-center rounded-lg',
-          done ? 'bg-indigo-500/20 text-indigo-400' : 'bg-zinc-800 text-zinc-400'
-        )}>
+        <div
+          className={cn(
+            'flex h-12 w-12 shrink-0 items-center justify-center rounded-lg',
+            done ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground',
+          )}
+        >
           <HabitIcon name={habit.icon} size={24} />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <p className={cn('text-base font-medium truncate', done ? 'text-zinc-400' : 'text-zinc-200')}>
+            <p className={cn('text-base font-medium truncate', done ? 'text-muted-foreground' : 'text-foreground')}>
               {habit.name}
             </p>
             {cycle?.isComplete && (
@@ -72,9 +67,7 @@ export function HabitCard({ habit, variant = 'active' }: HabitCardProps) {
                 key={i}
                 className={cn(
                   'flex h-6 w-6 items-center justify-center rounded text-xs',
-                  scheduleDays.includes(i)
-                    ? 'bg-indigo-500/20 text-indigo-400'
-                    : 'text-zinc-700'
+                  scheduleDays.includes(i) ? 'bg-primary/10 text-primary' : 'text-muted-foreground',
                 )}
               >
                 {label}
@@ -85,13 +78,13 @@ export function HabitCard({ habit, variant = 'active' }: HabitCardProps) {
           {/* Cycle progress bar */}
           {cycle && !cycle.isComplete && (
             <div className="mt-2">
-              <div className="flex justify-between text-xs text-zinc-500 mb-0.5">
+              <div className="flex justify-between text-xs text-muted-foreground mb-0.5">
                 <span>Day {cycle.dayNumber}</span>
                 <span>{cycle.targetDays}d target</span>
               </div>
-              <div className="h-2.5 rounded-full bg-zinc-800 overflow-hidden">
+              <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${Math.min(100, (cycle.dayNumber / cycle.targetDays) * 100)}%` }}
                 />
               </div>
@@ -99,7 +92,7 @@ export function HabitCard({ habit, variant = 'active' }: HabitCardProps) {
           )}
 
           {/* Stats */}
-          <div className="mt-2 flex items-center gap-3 text-sm text-zinc-500">
+          <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
             {streak > 0 && (
               <span className="flex items-center gap-2 text-amber-400">
                 <Flame size={14} /> {streak}d
@@ -120,7 +113,7 @@ export function HabitCard({ habit, variant = 'active' }: HabitCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 text-zinc-500 hover:text-red-400"
+                className="h-9 w-9 text-muted-foreground hover:text-red-400"
                 onClick={() => removeHabit(habit.id)}
               >
                 <Trash2 size={18} />
@@ -139,8 +132,8 @@ export function HabitCard({ habit, variant = 'active' }: HabitCardProps) {
                 className={cn(
                   'flex h-10 w-10 items-center justify-center rounded-lg border transition-colors',
                   done
-                    ? 'border-indigo-500 bg-indigo-500/20 text-indigo-400'
-                    : 'border-zinc-700 hover:border-indigo-500 text-zinc-500 hover:text-indigo-400'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border hover:border-primary text-muted-foreground hover:text-primary',
                 )}
               >
                 <CheckCircle2 size={20} />

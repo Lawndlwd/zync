@@ -38,10 +38,7 @@ export function Tabs({
 export function TabsList({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(
-        'inline-flex items-center gap-1 rounded-lg bg-white/[0.04] p-1',
-        className,
-      )}
+      className={cn('inline-flex items-center gap-1 rounded-full bg-secondary p-1', className)}
       role="tablist"
       {...props}
     />
@@ -62,10 +59,8 @@ export function TabsTrigger({
       aria-selected={isActive}
       onClick={() => ctx.onValueChange(value)}
       className={cn(
-        'inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-        isActive
-          ? 'bg-white/[0.06] text-zinc-100 shadow-sm'
-          : 'text-zinc-500 hover:text-zinc-300',
+        'inline-flex items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium transition-colors',
+        isActive ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
         className,
       )}
       {...props}
@@ -73,11 +68,7 @@ export function TabsTrigger({
   )
 }
 
-export function TabsContent({
-  value,
-  className,
-  ...props
-}: { value: string } & React.HTMLAttributes<HTMLDivElement>) {
+export function TabsContent({ value, className, ...props }: { value: string } & React.HTMLAttributes<HTMLDivElement>) {
   const ctx = useContext(TabsContext)
   if (ctx.value !== value) return null
 

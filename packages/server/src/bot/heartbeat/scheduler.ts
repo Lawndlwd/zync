@@ -1,18 +1,18 @@
 import cron, { type ScheduledTask } from 'node-cron'
+import { getChannelManager } from '../../channels/manager.js'
+import { getConfig } from '../../config/index.js'
+import { logger } from '../../lib/logger.js'
 import { getOrCreateSession } from '../../opencode/client.js'
 import { waitForResponse } from '../../opencode/wait-for-response.js'
+import { interpolate, loadPromptContent } from '../../skills/prompts.js'
 import { insertLLMCall } from '../memory/activity.js'
-import { getChannelManager } from '../../channels/manager.js'
-import { logger } from '../../lib/logger.js'
-import { getConfig } from '../../config/index.js'
-import { loadPromptContent, interpolate } from '../../skills/prompts.js'
 import {
   addSchedule as dbAddSchedule,
-  removeSchedule as dbRemoveSchedule,
-  getAllEnabledSchedules,
-  toggleSchedule as dbToggleSchedule,
   adminRemoveSchedule as dbAdminRemoveSchedule,
   adminToggleSchedule as dbAdminToggleSchedule,
+  removeSchedule as dbRemoveSchedule,
+  toggleSchedule as dbToggleSchedule,
+  getAllEnabledSchedules,
   type Schedule,
 } from './db.js'
 
@@ -39,7 +39,9 @@ async function executeBriefing(schedule: Schedule): Promise<void> {
       chatId: String(schedule.chat_id),
     })
 
-    const text = await waitForResponse(sessionId, `${systemPrompt}\n\n---\n\n${schedule.prompt}`, { timeoutMs: 60_000 }) || 'No response generated.'
+    const text =
+      (await waitForResponse(sessionId, `${systemPrompt}\n\n---\n\n${schedule.prompt}`, { timeoutMs: 60_000 })) ||
+      'No response generated.'
 
     insertLLMCall({
       source: 'schedule',
@@ -66,9 +68,13 @@ function startCronTask(schedule: Schedule): void {
     activeTasks.get(schedule.id)!.stop()
   }
 
-  const task = cron.schedule(schedule.cron_expression, () => {
-    executeBriefing(schedule)
-  }, { timezone: getConfig('SCHEDULE_TIMEZONE', 'Europe/Paris') || 'Europe/Paris' })
+  const task = cron.schedule(
+    schedule.cron_expression,
+    () => {
+      executeBriefing(schedule)
+    },
+    { timezone: getConfig('SCHEDULE_TIMEZONE', 'Europe/Paris') || 'Europe/Paris' },
+  )
 
   activeTasks.set(schedule.id, task)
 }
@@ -106,7 +112,7 @@ export function toggleSchedule(id: number, chatId: number, enabled: boolean): bo
     const task = activeTasks.get(id)
     if (enabled && !task) {
       const schedules = getAllEnabledSchedules()
-      const schedule = schedules.find(s => s.id === id)
+      const schedule = schedules.find((s) => s.id === id)
       if (schedule) startCronTask(schedule)
     } else if (!enabled && task) {
       task.stop()
@@ -131,7 +137,7 @@ export function adminToggleSchedule(id: number, enabled: boolean): boolean {
     const task = activeTasks.get(id)
     if (enabled && !task) {
       const schedules = getAllEnabledSchedules()
-      const schedule = schedules.find(s => s.id === id)
+      const schedule = schedules.find((s) => s.id === id)
       if (schedule) startCronTask(schedule)
     } else if (!enabled && task) {
       task.stop()

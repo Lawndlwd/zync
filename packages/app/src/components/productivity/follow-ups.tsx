@@ -1,9 +1,9 @@
-import { useHabitsStore } from '@/store/habits'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
-import { AlertTriangle, Circle, CalendarCheck } from 'lucide-react'
+import { AlertTriangle, CalendarCheck, Circle } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useHabitsStore } from '@/store/habits'
 import { HabitIcon } from './habit-icon'
 
 export function FollowUps() {
@@ -28,7 +28,7 @@ export function FollowUps() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-base">
-              <Circle size={20} className="text-zinc-500" />
+              <Circle size={20} className="text-muted-foreground" />
               Missed Today
               <Badge variant="default">{missed.length}</Badge>
             </CardTitle>
@@ -83,27 +83,29 @@ export function FollowUps() {
 
       {/* Weekly review */}
       {showWeeklyReview && habits.length > 0 && (
-        <Card className="border-indigo-900/50">
+        <Card className="border-primary/20">
           <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-base text-indigo-400">
+            <CardTitle className="flex items-center gap-3 text-base text-primary">
               <CalendarCheck size={20} />
               Weekly Review
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-base text-zinc-400 mb-2">How was your week?</p>
+            <p className="text-base text-muted-foreground mb-2">How was your week?</p>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-zinc-100">{weeklyScore}%</p>
-                <p className="text-sm text-zinc-500">Weekly Score</p>
+                <p className="text-2xl font-bold text-foreground">{weeklyScore}%</p>
+                <p className="text-sm text-muted-foreground">Weekly Score</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-zinc-100">{habits.length}</p>
-                <p className="text-sm text-zinc-500">Habits Tracked</p>
+                <p className="text-2xl font-bold text-foreground">{habits.length}</p>
+                <p className="text-sm text-muted-foreground">Habits Tracked</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-zinc-100">{completedToday}/{habits.length}</p>
-                <p className="text-sm text-zinc-500">Done Today</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {completedToday}/{habits.length}
+                </p>
+                <p className="text-sm text-muted-foreground">Done Today</p>
               </div>
             </div>
           </CardContent>

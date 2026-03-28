@@ -1,5 +1,5 @@
-import { getConfig } from '../config/index.js'
 import { EventSource } from 'eventsource'
+import { getConfig } from '../config/index.js'
 
 const OPENCODE_URL = getConfig('OPENCODE_URL', 'http://localhost:4096') || 'http://localhost:4096'
 
@@ -68,7 +68,7 @@ export async function getOrCreateSession(purpose: string, agent?: string): Promi
     method: 'POST',
     body: JSON.stringify({
       title,
-      ...(agent ? { agent } : {})
+      ...(agent ? { agent } : {}),
     }),
   })
   if (!session?.id) throw new Error('Failed to create OpenCode session')
@@ -76,11 +76,10 @@ export async function getOrCreateSession(purpose: string, agent?: string): Promi
   return session.id
 }
 
-
 export async function sendPromptAsync(
   sessionId: string,
   text: string,
-  model?: { providerID: string; modelID: string }
+  model?: { providerID: string; modelID: string },
 ): Promise<void> {
   await oc(`/session/${sessionId}/prompt_async`, {
     method: 'POST',
@@ -170,9 +169,15 @@ const CACHE_TTL = 60 * 60 * 1000 // 1 hour
 const statsCache = new Map<string, { data: TokenStatsResult; ts: number }>()
 
 interface TokenStatsResult {
-  input: number; output: number; reasoning: number
-  cacheRead: number; cacheWrite: number; cost: number
-  total: number; models: string[]; sessionCount: number
+  input: number
+  output: number
+  reasoning: number
+  cacheRead: number
+  cacheWrite: number
+  cost: number
+  total: number
+  models: string[]
+  sessionCount: number
 }
 
 export async function getTokenStats(days?: number): Promise<TokenStatsResult> {
@@ -192,12 +197,15 @@ export async function getTokenStats(days?: number): Promise<TokenStatsResult> {
     })
   }
 
-  let input = 0, output = 0, reasoning = 0, cacheRead = 0, cacheWrite = 0, cost = 0
+  let input = 0,
+    output = 0,
+    reasoning = 0,
+    cacheRead = 0,
+    cacheWrite = 0,
+    cost = 0
   const models = new Set<string>()
 
-  const results = await Promise.allSettled(
-    sessions.map((s: any) => getSessionMessages(s.id))
-  )
+  const results = await Promise.allSettled(sessions.map((s: any) => getSessionMessages(s.id)))
 
   for (const result of results) {
     if (result.status !== 'fulfilled') continue
@@ -221,7 +229,12 @@ export async function getTokenStats(days?: number): Promise<TokenStatsResult> {
   }
 
   const data: TokenStatsResult = {
-    input, output, reasoning, cacheRead, cacheWrite, cost,
+    input,
+    output,
+    reasoning,
+    cacheRead,
+    cacheWrite,
+    cost,
     total: input + output + reasoning,
     models: Array.from(models),
     sessionCount: sessions.length,

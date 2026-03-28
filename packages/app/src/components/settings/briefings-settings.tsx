@@ -1,16 +1,16 @@
+import type { BriefingCheckItem, BriefingConfig } from '@zync/shared/types'
+import { CalendarClock, ChevronRight, Play, Save } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Combobox } from '@/components/ui/combobox'
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
-import { SchedulePicker } from '@/components/settings/schedule-picker'
-import { CalendarClock, Save, Play, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useBriefingConfig, useUpdateBriefingConfig, useTriggerBriefing } from '@/hooks/useBot'
+import { SchedulePicker } from '@/components/settings/schedule-picker'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Combobox } from '@/components/ui/combobox'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { useBriefingConfig, useTriggerBriefing, useUpdateBriefingConfig } from '@/hooks/useBot'
 import { listConfig, setConfig } from '@/services/config'
-import type { BriefingConfig, BriefingCheckItem } from '@zync/shared/types'
 
 function ItemChecklist({
   items,
@@ -20,19 +20,19 @@ function ItemChecklist({
   onChange: (items: BriefingCheckItem[]) => void
 }) {
   const toggle = (id: string) => {
-    onChange(items.map(i => i.id === id ? { ...i, enabled: !i.enabled } : i))
+    onChange(items.map((i) => (i.id === id ? { ...i, enabled: !i.enabled } : i)))
   }
 
   return (
     <div className="space-y-2">
-      {items.map(item => (
+      {items.map((item) => (
         <div key={item.id} className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => toggle(item.id)}
-            className={`h-4 w-4 shrink-0 rounded border ${item.enabled ? 'border-indigo-500 bg-indigo-500' : 'border-zinc-600'}`}
+            className={`h-4 w-4 shrink-0 rounded border ${item.enabled ? 'border-primary bg-primary' : 'border-muted-foreground'}`}
           />
-          <span className="text-sm text-zinc-300">{item.label}</span>
+          <span className="text-sm text-foreground">{item.label}</span>
         </div>
       ))}
     </div>
@@ -56,21 +56,21 @@ function BriefingSection({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-white/[0.04] transition-colors">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors">
         <ChevronRight size={14} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
         {title}
-        <span className="ml-auto text-xs text-zinc-500">
-          {items.filter(i => i.enabled).length}/{items.length} items
+        <span className="ml-auto text-xs text-muted-foreground">
+          {items.filter((i) => i.enabled).length}/{items.length} items
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-2 space-y-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+        <div className="mt-2 space-y-3 rounded-lg border border-border bg-secondary p-3">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Include in briefing</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Include in briefing</label>
             <ItemChecklist items={items} onChange={onItemsChange} />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Custom instructions</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Custom instructions</label>
             <Textarea
               value={instructions}
               onChange={(e) => onInstructionsChange(e.target.value)}
@@ -90,16 +90,15 @@ export function BriefingsSettingsCard() {
   const triggerBriefing = useTriggerBriefing()
 
   const [draft, setDraft] = useState<BriefingConfig | null>(null)
-  const [timezone, setTimezone] = useState(() =>
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  )
+  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone)
 
-  const timezoneOptions = useMemo(() =>
-    Intl.supportedValuesOf('timeZone').map(tz => ({
-      value: tz,
-      label: tz.replace(/_/g, ' '),
-    })),
-    []
+  const timezoneOptions = useMemo(
+    () =>
+      Intl.supportedValuesOf('timeZone').map((tz) => ({
+        value: tz,
+        label: tz.replace(/_/g, ' '),
+      })),
+    [],
   )
 
   useEffect(() => {
@@ -107,10 +106,12 @@ export function BriefingsSettingsCard() {
   }, [config])
 
   useEffect(() => {
-    listConfig('briefing').then(configs => {
-      const tz = configs.find(c => c.key === 'SCHEDULE_TIMEZONE')
-      if (tz) setTimezone(tz.value)
-    }).catch(() => {})
+    listConfig('briefing')
+      .then((configs) => {
+        const tz = configs.find((c) => c.key === 'SCHEDULE_TIMEZONE')
+        if (tz) setTimezone(tz.value)
+      })
+      .catch(() => {})
   }, [])
 
   const handleSave = () => {
@@ -144,14 +145,18 @@ export function BriefingsSettingsCard() {
       <CardContent className="space-y-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setDraft({ ...draft, enabled: !draft.enabled })}
-            className={`h-4 w-4 shrink-0 rounded border ${draft.enabled ? 'border-indigo-500 bg-indigo-500' : 'border-zinc-600'}`}
+            onClick={() => {
+              const next = { ...draft, enabled: !draft.enabled }
+              setDraft(next)
+              updateConfig.mutate(next)
+            }}
+            className={`h-4 w-4 shrink-0 rounded border ${draft.enabled ? 'border-primary bg-primary' : 'border-muted-foreground'}`}
           />
-          <span className="text-sm text-zinc-300">Enabled</span>
+          <span className="text-sm text-foreground">Enabled</span>
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-400">Timezone</label>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Timezone</label>
           <Combobox
             options={timezoneOptions}
             value={timezone}
@@ -159,7 +164,7 @@ export function BriefingsSettingsCard() {
             placeholder="Select timezone..."
             searchPlaceholder="Search timezones..."
           />
-          <p className="mt-1 text-xs text-zinc-500">All schedules run in this timezone</p>
+          <p className="mt-1 text-xs text-muted-foreground">All schedules run in this timezone</p>
         </div>
 
         <SchedulePicker
@@ -175,7 +180,7 @@ export function BriefingsSettingsCard() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Channel</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Channel</label>
             <Input
               value={draft.channel}
               onChange={(e) => setDraft({ ...draft, channel: e.target.value })}
@@ -183,14 +188,14 @@ export function BriefingsSettingsCard() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Chat ID</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Chat ID</label>
             <Input
               value={draft.chatId}
               onChange={(e) => setDraft({ ...draft, chatId: e.target.value })}
               placeholder="Auto-captured from Telegram"
-              className={draft.chatId ? 'text-zinc-300' : 'text-zinc-500'}
+              className={draft.chatId ? 'text-foreground' : 'text-muted-foreground'}
             />
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               {draft.chatId
                 ? 'Captured from your Telegram chat'
                 : 'Send any message to your Telegram bot to auto-capture'}
@@ -219,11 +224,21 @@ export function BriefingsSettingsCard() {
             <Save size={14} className="mr-1.5" />
             {updateConfig.isPending ? 'Saving...' : 'Save'}
           </Button>
-          <Button size="sm" variant="default" onClick={() => handleTrigger('morning')} disabled={triggerBriefing.isPending}>
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => handleTrigger('morning')}
+            disabled={triggerBriefing.isPending}
+          >
             <Play size={14} className="mr-1.5" />
             Morning
           </Button>
-          <Button size="sm" variant="default" onClick={() => handleTrigger('evening')} disabled={triggerBriefing.isPending}>
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => handleTrigger('evening')}
+            disabled={triggerBriefing.isPending}
+          >
             <Play size={14} className="mr-1.5" />
             Evening
           </Button>

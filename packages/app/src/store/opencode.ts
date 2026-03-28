@@ -1,6 +1,6 @@
+import type { OpenCodeConnectionStatus, OpenCodePart, OpenCodeSession, StreamingMessage } from '@zync/shared/types'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { OpenCodeSession, OpenCodeConnectionStatus, OpenCodePart, StreamingMessage } from '@zync/shared/types'
 
 interface OpenCodeState {
   serverUrl: string
@@ -52,8 +52,7 @@ export const useOpenCodeStore = create<OpenCodeState>()(
         }).catch(() => {})
       },
       setSessions: (sessions) => set({ sessions }),
-      addSession: (session) =>
-        set((state) => ({ sessions: [session, ...state.sessions] })),
+      addSession: (session) => set((state) => ({ sessions: [session, ...state.sessions] })),
       removeSession: (id) =>
         set((state) => ({
           sessions: state.sessions.filter((s) => s.id !== id),
@@ -79,9 +78,7 @@ export const useOpenCodeStore = create<OpenCodeState>()(
           const sm = state.streamingMessage
           if (!sm) return state
 
-          const existingIdx = sm.parts.findIndex(
-            (p) => p.type === 'text' && (p as any)._partId === partId
-          )
+          const existingIdx = sm.parts.findIndex((p) => p.type === 'text' && (p as any)._partId === partId)
           // Set text to fullText (not append) — this is idempotent and correct
           // even if appendStreamingDelta already accumulated partial text
           let newParts: OpenCodePart[]
@@ -103,9 +100,7 @@ export const useOpenCodeStore = create<OpenCodeState>()(
         set((state) => {
           const sm = state.streamingMessage
           if (!sm) return state
-          const existingIdx = sm.parts.findIndex(
-            (p) => p.type === 'text' && (p as any)._partId === partId
-          )
+          const existingIdx = sm.parts.findIndex((p) => p.type === 'text' && (p as any)._partId === partId)
           let newParts: OpenCodePart[]
           if (existingIdx >= 0) {
             newParts = [...sm.parts]
@@ -122,7 +117,7 @@ export const useOpenCodeStore = create<OpenCodeState>()(
           const sm = state.streamingMessage
           if (!sm) return state
           const existingIdx = sm.parts.findIndex(
-            (p) => p.type === 'tool-invocation' && p.toolInvocation.id === (part as any).toolInvocation?.id
+            (p) => p.type === 'tool-invocation' && p.toolInvocation.id === (part as any).toolInvocation?.id,
           )
           if (existingIdx >= 0) {
             const newParts = [...sm.parts]
@@ -141,11 +136,9 @@ export const useOpenCodeStore = create<OpenCodeState>()(
           return { streamingMessage: { ...sm, userMsgIds: newIds } }
         }),
 
-      freezeStreaming: () =>
-        set({ isStreaming: false }),
+      freezeStreaming: () => set({ isStreaming: false }),
 
-      finishStreaming: () =>
-        set({ streamingMessage: null, isStreaming: false }),
+      finishStreaming: () => set({ streamingMessage: null, isStreaming: false }),
     }),
     {
       name: 'opencode-store',
@@ -156,6 +149,6 @@ export const useOpenCodeStore = create<OpenCodeState>()(
       migrate: () => ({
         activeSessionId: null,
       }),
-    }
-  )
+    },
+  ),
 )

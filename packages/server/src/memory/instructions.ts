@@ -16,24 +16,16 @@ export function getAllInstructions(): Instruction[] {
 
 export function getActiveInstructions(): Instruction[] {
   const db = getBrainDb()
-  return db
-    .prepare('SELECT * FROM instructions WHERE active = 1 ORDER BY created_at DESC')
-    .all() as Instruction[]
+  return db.prepare('SELECT * FROM instructions WHERE active = 1 ORDER BY created_at DESC').all() as Instruction[]
 }
 
-export function addInstruction(
-  content: string,
-  source: 'explicit' | 'extracted' = 'explicit',
-): { id: number } {
+export function addInstruction(content: string, source: 'explicit' | 'extracted' = 'explicit'): { id: number } {
   const db = getBrainDb()
   const result = db.prepare('INSERT INTO instructions (content, source) VALUES (?, ?)').run(content, source)
   return { id: result.lastInsertRowid as number }
 }
 
-export function updateInstruction(
-  id: number,
-  updates: { content?: string; active?: boolean },
-): boolean {
+export function updateInstruction(id: number, updates: { content?: string; active?: boolean }): boolean {
   const db = getBrainDb()
   const setClauses: string[] = []
   const params: (string | number)[] = []
@@ -53,9 +45,7 @@ export function updateInstruction(
   setClauses.push("updated_at = datetime('now')")
   params.push(id)
 
-  const result = db
-    .prepare(`UPDATE instructions SET ${setClauses.join(', ')} WHERE id = ?`)
-    .run(...params)
+  const result = db.prepare(`UPDATE instructions SET ${setClauses.join(', ')} WHERE id = ?`).run(...params)
 
   return result.changes > 0
 }

@@ -1,7 +1,7 @@
-import { google, type gmail_v1 } from 'googleapis'
-import { readFileSync, existsSync } from 'fs'
-import type { ChannelAdapter, InboundMessage, OutboundMessage, MessageHandler } from './types.js'
+import { existsSync, readFileSync } from 'node:fs'
+import { type gmail_v1, google } from 'googleapis'
 import { logger } from '../lib/logger.js'
+import type { ChannelAdapter, InboundMessage, MessageHandler, OutboundMessage } from './types.js'
 
 export interface GmailConfig {
   credentialsPath: string
@@ -89,15 +89,15 @@ export class GmailAdapter implements ChannelAdapter {
     })
 
     const headers = msg.data.payload?.headers || []
-    const from = headers.find(h => h.name?.toLowerCase() === 'from')?.value || 'unknown'
-    const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || '(no subject)'
+    const from = headers.find((h) => h.name?.toLowerCase() === 'from')?.value || 'unknown'
+    const subject = headers.find((h) => h.name?.toLowerCase() === 'subject')?.value || '(no subject)'
 
     let body = ''
     const payload = msg.data.payload
     if (payload?.body?.data) {
       body = Buffer.from(payload.body.data, 'base64url').toString('utf-8')
     } else if (payload?.parts) {
-      const textPart = payload.parts.find(p => p.mimeType === 'text/plain')
+      const textPart = payload.parts.find((p) => p.mimeType === 'text/plain')
       if (textPart?.body?.data) {
         body = Buffer.from(textPart.body.data, 'base64url').toString('utf-8')
       }

@@ -1,10 +1,10 @@
-import { Router } from 'express'
-import { errorResponse } from '../lib/errors.js'
-import { getOrCreateSession, getActiveDashboardSession, sendPromptAsync } from '../opencode/client.js'
-import { streamOpenCode } from '../opencode/stream.js'
-import { insertLLMCall, extractUsageFromSession } from '../bot/memory/activity.js'
-import { validate } from '../lib/validate.js'
 import { LlmChatSchema } from '@zync/shared/schemas'
+import { Router } from 'express'
+import { extractUsageFromSession, insertLLMCall } from '../bot/memory/activity.js'
+import { errorResponse } from '../lib/errors.js'
+import { validate } from '../lib/validate.js'
+import { getActiveDashboardSession, getOrCreateSession, sendPromptAsync } from '../opencode/client.js'
+import { streamOpenCode } from '../opencode/stream.js'
 
 export const llmRouter = Router()
 
@@ -17,7 +17,7 @@ llmRouter.post('/chat/send', validate(LlmChatSchema), async (req, res) => {
       return res.status(400).json({ error: 'No user message found' })
     }
 
-    const sessionId = getActiveDashboardSession() || await getOrCreateSession('chat')
+    const sessionId = getActiveDashboardSession() || (await getOrCreateSession('chat'))
 
     await sendPromptAsync(sessionId, lastUserMsg.content)
 
@@ -43,7 +43,7 @@ llmRouter.post('/chat/stream', validate(LlmChatSchema), async (req, res) => {
       Connection: 'keep-alive',
     })
 
-    const sessionId = getActiveDashboardSession() || await getOrCreateSession('chat')
+    const sessionId = getActiveDashboardSession() || (await getOrCreateSession('chat'))
 
     const cleanup = await streamOpenCode(sessionId, lastUserMsg.content, {
       onToken: (text) => {
@@ -53,20 +53,22 @@ llmRouter.post('/chat/stream', validate(LlmChatSchema), async (req, res) => {
         res.write('data: [DONE]\n\n')
         res.end()
 
-        extractUsageFromSession(sessionId).then((usage) => {
-          insertLLMCall({
-            source: 'chat',
-            model: usage.model,
-            prompt_tokens: usage.prompt_tokens,
-            completion_tokens: usage.completion_tokens,
-            total_tokens: usage.total_tokens,
-            tool_names: [],
-            duration_ms: Date.now() - startTime,
-            session_id: sessionId,
-            message_id: usage.message_id,
-            cost: usage.cost,
+        extractUsageFromSession(sessionId)
+          .then((usage) => {
+            insertLLMCall({
+              source: 'chat',
+              model: usage.model,
+              prompt_tokens: usage.prompt_tokens,
+              completion_tokens: usage.completion_tokens,
+              total_tokens: usage.total_tokens,
+              tool_names: [],
+              duration_ms: Date.now() - startTime,
+              session_id: sessionId,
+              message_id: usage.message_id,
+              cost: usage.cost,
+            })
           })
-        }).catch(() => {})
+          .catch(() => {})
       },
       onError: (err) => {
         const message = err.message || 'Internal server error'

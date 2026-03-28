@@ -1,6 +1,6 @@
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import Database from 'better-sqlite3'
-import { mkdirSync } from 'fs'
-import { dirname, resolve } from 'path'
 
 const DEFAULT_DB_PATH = resolve(import.meta.dirname, '../../data/secrets.db')
 
@@ -32,23 +32,23 @@ export class ConfigService {
   }
 
   get(key: string): string | null {
-    const row = this.db.prepare(
-      'SELECT value FROM settings WHERE key = ?',
-    ).get(key) as { value: string } | undefined
+    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined
 
     if (!row) return null
     return row.value
   }
 
   set(key: string, value: string, category: string = 'general'): void {
-    this.db.prepare(`
+    this.db
+      .prepare(`
       INSERT INTO settings (key, value, category)
       VALUES (?, ?, ?)
       ON CONFLICT(key) DO UPDATE SET
         value = excluded.value,
         category = excluded.category,
         updated_at = datetime('now')
-    `).run(key, value, category)
+    `)
+      .run(key, value, category)
   }
 
   delete(key: string): boolean {
@@ -60,10 +60,8 @@ export class ConfigService {
     const query = category
       ? 'SELECT key, value, category, updated_at FROM settings WHERE category = ? ORDER BY key'
       : 'SELECT key, value, category, updated_at FROM settings ORDER BY key'
-    const rows = category
-      ? this.db.prepare(query).all(category)
-      : this.db.prepare(query).all()
-    return (rows as Array<{ key: string; value: string; category: string; updated_at: string }>).map(r => ({
+    const rows = category ? this.db.prepare(query).all(category) : this.db.prepare(query).all()
+    return (rows as Array<{ key: string; value: string; category: string; updated_at: string }>).map((r) => ({
       key: r.key,
       value: r.value,
       category: r.category,

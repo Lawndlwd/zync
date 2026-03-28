@@ -23,14 +23,14 @@ export async function calendarListEvents(input: z.infer<typeof calendarListEvent
     orderBy: 'startTime',
   })
 
-  const events = (res.data.items || []).map(e => ({
+  const events = (res.data.items || []).map((e) => ({
     id: e.id,
     summary: e.summary || '(no title)',
     start: e.start?.dateTime || e.start?.date || '',
     end: e.end?.dateTime || e.end?.date || '',
     location: e.location || '',
     description: e.description ? e.description.slice(0, 200) : '',
-    attendees: (e.attendees || []).map(a => ({ email: a.email, response: a.responseStatus })),
+    attendees: (e.attendees || []).map((a) => ({ email: a.email, response: a.responseStatus })),
     htmlLink: e.htmlLink || '',
     status: e.status || '',
   }))
@@ -61,7 +61,7 @@ export async function calendarCreateEvent(input: z.infer<typeof calendarCreateEv
   if (input.description) event.description = input.description
   if (input.location) event.location = input.location
   if (input.attendees?.length) {
-    event.attendees = input.attendees.map(email => ({ email }))
+    event.attendees = input.attendees.map((email) => ({ email }))
   }
 
   const res = await cal.events.insert({
@@ -94,7 +94,7 @@ export async function calendarUpdateEvent(input: z.infer<typeof calendarUpdateEv
   const cal = getCalendarClient()
 
   // Fetch existing event first
-  const existing = await cal.events.get({
+  const _existing = await cal.events.get({
     calendarId: input.calendar_id,
     eventId: input.event_id,
   })
@@ -105,7 +105,7 @@ export async function calendarUpdateEvent(input: z.infer<typeof calendarUpdateEv
   if (input.end_time) patch.end = { dateTime: input.end_time }
   if (input.description !== undefined) patch.description = input.description
   if (input.location !== undefined) patch.location = input.location
-  if (input.attendees) patch.attendees = input.attendees.map(email => ({ email }))
+  if (input.attendees) patch.attendees = input.attendees.map((email) => ({ email }))
 
   const res = await cal.events.patch({
     calendarId: input.calendar_id,
@@ -164,7 +164,7 @@ export async function calendarSearchEvents(input: z.infer<typeof calendarSearchE
     orderBy: 'startTime',
   })
 
-  const events = (res.data.items || []).map(e => ({
+  const events = (res.data.items || []).map((e) => ({
     id: e.id,
     summary: e.summary || '(no title)',
     start: e.start?.dateTime || e.start?.date || '',

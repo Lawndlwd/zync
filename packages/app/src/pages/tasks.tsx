@@ -1,17 +1,17 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
+import type { Task, TaskStatus } from '@zync/shared/types'
+import { Bot, ChevronDown, Plus, User } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
+import { CreateTaskDialog } from '@/components/projects/create-task-dialog'
 import { KanbanBoard } from '@/components/projects/kanban-board'
-import { ProjectGrid } from '@/components/projects/project-grid'
 import { ProjectCard } from '@/components/projects/project-card'
 import { ProjectDetail } from '@/components/projects/project-detail'
+import { ProjectGrid } from '@/components/projects/project-grid'
 import { TaskDrawer } from '@/components/projects/task-drawer'
-import { CreateTaskDialog } from '@/components/projects/create-task-dialog'
-import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
+import { Button } from '@/components/ui/button'
+import { useDeleteProject, useProjects } from '@/hooks/useProjects'
 import { useAllTasks, useUpdateTaskStatus } from '@/hooks/useTasks'
-import { useProjects, useDeleteProject } from '@/hooks/useProjects'
-import type { Task, TaskStatus } from '@zync/shared/types'
-import { Plus, User, Bot, ChevronDown } from 'lucide-react'
 
 type AssigneeFilter = 'all' | '@me' | '@ai'
 type PriorityFilter = 'all' | 'high' | 'medium' | 'low'
@@ -67,9 +67,7 @@ export function TasksPage() {
     const paramProject = taskParam.slice(0, slashIdx)
     const paramFile = taskParam.slice(slashIdx + 1)
 
-    const match = allTasks.find(
-      (t) => t.project === paramProject && t.fileName === paramFile
-    )
+    const match = allTasks.find((t) => t.project === paramProject && t.fileName === paramFile)
     if (match) {
       setSelectedTask(match)
       setDrawerOpen(true)
@@ -99,18 +97,21 @@ export function TasksPage() {
     [updateTaskStatus],
   )
 
-  const handleSelectTask = useCallback((task: Task) => {
-    setSelectedTask(task)
-    setDrawerOpen(true)
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        next.set('task', `${task.project}/${task.fileName}`)
-        return next
-      },
-      { replace: true }
-    )
-  }, [setSearchParams])
+  const handleSelectTask = useCallback(
+    (task: Task) => {
+      setSelectedTask(task)
+      setDrawerOpen(true)
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.set('task', `${task.project}/${task.fileName}`)
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
 
   const handleCloseDrawer = useCallback(() => {
     setDrawerOpen(false)
@@ -120,7 +121,7 @@ export function TasksPage() {
         next.delete('task')
         return next
       },
-      { replace: true }
+      { replace: true },
     )
   }, [setSearchParams])
 
@@ -140,15 +141,11 @@ export function TasksPage() {
     <div>
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-100">Tasks &amp; Projects</h1>
+        <h1 className="text-2xl font-bold text-foreground">Tasks &amp; Projects</h1>
 
         {/* Create dropdown */}
         <div className="relative">
-          <Button
-            size="sm"
-            className="gap-2"
-            onClick={() => setCreateMenuOpen(!createMenuOpen)}
-          >
+          <Button size="sm" className="gap-2" onClick={() => setCreateMenuOpen(!createMenuOpen)}>
             <Plus size={16} />
             Create
             <ChevronDown size={14} />
@@ -156,13 +153,10 @@ export function TasksPage() {
 
           {createMenuOpen && (
             <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setCreateMenuOpen(false)}
-              />
-              <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-white/[0.1] bg-zinc-900 p-1 shadow-xl">
+              <div className="fixed inset-0 z-40" onClick={() => setCreateMenuOpen(false)} />
+              <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-border bg-popover p-1 shadow-xl">
                 <button
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] transition-colors"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                   onClick={() => {
                     setCreateMenuOpen(false)
                     setCreateTaskOpen(true)
@@ -171,7 +165,7 @@ export function TasksPage() {
                   New Task
                 </button>
                 <button
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] transition-colors"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors"
                   onClick={() => {
                     setCreateMenuOpen(false)
                     setCreateProjectOpen(true)
@@ -187,22 +181,16 @@ export function TasksPage() {
 
       {/* Filter bar */}
 
-
       {/* Main content: Kanban (3/4) + Projects sidebar (1/4) */}
       <div className="grid grid-cols-5 lg:flex-row gap-6">
         {/* Projects sidebar */}
         <div className="col-span-1 shrink-0">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-zinc-100">Projects</h2>
-              <span className="text-sm text-zinc-500">({projects.length})</span>
+              <h2 className="text-lg font-semibold text-foreground">Projects</h2>
+              <span className="text-sm text-muted-foreground">({projects.length})</span>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => setCreateProjectOpen(true)}
-            >
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setCreateProjectOpen(true)}>
               <Plus size={16} />
             </Button>
           </div>
@@ -245,7 +233,7 @@ export function TasksPage() {
               </Button>
             ))}
 
-            <div className="w-px bg-white/[0.1] mx-1" />
+            <div className="w-px bg-border mx-1" />
 
             {/* Priority filters */}
             {priorityFilters.map((f) => (
@@ -267,27 +255,15 @@ export function TasksPage() {
             isLoading={tasksLoading}
           />
         </div>
-
-
       </div>
 
       {/* Task drawer */}
-      <TaskDrawer
-        task={selectedTask}
-        open={drawerOpen}
-        onClose={handleCloseDrawer}
-      />
+      <TaskDrawer task={selectedTask} open={drawerOpen} onClose={handleCloseDrawer} />
 
       {/* Create dialogs */}
-      <CreateTaskDialog
-        open={createTaskOpen}
-        onOpenChange={setCreateTaskOpen}
-      />
+      <CreateTaskDialog open={createTaskOpen} onOpenChange={setCreateTaskOpen} />
 
-      <CreateProjectDialog
-        open={createProjectOpen}
-        onOpenChange={setCreateProjectOpen}
-      />
+      <CreateProjectDialog open={createProjectOpen} onOpenChange={setCreateProjectOpen} />
     </div>
   )
 }

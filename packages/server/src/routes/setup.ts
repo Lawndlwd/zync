@@ -1,10 +1,10 @@
-import { Router } from 'express'
-import { validate } from '../lib/validate.js'
-import { errorResponse } from '../lib/errors.js'
 import { SetupVerifySchema } from '@zync/shared/schemas'
-import { getConfigService, getConfig } from '../config/index.js'
-import { getSecrets, getSecret } from '../secrets/index.js'
+import { Router } from 'express'
+import { getConfig, getConfigService } from '../config/index.js'
+import { errorResponse } from '../lib/errors.js'
 import { logger } from '../lib/logger.js'
+import { validate } from '../lib/validate.js'
+import { getSecret, getSecrets } from '../secrets/index.js'
 
 export const setupRouter = Router()
 
@@ -17,8 +17,6 @@ setupRouter.get('/status', (_req, res) => {
 
     // Check which integrations already have credentials saved
     const configuredIntegrations: Record<string, boolean> = {
-      jira: !!(getConfig('JIRA_BASE_URL') && getSecret('JIRA_API_TOKEN')),
-      gitlab: !!(getConfig('GITLAB_BASE_URL') && getSecret('GITLAB_PAT')),
       telegram: !!(getSecret('TELEGRAM_BOT_TOKEN') || getSecret('CHANNEL_TELEGRAM_BOT_TOKEN')),
       whatsapp: !!getConfig('WHATSAPP_ALLOWED_NUMBERS'),
       gmail: !!getSecret('CHANNEL_GMAIL_CLIENT_ID'),
@@ -27,7 +25,7 @@ setupRouter.get('/status', (_req, res) => {
     // Check app settings
     const configuredSettings: Record<string, boolean> = {
       'default-model': !!(configSvc?.get('AGENT_MODEL_BOT') || configSvc?.get('AGENT_MODEL_OPENCODE')),
-      briefings: !!(configSvc?.get('DEFAULT_CHAT_ID')),
+      briefings: !!configSvc?.get('DEFAULT_CHAT_ID'),
     }
 
     res.json({
@@ -63,47 +61,6 @@ setupRouter.post('/verify', validate(SetupVerifySchema), async (req, res) => {
 
   try {
     switch (service) {
-      case 'jira': {
-        const { baseUrl, email, apiToken } = config
-        if (!baseUrl || !apiToken) {
-          return res.json({ ok: false, message: 'Missing base URL and API token' })
-        }
-        const cleanUrl = (baseUrl as string).replace(/\/$/, '')
-        const isCloud = cleanUrl.includes('atlassian.net')
-        const apiVersion = isCloud ? '3' : '2'
-        const authHeader = isCloud
-          ? `Basic ${Buffer.from(`${email}:${apiToken}`).toString('base64')}`
-          : `Bearer ${apiToken}`
-        const url = `${cleanUrl}/rest/api/${apiVersion}/myself`
-        const resp = await fetch(url, {
-          headers: { Authorization: authHeader, Accept: 'application/json' },
-          signal: AbortSignal.timeout(10000),
-        })
-        if (!resp.ok) {
-          const text = await resp.text()
-          return res.json({ ok: false, message: `Authentication failed (${resp.status}): ${text.slice(0, 200)}` })
-        }
-        const user = await resp.json()
-        return res.json({ ok: true, message: `Connected as ${user.displayName || user.emailAddress}`, username: user.displayName })
-      }
-
-      case 'gitlab': {
-        const { baseUrl, pat } = config
-        if (!baseUrl || !pat) {
-          return res.json({ ok: false, message: 'Missing required fields' })
-        }
-        const url = `${baseUrl.replace(/\/$/, '')}/api/v4/user`
-        const resp = await fetch(url, {
-          headers: { 'PRIVATE-TOKEN': pat, Accept: 'application/json' },
-          signal: AbortSignal.timeout(10000),
-        })
-        if (!resp.ok) {
-          return res.json({ ok: false, message: `Authentication failed (${resp.status})` })
-        }
-        const user = await resp.json()
-        return res.json({ ok: true, message: `Connected as ${user.username}`, username: user.username })
-      }
-
       case 'telegram': {
         const { botToken } = config
         if (!botToken) {
@@ -151,11 +108,12 @@ setupRouter.post('/verify', validate(SetupVerifySchema), async (req, res) => {
         return res.json({ ok: false, message: `Unknown service: ${service}` })
     }
   } catch (err: any) {
-    const message = err.name === 'TimeoutError'
-      ? 'Connection timed out — check the URL'
-      : err.message?.includes('ECONNREFUSED') || err.message?.includes('ENOTFOUND')
-        ? 'Cannot reach server — check the URL'
-        : err.message || 'Verification failed'
+    const message =
+      err.name === 'TimeoutError'
+        ? 'Connection timed out — check the URL'
+        : err.message?.includes('ECONNREFUSED') || err.message?.includes('ENOTFOUND')
+          ? 'Cannot reach server — check the URL'
+          : err.message || 'Verification failed'
     logger.warn({ err, service }, 'Setup verification failed')
     res.json({ ok: false, message })
   }

@@ -63,7 +63,7 @@ export async function updateTodo(
     dueDate: string | null
     status: string
     order: number
-  }>
+  }>,
 ): Promise<Todo> {
   const res = await fetch(`${API}/${id}`, {
     method: 'PUT',

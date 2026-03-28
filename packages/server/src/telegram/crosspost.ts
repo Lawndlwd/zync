@@ -1,10 +1,11 @@
 import { Bot } from 'grammy'
-import { logger } from '../lib/logger.js'
 import { getConfig } from '../config/index.js'
+import { logger } from '../lib/logger.js'
 import { getSecret } from '../secrets/index.js'
-import { trackChannelPost } from './analytics.js'
-
-export async function crossPostToTelegram(content: string, mediaUrl?: string): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+export async function crossPostToTelegram(
+  content: string,
+  mediaUrl?: string,
+): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   const channelId = getConfig('TELEGRAM_CHANNEL_ID')
   const botToken = getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN')
 
@@ -27,7 +28,6 @@ export async function crossPostToTelegram(content: string, mediaUrl?: string): P
       messageId = String(result.message_id)
     }
 
-    trackChannelPost(messageId, content, mediaUrl)
     logger.info({ channelId, messageId }, 'Cross-posted to Telegram channel')
 
     return { ok: true, messageId }

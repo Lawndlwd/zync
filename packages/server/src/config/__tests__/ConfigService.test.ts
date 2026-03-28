@@ -1,13 +1,19 @@
+import { unlinkSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
-import { unlinkSync } from 'fs'
 import { ConfigService } from '../ConfigService.js'
 
 const TEST_DB = '/tmp/test-config.db'
 
 function cleanup() {
-  try { unlinkSync(TEST_DB) } catch {}
-  try { unlinkSync(TEST_DB + '-wal') } catch {}
-  try { unlinkSync(TEST_DB + '-shm') } catch {}
+  try {
+    unlinkSync(TEST_DB)
+  } catch {}
+  try {
+    unlinkSync(`${TEST_DB}-wal`)
+  } catch {}
+  try {
+    unlinkSync(`${TEST_DB}-shm`)
+  } catch {}
 }
 
 describe('ConfigService', () => {
@@ -68,7 +74,7 @@ describe('ConfigService', () => {
     svc.set('c', '3', 'cat1')
     const filtered = svc.list('cat1')
     expect(filtered).toHaveLength(2)
-    expect(filtered.map(s => s.key)).toEqual(['a', 'c'])
+    expect(filtered.map((s) => s.key)).toEqual(['a', 'c'])
   })
 
   it('should bulkSet multiple values in a transaction', () => {

@@ -1,20 +1,20 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
 import {
+  type CollisionDetection,
   DndContext,
+  type DragEndEvent,
   DragOverlay,
+  type DragStartEvent,
   PointerSensor,
-  useSensor,
-  useSensors,
   pointerWithin,
   rectIntersection,
-  type DragStartEvent,
-  type DragEndEvent,
-  type CollisionDetection,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core'
+import type { Task, TaskStatus } from '@zync/shared/types'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { KanbanColumn } from './kanban-column'
-import { TaskCardOverlay } from './task-card'
-import type { Task, TaskStatus } from '@zync/shared/types'
+import { TaskCardOverlay } from './task-card-overlay'
 
 interface KanbanBoardProps {
   tasks: Task[]
@@ -48,13 +48,7 @@ const columnOnlyCollision: CollisionDetection = (args) => {
 // Disable the default drop animation so the overlay doesn't fly back
 const noDropAnimation = { duration: 0, easing: '' as const, sideEffects: () => () => {} }
 
-export function KanbanBoard({
-  tasks,
-  onStatusChange,
-  onSelectTask,
-  showProject,
-  isLoading,
-}: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onStatusChange, onSelectTask, showProject, isLoading }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   // Local override: instantly moves the task to the new column on drop,
@@ -68,9 +62,7 @@ export function KanbanBoard({
     if (localMove) setLocalMove(null)
   }
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  )
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   // Apply the local override on top of the query data
   const effectiveTasks = useMemo(() => {
@@ -78,7 +70,7 @@ export function KanbanBoard({
     return tasks.map((t) =>
       `${t.project}/${t.fileName}` === localMove.taskId
         ? { ...t, metadata: { ...t.metadata, status: localMove.newStatus } }
-        : t
+        : t,
     )
   }, [tasks, localMove])
 
@@ -100,8 +92,7 @@ export function KanbanBoard({
   }, [effectiveTasks])
 
   const findTaskById = useCallback(
-    (id: string): Task | undefined =>
-      tasks.find((t) => `${t.project}/${t.fileName}` === id),
+    (id: string): Task | undefined => tasks.find((t) => `${t.project}/${t.fileName}` === id),
     [tasks],
   )
 
@@ -172,9 +163,7 @@ export function KanbanBoard({
       </div>
 
       <DragOverlay dropAnimation={noDropAnimation}>
-        {activeTask ? (
-          <TaskCardOverlay task={activeTask} showProject={showProject} />
-        ) : null}
+        {activeTask ? <TaskCardOverlay task={activeTask} showProject={showProject} /> : null}
       </DragOverlay>
     </DndContext>
   )

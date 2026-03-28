@@ -1,9 +1,9 @@
 import { z } from 'zod'
-import { saveMemoryWithDedup, deleteMemoryById } from '../../memory/memories.js'
-import { hybridSearch } from '../../memory/search.js'
-import { updateProfileSection, type ProfileSection, getProfile } from '../../memory/profile.js'
-import { getBrainDbPath, getBrainDb } from '../../memory/brain-db.js'
+import { getBrainDb } from '../../memory/brain-db.js'
 import { addInstruction, deleteInstruction, getActiveInstructions } from '../../memory/instructions.js'
+import { deleteMemoryById, saveMemoryWithDedup } from '../../memory/memories.js'
+import { getProfile, type ProfileSection, updateProfileSection } from '../../memory/profile.js'
+import { hybridSearch } from '../../memory/search.js'
 
 function logTool(name: string, input: unknown) {
   console.error(`[MCP-TOOL] ${name} called with:`, JSON.stringify(input))
@@ -11,12 +11,17 @@ function logTool(name: string, input: unknown) {
 
 /** Force WAL data into the main DB file so Docker-mounted reads see it */
 function flushWal() {
-  try { getBrainDb().pragma('wal_checkpoint(FULL)') } catch { /* ignore */ }
+  try {
+    getBrainDb().pragma('wal_checkpoint(FULL)')
+  } catch {
+    /* ignore */
+  }
 }
 
 // --- update_profile ---
 export const updateProfileSchema = z.object({
-  section: z.enum(['identity', 'technical', 'interests', 'communication', 'work_patterns'])
+  section: z
+    .enum(['identity', 'technical', 'interests', 'communication', 'work_patterns'])
     .describe('Profile section to update'),
   content: z.string().describe('New content for this section (markdown)'),
 })
@@ -43,8 +48,7 @@ export async function saveInstructionHandler(input: z.infer<typeof saveInstructi
 // --- save_memory ---
 export const saveMemorySchema = z.object({
   content: z.string().describe('The information to remember'),
-  category: z.string().default('general')
-    .describe('Memory category (preference, fact, project, person, decision)'),
+  category: z.string().default('general').describe('Memory category (preference, fact, project, person, decision)'),
 })
 
 export async function saveMemoryHandler(input: z.infer<typeof saveMemorySchema>) {
@@ -65,7 +69,7 @@ export async function searchMemoryHandler(input: z.infer<typeof searchMemorySche
   const parts: string[] = []
 
   // Always include profile data
-  const profile = getProfile().filter(p => p.content.trim().length > 0)
+  const profile = getProfile().filter((p) => p.content.trim().length > 0)
   if (profile.length > 0) {
     parts.push('=== Profile ===')
     for (const p of profile) {

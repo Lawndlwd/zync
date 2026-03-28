@@ -32,3 +32,11 @@ export function getPeopleClient() {
 export function getTasksClient() {
   return google.tasks({ version: 'v1', auth: getGoogleAuth() })
 }
+
+export function getYouTubeClient() {
+  return google.youtube({ version: 'v3', auth: getGoogleAuth() })
+}
+
+export function getYouTubeAnalyticsClient() {
+  return google.youtubeAnalytics({ version: 'v2', auth: getGoogleAuth() })
+}

@@ -25,7 +25,10 @@ export interface OpenCodeMessage {
 
 export type OpenCodePart =
   | { type: 'text'; text: string }
-  | { type: 'tool-invocation'; toolInvocation: { id: string; toolName: string; args: Record<string, unknown>; state: string; result?: unknown } }
+  | {
+      type: 'tool-invocation'
+      toolInvocation: { id: string; toolName: string; args: Record<string, unknown>; state: string; result?: unknown }
+    }
 
 export interface OpenCodeProvider {
   id: string

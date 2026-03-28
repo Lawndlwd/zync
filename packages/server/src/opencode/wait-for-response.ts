@@ -7,13 +7,18 @@ import { streamOpenCode } from './stream.js'
 export async function waitForResponse(
   sessionId: string,
   prompt: string,
-  opts?: { timeoutMs?: number }
+  opts?: { timeoutMs?: number },
 ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
-    streamOpenCode(sessionId, prompt, {
-      onToken: () => {},
-      onDone: (fullText) => resolve(fullText),
-      onError: (err) => reject(err),
-    }, { timeoutMs: opts?.timeoutMs ?? 120_000 }).catch(reject)
+    streamOpenCode(
+      sessionId,
+      prompt,
+      {
+        onToken: () => {},
+        onDone: (fullText) => resolve(fullText),
+        onError: (err) => reject(err),
+      },
+      { timeoutMs: opts?.timeoutMs ?? 120_000 },
+    ).catch(reject)
   })
 }

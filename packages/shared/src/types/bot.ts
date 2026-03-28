@@ -50,7 +50,13 @@ export interface ChannelStatus {
 export interface ChannelConfigResponse {
   telegram?: { botToken: string; allowedUsers: string; hasBotToken: boolean }
   whatsapp?: { allowedNumbers: string; autoReply: boolean; autoReplyInstructions: string }
-  gmail?: { clientId: string; hasClientSecret: boolean; authorized: boolean; pollIntervalMs: number; enabledServices?: string[] }
+  gmail?: {
+    clientId: string
+    hasClientSecret: boolean
+    authorized: boolean
+    pollIntervalMs: number
+    enabledServices?: string[]
+  }
 }
 
 export interface WhatsAppQRResponse {
@@ -59,7 +65,6 @@ export interface WhatsAppQRResponse {
   error: string | null
 }
 
-
 export interface BriefingCheckItem {
   id: string
   label: string
@@ -67,21 +72,20 @@ export interface BriefingCheckItem {
 }
 
 export const DEFAULT_MORNING_ITEMS: BriefingCheckItem[] = [
-  { id: 'jira', label: 'Jira issues', enabled: true },
-  { id: 'todos', label: 'To-do items', enabled: true },
+  { id: 'lifeos', label: 'Life OS snapshot', enabled: true },
+  { id: 'levers', label: 'Daily levers', enabled: true },
+  { id: 'goals', label: 'Active goals & projects', enabled: true },
   { id: 'calendar', label: 'Calendar events', enabled: true },
   { id: 'emails', label: 'Email digest', enabled: true },
-  { id: 'gtasks', label: 'Google Tasks', enabled: true },
-  { id: 'motivation', label: 'Motivational message', enabled: true },
+  { id: 'motivation', label: 'Motivational nudge', enabled: true },
 ]
 
 export const DEFAULT_EVENING_ITEMS: BriefingCheckItem[] = [
-  { id: 'completed', label: 'Completed tasks', enabled: true },
-  { id: 'messages', label: 'Messages handled', enabled: true },
-  { id: 'pending', label: 'Pending items', enabled: true },
-  { id: 'blockers', label: 'Blockers', enabled: true },
+  { id: 'lifeos', label: 'Life OS daily review', enabled: true },
+  { id: 'levers', label: 'Lever completion', enabled: true },
+  { id: 'goals', label: 'Goal progress', enabled: true },
+  { id: 'journal', label: 'Journal check', enabled: true },
   { id: 'emails', label: 'Email update', enabled: true },
-  { id: 'gtasks', label: 'Google Tasks', enabled: true },
 ]
 
 export interface BriefingConfig {

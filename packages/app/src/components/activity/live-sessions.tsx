@@ -13,10 +13,10 @@ export function LiveSessions() {
   if (!status?.connected || stats.sessionCount === 0) return null
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] overflow-hidden">
+    <div className="rounded-lg bg-card border border-border overflow-hidden">
       <div className="px-4 py-3">
-        <p className="text-sm font-medium text-zinc-300">Today's Sessions</p>
-        <p className="text-xs text-zinc-500 mt-0.5">
+        <p className="text-sm font-medium text-foreground">Today's Sessions</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
           {stats.sessionCount} session{stats.sessionCount !== 1 ? 's' : ''} — {formatTokens(stats.total)} tokens
           {stats.cost > 0 && ` — $${stats.cost.toFixed(4)}`}
         </p>

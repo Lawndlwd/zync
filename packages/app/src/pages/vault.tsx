@@ -1,19 +1,22 @@
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  Shield, ShieldOff, Plus, Trash2, Eye, EyeOff, Copy, Pencil, Check, X, Search,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Copy, Eye, EyeOff, Pencil, Plus, Search, Shield, ShieldOff, Trash2, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import {
-  getVaultStatus, listSecrets, setSecret, deleteSecret, revealSecret, setVaultPin,
+  deleteSecret,
+  getVaultStatus,
+  listSecrets,
+  revealSecret,
   type SecretMeta,
+  setSecret,
+  setVaultPin,
 } from '@/services/secrets'
 
-const VAULT_CATEGORIES = ['all', 'general', 'jira', 'channel', 'provider', 'oauth', 'gmail'] as const
+const VAULT_CATEGORIES = ['all', 'general', 'channel', 'provider', 'oauth', 'gmail'] as const
 
 export function VaultPage() {
   const queryClient = useQueryClient()
@@ -28,7 +31,9 @@ export function VaultPage() {
   const [revealDialog, setRevealDialog] = useState<string | null>(null)
   const [revealPin, setRevealPin] = useState('')
   const [unlockedAuth, setUnlockedAuth] = useState<{ pin: string } | { secretKey: string } | null>(null)
-  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, { value: string; timer: ReturnType<typeof setTimeout> }>>({})
+  const [revealedSecrets, setRevealedSecrets] = useState<
+    Record<string, { value: string; timer: ReturnType<typeof setTimeout> }>
+  >({})
 
   const [editingSecret, setEditingSecret] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -80,7 +85,9 @@ export function VaultPage() {
 
   useEffect(() => {
     return () => {
-      Object.values(revealedSecrets).forEach(({ timer }) => clearTimeout(timer))
+      Object.values(revealedSecrets).forEach(({ timer }) => {
+        clearTimeout(timer)
+      })
     }
   }, [revealedSecrets])
 
@@ -115,7 +122,10 @@ export function VaultPage() {
   }
 
   const handleQuickReveal = async (name: string) => {
-    if (!unlockedAuth) { setRevealDialog(name); return }
+    if (!unlockedAuth) {
+      setRevealDialog(name)
+      return
+    }
     try {
       const value = await revealSecret(name, unlockedAuth)
       showRevealed(name, value)
@@ -167,12 +177,12 @@ export function VaultPage() {
   if (!available) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-        <ShieldOff size={48} className="text-zinc-600" />
-        <h1 className="text-2xl font-bold text-zinc-100">Vault Not Configured</h1>
-        <p className="text-zinc-500 text-center max-w-md">
-          Set <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400">SECRET_KEY</code> in
-          your server <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400">.env</code> file
-          to enable the encrypted vault.
+        <ShieldOff size={48} className="text-muted-foreground" />
+        <h1 className="text-2xl font-bold text-foreground">Vault Not Configured</h1>
+        <p className="text-muted-foreground text-center max-w-md">
+          Set <code className="rounded bg-secondary px-1.5 py-0.5 text-muted-foreground">SECRET_KEY</code> in your
+          server <code className="rounded bg-secondary px-1.5 py-0.5 text-muted-foreground">.env</code> file to enable
+          the encrypted vault.
         </p>
       </div>
     )
@@ -184,8 +194,8 @@ export function VaultPage() {
         <div className="flex items-center gap-3">
           <Shield size={28} className="text-amber-400" />
           <div>
-            <h1 className="text-2xl font-bold text-zinc-100">Vault</h1>
-            <p className="text-sm text-zinc-500">
+            <h1 className="text-2xl font-bold text-foreground">Vault</h1>
+            <p className="text-sm text-muted-foreground">
               {allSecrets.length} secret{allSecrets.length !== 1 ? 's' : ''} stored
             </p>
           </div>
@@ -202,10 +212,10 @@ export function VaultPage() {
       </div>
 
       {showAddForm && (
-        <div className="mb-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
+        <div className="mb-6 rounded-3xl bg-card border border-border p-5">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="flex-1 min-w-[160px]">
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Name</label>
+            <div className="flex-1 min-w-40">
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Name</label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -213,8 +223,8 @@ export function VaultPage() {
                 className="h-9 font-mono text-sm"
               />
             </div>
-            <div className="flex-1 min-w-[160px]">
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Value</label>
+            <div className="flex-1 min-w-40">
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Value</label>
               <Input
                 type="password"
                 value={newValue}
@@ -223,15 +233,17 @@ export function VaultPage() {
                 className="h-9 text-sm"
               />
             </div>
-            <div className="w-[140px]">
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Category</label>
+            <div className="w-35">
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Category</label>
               <select
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                className="h-9 w-full rounded-md border border-zinc-700/50 bg-zinc-800/50 px-2 text-sm text-zinc-100"
+                className="h-9 w-full rounded-md border border-border bg-secondary px-2 text-sm text-foreground"
               >
                 {VAULT_CATEGORIES.filter((c) => c !== 'all').map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
             </div>
@@ -252,8 +264,8 @@ export function VaultPage() {
       )}
 
       <div className="mb-5 flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+        <div className="relative flex-1 min-w-50 max-w-sm">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -270,7 +282,7 @@ export function VaultPage() {
                 'px-3 py-1.5 text-xs font-medium rounded-full capitalize transition-colors',
                 activeCategory === cat
                   ? 'bg-amber-500/20 text-amber-400'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               )}
             >
               {cat}
@@ -280,15 +292,15 @@ export function VaultPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-12 text-center">
-          <Shield size={48} className="mx-auto mb-4 text-zinc-700" />
-          <p className="text-zinc-500">
+        <div className="rounded-3xl bg-card border border-border p-12 text-center">
+          <Shield size={48} className="mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">
             {allSecrets.length === 0 ? 'No secrets stored yet.' : 'No secrets match your filter.'}
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
-          <div className="grid grid-cols-[1fr_120px_120px_160px] gap-4 px-5 py-3 border-b border-white/[0.06] text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <div className="rounded-3xl bg-card border border-border overflow-hidden">
+          <div className="grid grid-cols-[1fr_120px_120px_160px] gap-4 px-5 py-3 border-b border-border text-xs font-medium uppercase tracking-wider text-muted-foreground">
             <span>Name</span>
             <span>Category</span>
             <span>Updated</span>
@@ -302,10 +314,10 @@ export function VaultPage() {
             return (
               <div
                 key={secret.name}
-                className="grid grid-cols-[1fr_120px_120px_160px] gap-4 items-center px-5 py-3 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors"
+                className="grid grid-cols-[1fr_120px_120px_160px] gap-4 items-center px-5 py-3 border-b border-border last:border-0 hover:bg-secondary transition-colors"
               >
                 <div className="min-w-0">
-                  <span className="font-mono text-sm text-zinc-100 truncate block">{secret.name}</span>
+                  <span className="font-mono text-sm text-foreground truncate block">{secret.name}</span>
                   {isRevealed && (
                     <span className="font-mono text-xs text-emerald-400 truncate block mt-1">
                       {revealedSecrets[secret.name].value}
@@ -323,14 +335,18 @@ export function VaultPage() {
                       <select
                         value={editCategory}
                         onChange={(e) => setEditCategory(e.target.value)}
-                        className="h-7 rounded-md border border-zinc-700/50 bg-zinc-800/50 px-1.5 text-xs text-zinc-100"
+                        className="h-7 rounded-md border border-border bg-secondary px-1.5 text-xs text-foreground"
                       >
                         {VAULT_CATEGORIES.filter((c) => c !== 'all').map((c) => (
-                          <option key={c} value={c}>{c}</option>
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
                         ))}
                       </select>
                       <Button
-                        variant="ghost" size="sm" className="h-7 w-7 p-0"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
                         disabled={editMutation.isPending}
                         onClick={() => {
                           if (!editValue.trim()) {
@@ -342,11 +358,8 @@ export function VaultPage() {
                       >
                         <Check size={14} className="text-emerald-400" />
                       </Button>
-                      <Button
-                        variant="ghost" size="sm" className="h-7 w-7 p-0"
-                        onClick={() => setEditingSecret(null)}
-                      >
-                        <X size={14} className="text-zinc-500" />
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingSecret(null)}>
+                        <X size={14} className="text-muted-foreground" />
                       </Button>
                     </div>
                   )}
@@ -356,15 +369,14 @@ export function VaultPage() {
                   {secret.category}
                 </Badge>
 
-                <span className="text-xs text-zinc-500">
-                  {new Date(secret.updatedAt).toLocaleDateString()}
-                </span>
+                <span className="text-xs text-muted-foreground">{new Date(secret.updatedAt).toLocaleDateString()}</span>
 
                 <div className="flex items-center justify-end gap-1">
                   {isRevealed ? (
                     <Button
-                      variant="ghost" size="sm"
-                      className="h-7 w-7 p-0 text-zinc-500 hover:text-zinc-300"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                       onClick={() => handleHide(secret.name)}
                       title="Hide"
                     >
@@ -372,8 +384,9 @@ export function VaultPage() {
                     </Button>
                   ) : (
                     <Button
-                      variant="ghost" size="sm"
-                      className="h-7 w-7 p-0 text-zinc-500 hover:text-zinc-300"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                       onClick={() => handleQuickReveal(secret.name)}
                       title="Reveal"
                     >
@@ -381,24 +394,27 @@ export function VaultPage() {
                     </Button>
                   )}
                   <Button
-                    variant="ghost" size="sm"
-                    className="h-7 w-7 p-0 text-zinc-500 hover:text-zinc-300"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                     onClick={() => handleCopy(secret.name)}
                     title="Copy"
                   >
                     <Copy size={14} />
                   </Button>
                   <Button
-                    variant="ghost" size="sm"
-                    className="h-7 w-7 p-0 text-zinc-500 hover:text-zinc-300"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                     onClick={() => handleStartEdit(secret)}
                     title="Edit"
                   >
                     <Pencil size={14} />
                   </Button>
                   <Button
-                    variant="ghost" size="sm"
-                    className="h-7 w-7 p-0 text-zinc-500 hover:text-red-400"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400"
                     onClick={() => handleDelete(secret.name)}
                     disabled={deleteMutation.isPending}
                     title="Delete"
@@ -414,16 +430,18 @@ export function VaultPage() {
 
       {showPinSetup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-xl border border-white/[0.08] bg-zinc-900 p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-zinc-100 mb-1">{hasPin ? 'Change PIN' : 'Set PIN'}</h3>
-            <p className="text-sm text-zinc-500 mb-4">Choose a 6-digit PIN to reveal secrets.</p>
+          <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-foreground mb-1">{hasPin ? 'Change PIN' : 'Set PIN'}</h3>
+            <p className="text-sm text-muted-foreground mb-4">Choose a 6-digit PIN to reveal secrets.</p>
             <div className="space-y-3 mb-4">
               <Input
                 type="password"
                 inputMode="numeric"
                 maxLength={6}
                 value={newPin}
-                onChange={(e) => { if (/^\d{0,6}$/.test(e.target.value)) setNewPin(e.target.value) }}
+                onChange={(e) => {
+                  if (/^\d{0,6}$/.test(e.target.value)) setNewPin(e.target.value)
+                }}
                 placeholder="New PIN"
                 className="text-center tracking-[0.5em] text-lg font-mono h-11"
                 autoFocus
@@ -433,7 +451,9 @@ export function VaultPage() {
                 inputMode="numeric"
                 maxLength={6}
                 value={confirmNewPin}
-                onChange={(e) => { if (/^\d{0,6}$/.test(e.target.value)) setConfirmNewPin(e.target.value) }}
+                onChange={(e) => {
+                  if (/^\d{0,6}$/.test(e.target.value)) setConfirmNewPin(e.target.value)
+                }}
                 placeholder="Confirm PIN"
                 className="text-center tracking-[0.5em] text-lg font-mono h-11"
                 onKeyDown={(e) => {
@@ -454,14 +474,25 @@ export function VaultPage() {
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => { setShowPinSetup(false); setNewPin(''); setConfirmNewPin('') }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowPinSetup(false)
+                  setNewPin('')
+                  setConfirmNewPin('')
+                }}
+              >
                 Cancel
               </Button>
               <Button
                 size="sm"
                 disabled={newPin.length !== 6 || newPin !== confirmNewPin || pinSaving}
                 onClick={() => {
-                  if (newPin !== confirmNewPin) { toast.error('PINs do not match'); return }
+                  if (newPin !== confirmNewPin) {
+                    toast.error('PINs do not match')
+                    return
+                  }
                   setPinSaving(true)
                   setVaultPin(newPin)
                     .then(() => {
@@ -484,13 +515,20 @@ export function VaultPage() {
 
       {revealDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-xl border border-white/[0.08] bg-zinc-900 p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-zinc-100 mb-1">Reveal Secret</h3>
-            <p className="text-sm text-zinc-500 mb-4">
-              {hasPin
-                ? <>Enter your <strong className="text-zinc-300">6-digit PIN</strong> to decrypt <span className="font-mono text-zinc-300">{revealDialog}</span></>
-                : <>Enter your <code className="rounded bg-zinc-800 px-1 text-zinc-400">SECRET_KEY</code> to decrypt <span className="font-mono text-zinc-300">{revealDialog}</span></>
-              }
+          <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-foreground mb-1">Reveal Secret</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {hasPin ? (
+                <>
+                  Enter your <strong className="text-foreground">6-digit PIN</strong> to decrypt{' '}
+                  <span className="font-mono text-foreground">{revealDialog}</span>
+                </>
+              ) : (
+                <>
+                  Enter your <code className="rounded bg-secondary px-1 text-muted-foreground">SECRET_KEY</code> to
+                  decrypt <span className="font-mono text-foreground">{revealDialog}</span>
+                </>
+              )}
             </p>
             <Input
               type="password"
@@ -506,7 +544,10 @@ export function VaultPage() {
                 }
               }}
               placeholder={hasPin ? '••••••' : 'SECRET_KEY'}
-              className={cn('mb-4 h-9 text-sm', hasPin ? 'text-center tracking-[0.5em] text-lg font-mono' : 'font-mono')}
+              className={cn(
+                'mb-4 h-9 text-sm',
+                hasPin ? 'text-center tracking-[0.5em] text-lg font-mono' : 'font-mono',
+              )}
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && revealPin.trim()) handleReveal(revealDialog)
@@ -514,8 +555,12 @@ export function VaultPage() {
             />
             <div className="flex justify-end gap-2">
               <Button
-                variant="ghost" size="sm"
-                onClick={() => { setRevealDialog(null); setRevealPin('') }}
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setRevealDialog(null)
+                  setRevealPin('')
+                }}
               >
                 Cancel
               </Button>

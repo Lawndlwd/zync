@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { Check, ChevronDown, Search, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { Search, ChevronDown, X, Check } from 'lucide-react'
 
 export interface ComboboxOption {
   value: string
@@ -63,15 +63,11 @@ export function Combobox(props: ComboboxProps) {
         searchTimerRef.current = setTimeout(() => onSearch(q), 300)
       }
     },
-    [onSearch]
+    [onSearch],
   )
 
   // Filter options locally when no async search
-  const filtered = onSearch
-    ? options
-    : options.filter((o) =>
-        o.label.toLowerCase().includes(search.toLowerCase())
-      )
+  const filtered = onSearch ? options : options.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
 
   // Close on outside click
   useEffect(() => {
@@ -92,9 +88,7 @@ export function Combobox(props: ComboboxProps) {
   const handleSelect = (optionValue: string) => {
     if (isMulti) {
       const current = props.value as string[]
-      const next = current.includes(optionValue)
-        ? current.filter((v) => v !== optionValue)
-        : [...current, optionValue]
+      const next = current.includes(optionValue) ? current.filter((v) => v !== optionValue) : [...current, optionValue]
       ;(props.onChange as (v: string[]) => void)(next)
     } else {
       ;(props.onChange as (v: string) => void)(optionValue)
@@ -127,14 +121,10 @@ export function Combobox(props: ComboboxProps) {
     return options.find((o) => o.value === val)?.label ?? val
   })()
 
-  const hasValue = isMulti
-    ? (props.value as string[]).length > 0
-    : !!(props.value as string)
+  const hasValue = isMulti ? (props.value as string[]).length > 0 : !!(props.value as string)
 
   // Selected icon for single mode
-  const selectedIcon = !isMulti
-    ? options.find((o) => o.value === (props.value as string))?.iconUrl
-    : undefined
+  const selectedIcon = !isMulti ? options.find((o) => o.value === (props.value as string))?.iconUrl : undefined
 
   return (
     <div ref={ref} className={cn('relative', className)}>
@@ -146,41 +136,27 @@ export function Combobox(props: ComboboxProps) {
           setOpen(!open)
         }}
         disabled={disabled}
-        className="flex h-9 w-full items-center justify-between rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 text-sm text-zinc-300 hover:border-zinc-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-9 w-full items-center justify-between rounded-lg border border-border bg-secondary px-3 text-sm text-foreground hover:border-muted-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
       >
         <div className="flex items-center gap-2 truncate">
-          {selectedIcon && (
-            <img src={selectedIcon} alt="" className="h-4 w-4" />
-          )}
-          <span className={cn('truncate', !hasValue && 'text-zinc-500')}>
-            {displayLabel}
-          </span>
+          {selectedIcon && <img src={selectedIcon} alt="" className="h-4 w-4" />}
+          <span className={cn('truncate', !hasValue && 'text-muted-foreground')}>{displayLabel}</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {hasValue && (
-            <span
-              role="button"
-              onClick={handleClear}
-              className="rounded p-0.5 hover:bg-white/[0.1]"
-            >
+            <span role="button" onClick={handleClear} className="rounded p-0.5 hover:bg-accent">
               <X size={12} />
             </span>
           )}
-          <ChevronDown
-            size={14}
-            className={cn('transition-transform', open && 'rotate-180')}
-          />
+          <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
         </div>
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-lg border border-white/[0.1] bg-[#1a1d1e]/95 backdrop-blur-md shadow-xl">
-          <div className="p-2 border-b border-white/[0.08]">
+        <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-lg border border-border bg-popover backdrop-blur-md shadow-xl">
+          <div className="p-2 border-b border-border">
             <div className="relative">
-              <Search
-                size={12}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500"
-              />
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -192,27 +168,25 @@ export function Combobox(props: ComboboxProps) {
           </div>
 
           <div className="max-h-64 overflow-y-auto p-1">
-            {isLoading && (
-              <div className="px-2.5 py-3 text-center text-xs text-zinc-500">
-                Loading...
-              </div>
-            )}
+            {isLoading && <div className="px-2.5 py-3 text-center text-xs text-muted-foreground">Loading...</div>}
 
             {!isLoading && filtered.length === 0 && !creatable && (
-              <div className="px-2.5 py-3 text-center text-xs text-zinc-500">
+              <div className="px-2.5 py-3 text-center text-xs text-muted-foreground">
                 {search ? `No results for "${search}"` : 'No options'}
               </div>
             )}
 
-            {creatable && search.trim() && !filtered.some((o) => o.value.toLowerCase() === search.trim().toLowerCase()) && (
-              <button
-                type="button"
-                onClick={() => handleSelect(search.trim())}
-                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-indigo-400 hover:bg-white/[0.06]"
-              >
-                Create &ldquo;{search.trim()}&rdquo;
-              </button>
-            )}
+            {creatable &&
+              search.trim() &&
+              !filtered.some((o) => o.value.toLowerCase() === search.trim().toLowerCase()) && (
+                <button
+                  type="button"
+                  onClick={() => handleSelect(search.trim())}
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-primary hover:bg-accent"
+                >
+                  Create &ldquo;{search.trim()}&rdquo;
+                </button>
+              )}
 
             {filtered.map((option) => {
               const isSelected = isMulti
@@ -226,18 +200,10 @@ export function Combobox(props: ComboboxProps) {
                   onClick={() => handleSelect(option.value)}
                   className={cn(
                     'flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors',
-                    isSelected
-                      ? 'bg-indigo-600/20 text-indigo-400'
-                      : 'text-zinc-300 hover:bg-white/[0.06]'
+                    isSelected ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent',
                   )}
                 >
-                  {option.iconUrl && (
-                    <img
-                      src={option.iconUrl}
-                      alt=""
-                      className="h-4 w-4 shrink-0"
-                    />
-                  )}
+                  {option.iconUrl && <img src={option.iconUrl} alt="" className="h-4 w-4 shrink-0" />}
                   <span className="flex-1 truncate">{option.label}</span>
                   {isSelected && <Check size={14} className="shrink-0" />}
                 </button>

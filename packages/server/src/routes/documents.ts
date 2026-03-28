@@ -1,11 +1,17 @@
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { basename, join, relative } from 'node:path'
+import {
+  DocumentBulkSchema,
+  DocumentCreateSchema,
+  DocumentUpdateSchema,
+  FolderCreateSchema,
+  FolderRenameSchema,
+} from '@zync/shared/schemas'
 import { Router } from 'express'
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, renameSync, rmSync, statSync, existsSync } from 'fs'
-import { join, basename, extname, relative } from 'path'
-import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
-import { validate } from '../lib/validate.js'
-import { errorResponse } from '../lib/errors.js'
-import { FolderCreateSchema, FolderRenameSchema, DocumentCreateSchema, DocumentUpdateSchema, DocumentBulkSchema } from '@zync/shared/schemas'
 import { getConfig } from '../config/index.js'
+import { errorResponse } from '../lib/errors.js'
+import { validate } from '../lib/validate.js'
+import { parseFrontmatter, serializeFrontmatter } from '../utils/frontmatter.js'
 
 export const documentsRouter = Router()
 
@@ -60,8 +66,8 @@ documentsRouter.get('/folders', (req, res) => {
 
     const entries = readdirSync(base, { withFileTypes: true })
     const folders = entries
-      .filter(e => e.isDirectory())
-      .map(e => {
+      .filter((e) => e.isDirectory())
+      .map((e) => {
         const dirPath = join(base, e.name)
         const stat = statSync(dirPath)
         return {
@@ -98,7 +104,7 @@ documentsRouter.put('/folders/:name', validate(FolderRenameSchema), (req, res) =
     const oldPath = safePath(root, req.params.name as string)
     const newPath = safePath(root, newName.trim())
     renameSync(oldPath, newPath)
-    const files = readdirSync(newPath).filter(f => f.endsWith('.md'))
+    const files = readdirSync(newPath).filter((f) => f.endsWith('.md'))
     res.json({ name: newName.trim(), docCount: files.length, createdAt: statSync(newPath).birthtime.toISOString() })
   } catch (err) {
     errorResponse(res, err)
@@ -128,7 +134,7 @@ documentsRouter.get('/', (req, res) => {
       const dirPath = safePath(root, folderName)
       if (!existsSync(dirPath)) return
       const isSystem = folderName.split('/').includes('system')
-      const files = readdirSync(dirPath).filter(f => f.endsWith('.md'))
+      const files = readdirSync(dirPath).filter((f) => f.endsWith('.md'))
       for (const file of files) {
         const filePath = join(dirPath, file)
         const raw = readFileSync(filePath, 'utf-8')
@@ -149,7 +155,7 @@ documentsRouter.get('/', (req, res) => {
     if (folder) {
       scanFolder(folder)
     } else {
-      const dirs = readdirSync(root, { withFileTypes: true }).filter(e => e.isDirectory())
+      const dirs = readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())
       for (const dir of dirs) {
         scanFolder(dir.name)
       }

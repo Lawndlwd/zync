@@ -2,7 +2,7 @@ import { getBrainDb as getDb } from '../../memory/brain-db.js'
 import { getSessionMessages } from '../../opencode/client.js'
 
 export interface LLMCallRecord {
-  source: 'chat' | 'bot' | 'schedule' | 'pr-agent' | 'code-review' | 'telegram-support' | 'telegram-dm'
+  source: 'chat' | 'bot' | 'schedule' | 'telegram-support' | 'telegram-dm'
   model: string
   prompt_tokens: number
   completion_tokens: number
@@ -115,7 +115,8 @@ export function getActivityStats(days = 30) {
   const db = getDb()
   const since = new Date(Date.now() - days * 86400000).toISOString()
 
-  const totals = db.prepare(`
+  const totals = db
+    .prepare(`
     SELECT
       COUNT(*) as total_calls,
       COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
@@ -124,9 +125,11 @@ export function getActivityStats(days = 30) {
       COALESCE(AVG(duration_ms), 0) as avg_duration_ms,
       COALESCE(SUM(cost), 0) as total_cost
     FROM llm_calls WHERE created_at >= ?
-  `).get(since) as Record<string, number>
+  `)
+    .get(since) as Record<string, number>
 
-  const byModel = db.prepare(`
+  const byModel = db
+    .prepare(`
     SELECT
       model,
       COUNT(*) as calls,
@@ -135,9 +138,11 @@ export function getActivityStats(days = 30) {
       COALESCE(SUM(total_tokens), 0) as total_tokens
     FROM llm_calls WHERE created_at >= ?
     GROUP BY model ORDER BY total_tokens DESC
-  `).all(since)
+  `)
+    .all(since)
 
-  const byDay = db.prepare(`
+  const byDay = db
+    .prepare(`
     SELECT
       date(created_at) as day,
       COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
@@ -145,9 +150,11 @@ export function getActivityStats(days = 30) {
       COUNT(*) as calls
     FROM llm_calls WHERE created_at >= ?
     GROUP BY date(created_at) ORDER BY day ASC
-  `).all(since)
+  `)
+    .all(since)
 
-  const byDaySource = db.prepare(`
+  const byDaySource = db
+    .prepare(`
     SELECT
       date(created_at) as day,
       source,
@@ -158,9 +165,11 @@ export function getActivityStats(days = 30) {
       COUNT(*) as calls
     FROM llm_calls WHERE created_at >= ?
     GROUP BY date(created_at), source ORDER BY day ASC
-  `).all(since)
+  `)
+    .all(since)
 
-  const bySource = db.prepare(`
+  const bySource = db
+    .prepare(`
     SELECT
       source,
       COUNT(*) as calls,
@@ -168,11 +177,16 @@ export function getActivityStats(days = 30) {
       COALESCE(SUM(cost), 0) as cost
     FROM llm_calls WHERE created_at >= ?
     GROUP BY source
-  `).all(since)
+  `)
+    .all(since)
 
-  const callsToday = (db.prepare(`
+  const callsToday = (
+    db
+      .prepare(`
     SELECT COUNT(*) as count FROM llm_calls WHERE date(created_at) = date('now')
-  `).get() as Record<string, number>).count
+  `)
+      .get() as Record<string, number>
+  ).count
 
   return { totals, byModel, byDay, byDaySource, bySource, callsToday }
 }

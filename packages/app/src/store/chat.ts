@@ -1,5 +1,5 @@
-import { create } from 'zustand'
 import type { ChatMessage } from '@zync/shared/types'
+import { create } from 'zustand'
 import { generateId } from '@/lib/utils'
 
 interface ChatStore {
@@ -36,9 +36,7 @@ export const useChatStore = create<ChatStore>()((set) => ({
     })),
   appendToMessage: (id, chunk) =>
     set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === id ? { ...m, content: m.content + chunk } : m
-      ),
+      messages: state.messages.map((m) => (m.id === id ? { ...m, content: m.content + chunk } : m)),
     })),
   setLoading: (isLoading) => set({ isLoading }),
   toggleChat: () => set((state) => ({ isOpen: !state.isOpen })),

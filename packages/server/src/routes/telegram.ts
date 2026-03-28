@@ -1,12 +1,11 @@
 import { Router } from 'express'
 import { Bot } from 'grammy'
-import { errorResponse } from '../lib/errors.js'
-import { getDMs, getDMStats, updateDMReply } from '../telegram/db.js'
-import { crossPostToTelegram } from '../telegram/crosspost.js'
-import { fetchTelegramChannelPosts } from '../telegram/analytics.js'
-import { reloadSupportPrompt } from '../telegram/support.js'
 import { getConfig, getConfigService } from '../config/index.js'
+import { errorResponse } from '../lib/errors.js'
 import { getSecret } from '../secrets/index.js'
+import { crossPostToTelegram } from '../telegram/crosspost.js'
+import { getDMStats, getDMs, updateDMReply } from '../telegram/db.js'
+import { reloadSupportPrompt } from '../telegram/support.js'
 
 export const telegramRouter = Router()
 
@@ -84,7 +83,9 @@ telegramRouter.get('/config', async (_req, res) => {
             memberCount,
             channelId,
           }
-        } catch { /* channel info unavailable, return config without it */ }
+        } catch {
+          /* channel info unavailable, return config without it */
+        }
       }
     }
 
@@ -110,16 +111,15 @@ telegramRouter.put('/config', async (req, res) => {
       if (channelId) {
         const botToken = getSecret('CHANNEL_TELEGRAM_BOT_TOKEN') || getSecret('TELEGRAM_BOT_TOKEN')
         if (!botToken) {
-          return res.status(400).json({ error: 'No Telegram bot token configured. Set it up in Channels settings first.' })
+          return res
+            .status(400)
+            .json({ error: 'No Telegram bot token configured. Set it up in Channels settings first.' })
         }
         try {
           const bot = new Bot(botToken)
           const chat = await bot.api.getChat(channelId)
           const memberCount = await bot.api.getChatMemberCount(channelId)
           const title = ('title' in chat ? chat.title : undefined) ?? 'Telegram Channel'
-
-          // Register as social account immediately
-          await fetchTelegramChannelPosts()
 
           res.json({
             success: true,

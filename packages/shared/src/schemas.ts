@@ -1,34 +1,15 @@
 import { z } from 'zod'
 
-// --- Jira ---
-export const JiraTransitionSchema = z.object({
-  transitionId: z.string(),
-})
-
-export const JiraCommentSchema = z.object({
-  body: z.string().min(1),
-})
-
-export const JiraCreateIssueSchema = z.object({
-  projectKey: z.string(),
-  issueTypeId: z.string(),
-  summary: z.string().min(1),
-  description: z.string().optional(),
-  priorityId: z.string().optional(),
-  assigneeId: z.string().optional(),
-  reporterId: z.string().optional(),
-  labels: z.array(z.string()).optional(),
-  componentIds: z.array(z.string()).optional(),
-  fixVersionIds: z.array(z.string()).optional(),
-  customFields: z.record(z.unknown()).optional(),
-})
-
 // --- LLM ---
 export const LlmChatSchema = z.object({
-  messages: z.array(z.object({
-    role: z.string(),
-    content: z.string(),
-  })).min(1),
+  messages: z
+    .array(
+      z.object({
+        role: z.string(),
+        content: z.string(),
+      }),
+    )
+    .min(1),
 })
 
 // --- Bot ---
@@ -44,11 +25,6 @@ export const BriefingTriggerSchema = z.object({
   type: z.enum(['morning', 'evening']),
 })
 
-export const MemoryCreateSchema = z.object({
-  content: z.string().min(1),
-  category: z.string().optional(),
-})
-
 export const ScheduleCreateSchema = z.object({
   cron_expression: z.string().min(1),
   prompt: z.string().min(1),
@@ -57,54 +33,6 @@ export const ScheduleCreateSchema = z.object({
 
 export const BotChatSchema = z.object({
   message: z.string().min(1),
-})
-
-// --- GitLab ---
-export const GitlabConfigSchema = z.object({
-  baseUrl: z.string().url(),
-  pat: z.string().min(1),
-})
-
-export const GitlabNoteSchema = z.object({
-  body: z.string().min(1),
-})
-
-export const GitlabDiscussionSchema = z.object({
-  body: z.string().min(1),
-  position: z.record(z.unknown()).optional(),
-})
-
-export const GitlabCreateMrSchema = z.object({
-  source_branch: z.string(),
-  target_branch: z.string(),
-  title: z.string().min(1),
-}).passthrough()
-
-// --- GitHub ---
-export const GithubConfigSchema = z.object({
-  baseUrl: z.string().url(),
-  pat: z.string().min(1),
-})
-
-export const GithubCommentSchema = z.object({
-  body: z.string().min(1),
-})
-
-export const GithubReviewCommentSchema = z.object({
-  body: z.string().min(1),
-  commit_id: z.string(),
-  path: z.string(),
-  line: z.number().optional(),
-  side: z.enum(['LEFT', 'RIGHT']).optional(),
-  subject_type: z.enum(['line', 'file']).optional(),
-}).passthrough()
-
-export const GithubCreatePrSchema = z.object({
-  head: z.string(),
-  base: z.string(),
-  title: z.string().min(1),
-  body: z.string().optional(),
-  draft: z.boolean().optional(),
 })
 
 // --- Todos ---
@@ -179,7 +107,6 @@ export const TaskUpdateSchema = z.object({
 
 // --- Settings ---
 export const AgentModelConfigSchema = z.object({
-  prAgent: z.object({ model: z.string() }).optional(),
   opencode: z.object({ model: z.string() }).optional(),
   bot: z.object({ model: z.string() }).optional(),
 })
@@ -195,18 +122,6 @@ export const CanvasRenderSchema = z.object({
 export const CanvasPromptSchema = z.object({
   prompt: z.string().min(1),
   canvasId: z.number().optional(),
-})
-
-// --- PR Agent ---
-export const PrAgentRunSchema = z.object({
-  tool: z.enum(['review', 'describe', 'improve', 'ask']),
-  mrUrl: z.string().min(1),
-  sessionId: z.string().optional(),
-  projectId: z.number().optional(),
-  mrIid: z.number().optional(),
-  headSha: z.string().optional(),
-  question: z.string().optional(),
-  extraInstructions: z.string().optional(),
 })
 
 // --- Channel Config ---
@@ -235,13 +150,9 @@ export const SecretSetSchema = z.object({
   category: z.string().max(64).default('general'),
 })
 
-export const SecretRevealSchema = z.object({
-  secretKey: z.string().min(32),
-})
-
 // --- Setup ---
 export const SetupVerifySchema = z.object({
-  service: z.enum(['jira', 'gitlab', 'telegram', 'llm']),
+  service: z.enum(['telegram', 'llm']),
   config: z.record(z.unknown()),
 })
 
@@ -256,92 +167,7 @@ export const ConfigBulkSetSchema = z.array(
     key: z.string().min(1).max(255),
     value: z.string(),
     category: z.string().max(64).default('general'),
-  })
+  }),
 )
-
-// --- Jobs ---
-export const CampaignCreateSchema = z.object({
-  name: z.string().min(1),
-  role: z.string().min(1),
-  city: z.string().min(1),
-  country: z.string().min(1),
-  salary_min: z.number().nullable().optional(),
-  salary_max: z.number().nullable().optional(),
-  remote: z.enum(['onsite', 'remote', 'hybrid', 'any']).default('any'),
-  experience_level: z.enum(['junior', 'mid', 'senior', 'any']).default('any'),
-  max_results: z.number().min(1).max(20).default(5),
-  posted_within_days: z.number().min(1).max(30).nullable().optional(),
-})
-
-export const CampaignStatusSchema = z.object({
-  status: z.enum(['idle', 'hunting', 'curated', 'applying', 'closed']),
-})
-
-export const JobStatusSchema = z.object({
-  status: z.enum(['new', 'shortlisted', 'applied', 'dismissed']),
-})
-
-const ProfileExperienceSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  company: z.string(),
-  location: z.string().optional(),
-  startDate: z.string(),
-  endDate: z.string().optional(),
-  bullets: z.array(z.string()),
-})
-
-const ProfileEducationSchema = z.object({
-  id: z.string(),
-  school: z.string(),
-  degree: z.string(),
-  field: z.string().optional(),
-  startDate: z.string(),
-  endDate: z.string().optional(),
-  gpa: z.string().optional(),
-})
-
-const ProfileProjectSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  url: z.string().optional(),
-  technologies: z.array(z.string()),
-})
-
-const CvThemeSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  template: z.enum(['classic', 'modern-left', 'bold-sidebar', 'executive-banner', 'minimal-two-col', 'timeline', 'compact-ats', 'magazine']),
-  primaryColor: z.string(),
-  secondaryColor: z.string(),
-  accentColor: z.string(),
-  backgroundColor: z.string(),
-  fontHeading: z.string(),
-  fontBody: z.string(),
-  fontSize: z.number(),
-  lineHeight: z.number(),
-  sectionSpacing: z.number(),
-  showPhoto: z.boolean(),
-})
-
-export const ProfileUpdateSchema = z.object({
-  name: z.string().optional(),
-  title: z.string().optional(),
-  summary: z.string().optional(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  location: z.string().optional(),
-  linkedin: z.string().optional(),
-  website: z.string().optional(),
-  skills: z.array(z.string()).optional(),
-  experience: z.string().optional(),
-  experiences: z.array(ProfileExperienceSchema).optional(),
-  education: z.string().optional(),
-  educations: z.array(ProfileEducationSchema).optional(),
-  projects: z.array(ProfileProjectSchema).optional(),
-  languages: z.array(z.string()).optional(),
-  cv_theme: CvThemeSchema.optional(),
-})
 
 // _VeBekaDpDQba_dk7pamDm86MQp1OjNiaQk.01.0z1814vry

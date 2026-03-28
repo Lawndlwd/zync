@@ -1,6 +1,6 @@
+import { logger } from '../../lib/logger.js'
 import { getOrCreateSession } from '../../opencode/client.js'
 import { waitForResponse } from '../../opencode/wait-for-response.js'
-import { logger } from '../../lib/logger.js'
 
 export interface NewsItem {
   title: string
@@ -25,7 +25,7 @@ Return ONLY this JSON array:
 
   logger.info({ responseLength: response.length, preview: response.slice(0, 500) }, 'News LLM response')
 
-  if (!response || !response.trim()) {
+  if (!response?.trim()) {
     logger.error('News LLM returned empty response')
     return []
   }

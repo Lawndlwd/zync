@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { existsSync, unlinkSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { SecretsService } from '../SecretsService.js'
-import { unlinkSync, existsSync } from 'fs'
-import { resolve } from 'path'
 
 const TEST_DB = resolve(import.meta.dirname, 'test-secrets.db')
 const TEST_KEY = 'a'.repeat(64) // 64 hex chars = 32 bytes
@@ -47,7 +47,7 @@ describe('SecretsService', () => {
     const list = svc.list()
     expect(list).toHaveLength(2)
     expect(list[0]).not.toHaveProperty('value')
-    expect(list.find(s => s.name === 'A')?.category).toBe('cat1')
+    expect(list.find((s) => s.name === 'A')?.category).toBe('cat1')
   })
 
   it('lists by category', () => {

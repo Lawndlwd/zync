@@ -45,10 +45,7 @@ export async function getProfile(): Promise<ProfileEntry[]> {
   return fetchJSON(`${API_BASE}/profile`)
 }
 
-export async function updateProfile(
-  section: string,
-  content: string,
-): Promise<{ success: boolean }> {
+export async function updateProfile(section: string, content: string): Promise<{ success: boolean }> {
   return fetchJSON(`${API_BASE}/profile/${encodeURIComponent(section)}`, {
     method: 'PUT',
     body: JSON.stringify({ content }),
@@ -84,11 +81,7 @@ export async function deleteInstruction(id: number): Promise<{ success: boolean 
 
 // --- Memories ---
 
-export async function getMemories(params?: {
-  q?: string
-  category?: string
-  limit?: number
-}): Promise<MemoryEntry[]> {
+export async function getMemories(params?: { q?: string; category?: string; limit?: number }): Promise<MemoryEntry[]> {
   const searchParams = new URLSearchParams()
   if (params?.q) searchParams.set('q', params.q)
   if (params?.category) searchParams.set('category', params.category)

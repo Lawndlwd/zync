@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const DEFAULT_WS_URL = '/ws/wakeword'
 
@@ -50,7 +50,9 @@ export function useOpenWakeWord(options: UseOpenWakeWordOptions = {}): UseOpenWa
       audioCtxRef.current = null
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop())
+      streamRef.current.getTracks().forEach((t) => {
+        t.stop()
+      })
       streamRef.current = null
     }
     if (wsRef.current) {

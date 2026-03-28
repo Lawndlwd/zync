@@ -1,15 +1,11 @@
-import { useState, useCallback } from 'react'
-import { Plus, Loader2, Trash2 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
+import { useCallback, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
-import {
-  useOpenCodeSessions,
-  useCreateSession,
-  useDeleteSession,
-} from '@/hooks/useOpenCode'
-import { useOpenCodeStore } from '@/store/opencode'
+import { useCreateSession, useDeleteSession, useOpenCodeSessions } from '@/hooks/useOpenCode'
 import { DASHBOARD_SESSION_PREFIX } from '@/services/opencode'
+import { useOpenCodeStore } from '@/store/opencode'
 
 export function SessionSelector() {
   const activeSessionId = useOpenCodeStore((s) => s.activeSessionId)
@@ -48,7 +44,7 @@ export function SessionSelector() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-zinc-500 hover:text-red-400"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-400"
           onClick={() => deleteSession.mutate(activeSessionId)}
           title="Delete session"
         >
@@ -58,15 +54,11 @@ export function SessionSelector() {
       <Button
         variant="outline"
         size="sm"
-        className="shrink-0 gap-1.5 border-white/[0.08] bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
+        className="shrink-0 gap-1.5 border-border bg-secondary text-foreground hover:bg-accent"
         onClick={() => createSession.mutate(undefined)}
         disabled={createSession.isPending}
       >
-        {createSession.isPending ? (
-          <Loader2 size={14} className="animate-spin" />
-        ) : (
-          <Plus size={14} />
-        )}
+        {createSession.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
         New
       </Button>
     </div>

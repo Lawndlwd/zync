@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import * as botService from '@/services/bot'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { BriefingConfig, ToolConfig } from '@zync/shared/types'
+import * as botService from '@/services/bot'
 
 export function useBotStatus() {
   return useQuery({
@@ -46,31 +46,13 @@ export function useDeleteSchedule() {
 export function useToggleSchedule() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
-      botService.toggleSchedule(id, enabled),
+    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) => botService.toggleSchedule(id, enabled),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bot-schedules'] })
       queryClient.invalidateQueries({ queryKey: ['bot-status'] })
     },
   })
 }
-
-export function useBotTools() {
-  return useQuery({
-    queryKey: ['bot-tools'],
-    queryFn: botService.getBotTools,
-    staleTime: 5 * 60_000,
-    retry: 1,
-  })
-}
-
-export function useBotChat() {
-  return useMutation({
-    mutationFn: (message: string) => botService.sendBotChat(message),
-  })
-}
-
-// --- New hooks ---
 
 export function useBotChannels() {
   return useQuery({
@@ -132,7 +114,6 @@ export function useWhatsAppQR(enabled: boolean) {
     retry: 1,
   })
 }
-
 
 export function useBriefingConfig() {
   return useQuery({

@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { X, User, Bot, Loader2, Check } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Input } from '@/components/ui/input'
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
-import { MilkdownEditor } from '@/components/ui/milkdown-editor'
-import { useUpdateTask } from '@/hooks/useTasks'
-import type { Task, TaskStatus, TaskAssignee, TaskPriority } from '@zync/shared/types'
+import type { Task, TaskAssignee, TaskPriority, TaskStatus } from '@zync/shared/types'
+import { Bot, Check, Loader2, User, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
+import { Input } from '@/components/ui/input'
+import { MilkdownEditor } from '@/components/ui/milkdown-editor'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import { useUpdateTask } from '@/hooks/useTasks'
+import { cn } from '@/lib/utils'
 
 interface TaskDrawerProps {
   task: Task | null
@@ -54,12 +54,14 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
       setContent(task.content)
       setSaveStatus('idle')
       setEditingTitle(false)
-      requestAnimationFrame(() => { initializedRef.current = true })
+      requestAnimationFrame(() => {
+        initializedRef.current = true
+      })
     }
   }, [task])
 
   // Keep a ref to the save function so the effect never depends on it
-  const saveRef = useRef<() => void>(() => { })
+  const saveRef = useRef<() => void>(() => {})
   saveRef.current = () => {
     if (!task) return
     setSaveStatus('saving')
@@ -95,12 +97,9 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
     }
   }, [title, status, assignee, priority, content])
 
-  const handleContentChange = useCallback(
-    (newContent: string) => {
-      setContent(newContent)
-    },
-    []
-  )
+  const handleContentChange = useCallback((newContent: string) => {
+    setContent(newContent)
+  }, [])
 
   // Escape key to close
   useEffect(() => {
@@ -138,10 +137,10 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
         />
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize="40%" minSize="320px" maxSize="85%">
-          <div className="flex h-full flex-col bg-zinc-950">
+          <div className="flex h-full flex-col bg-background">
             {/* Close button + save status */}
-            <div className="flex items-center justify-end gap-3 px-5 py-4 border-b border-white/[0.06]">
-              <span className="text-xs text-zinc-500 flex items-center gap-1">
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-b border-border">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 {saveStatus === 'saving' && (
                   <>
                     <Loader2 size={12} className="animate-spin" />
@@ -157,7 +156,7 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
               </span>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06] transition-colors"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 <X size={16} />
               </button>
@@ -180,7 +179,7 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
                   />
                 ) : (
                   <h2
-                    className="text-2xl font-bold text-zinc-100 cursor-text hover:text-white transition-colors leading-tight"
+                    className="text-2xl font-bold text-foreground cursor-text hover:text-foreground/80 transition-colors leading-tight"
                     onClick={() => setEditingTitle(true)}
                   >
                     {title}
@@ -192,16 +191,15 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
               <div className="px-8 space-y-3">
                 {/* Status */}
                 <div className="flex items-center">
-                  <span className="w-28 text-[13px] text-zinc-500 shrink-0">Status</span>
+                  <span className="w-28 text-[13px] text-muted-foreground shrink-0">Status</span>
                   <div className="flex items-center gap-2">
-                    <div className={cn(
-                      'w-2.5 h-2.5 rounded-full',
-                      STATUS_OPTIONS.find((s) => s.value === status)?.color
-                    )} />
+                    <div
+                      className={cn('w-2.5 h-2.5 rounded-full', STATUS_OPTIONS.find((s) => s.value === status)?.color)}
+                    />
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                      className="h-8 rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 text-[13px] text-zinc-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="h-8 rounded-md border border-border bg-muted px-2.5 text-[13px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       {STATUS_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -214,15 +212,15 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
 
                 {/* Assignee */}
                 <div className="flex items-center">
-                  <span className="w-28 text-[13px] text-zinc-500 shrink-0">Assignee</span>
-                  <div className="flex items-center bg-white/[0.04] rounded-lg border border-white/[0.1] overflow-hidden">
+                  <span className="w-28 text-[13px] text-muted-foreground shrink-0">Assignee</span>
+                  <div className="flex items-center bg-foreground/[0.04] rounded-lg border border-foreground/[0.1] overflow-hidden">
                     <button
                       onClick={() => setAssignee('@me')}
                       className={cn(
                         'flex items-center gap-1.5 px-3 h-8 text-[13px] transition-colors',
                         assignee === '@me'
-                          ? 'bg-white/[0.1] text-zinc-100'
-                          : 'text-zinc-500 hover:text-zinc-300'
+                          ? 'bg-accent text-foreground'
+                          : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
                       <User size={14} />
@@ -233,8 +231,8 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
                       className={cn(
                         'flex items-center gap-1.5 px-3 h-8 text-[13px] transition-colors',
                         assignee === '@ai'
-                          ? 'bg-white/[0.1] text-zinc-100'
-                          : 'text-zinc-500 hover:text-zinc-300'
+                          ? 'bg-accent text-foreground'
+                          : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
                       <Bot size={14} />
@@ -245,8 +243,8 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
 
                 {/* Priority */}
                 <div className="flex items-center">
-                  <span className="w-28 text-[13px] text-zinc-500 shrink-0">Priority</span>
-                  <div className="flex items-center bg-white/[0.04] rounded-lg border border-white/[0.1] overflow-hidden">
+                  <span className="w-28 text-[13px] text-muted-foreground shrink-0">Priority</span>
+                  <div className="flex items-center bg-foreground/[0.04] rounded-lg border border-foreground/[0.1] overflow-hidden">
                     {PRIORITY_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
@@ -254,8 +252,8 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
                         className={cn(
                           'flex items-center gap-1.5 px-3 h-8 text-[13px] transition-colors capitalize',
                           priority === opt.value
-                            ? 'bg-white/[0.1] text-zinc-100'
-                            : 'text-zinc-500 hover:text-zinc-300'
+                            ? 'bg-accent text-foreground'
+                            : 'text-muted-foreground hover:text-foreground',
                         )}
                       >
                         <div className={cn('w-2 h-2 rounded-full', opt.color)} />
@@ -267,19 +265,19 @@ export function TaskDrawer({ task, open, onClose }: TaskDrawerProps) {
 
                 {/* Project */}
                 <div className="flex items-center">
-                  <span className="w-28 text-[13px] text-zinc-500 shrink-0">Project</span>
-                  <span className="inline-flex items-center rounded-md bg-white/[0.06] border border-white/[0.08] px-2.5 py-1 text-xs font-medium text-zinc-400">
+                  <span className="w-28 text-[13px] text-muted-foreground shrink-0">Project</span>
+                  <span className="inline-flex items-center rounded-md bg-muted border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground">
                     {task.project}
                   </span>
                 </div>
               </div>
 
               {/* Separator */}
-              <div className="mx-8 my-5 border-t border-white/[0.08]" />
+              <div className="mx-8 my-5 border-t border-border" />
 
               {/* Description — borderless editor */}
               <div className="flex-1 pb-8 px-5">
-                <p className="pb-2 text-[13px] text-zinc-500">Description</p>
+                <p className="pb-2 text-[13px] text-muted-foreground">Description</p>
                 <MilkdownEditor
                   value={content}
                   onChange={handleContentChange}

@@ -1,8 +1,8 @@
+import type { JournalEntry } from '@zync/shared/types'
+import { format } from 'date-fns'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { JournalEntry } from '@zync/shared/types'
 import { generateId } from '@/lib/utils'
-import { format } from 'date-fns'
 
 const createDefaultContent = (dateStr: string): string =>
   `## ${dateStr}\n\n### Focus for today\n\n\n\n### Notes\n\n\n\n### EOD Reflection\n\n- What did I complete?\n- What's blocked?\n- What carries over to tomorrow?\n`
@@ -58,7 +58,7 @@ function tiptapNodeToMarkdown(node: TiptapNode, indent = '', orderedIndex?: numb
   if (node.type === 'listItem' && orderedIndex != null) {
     const children = node.content || []
     const lines = children.map((c, i) => {
-      const md = tiptapNodeToMarkdown(c, indent + '  ')
+      const md = tiptapNodeToMarkdown(c, `${indent}  `)
       return i === 0 ? md.replace(new RegExp(`^${indent}  `), '') : md
     })
     return `${indent}${orderedIndex}. ${lines.join('\n')}`
@@ -78,34 +78,28 @@ function tiptapNodeToMarkdown(node: TiptapNode, indent = '', orderedIndex?: numb
       return `${indent}${tiptapChildrenToInline(node)}`
 
     case 'bulletList':
-      return (node.content || [])
-        .map((item) => tiptapNodeToMarkdown(item, indent))
-        .join('\n')
+      return (node.content || []).map((item) => tiptapNodeToMarkdown(item, indent)).join('\n')
 
     case 'orderedList':
-      return (node.content || [])
-        .map((item, i) => tiptapNodeToMarkdown(item, indent, i + 1))
-        .join('\n')
+      return (node.content || []).map((item, i) => tiptapNodeToMarkdown(item, indent, i + 1)).join('\n')
 
     case 'listItem': {
       const children = node.content || []
       const lines = children.map((c, i) => {
-        const md = tiptapNodeToMarkdown(c, indent + '  ')
+        const md = tiptapNodeToMarkdown(c, `${indent}  `)
         return i === 0 ? md.replace(new RegExp(`^${indent}  `), '') : md
       })
       return `${indent}- ${lines.join('\n')}`
     }
 
     case 'taskList':
-      return (node.content || [])
-        .map((item) => tiptapNodeToMarkdown(item, indent))
-        .join('\n')
+      return (node.content || []).map((item) => tiptapNodeToMarkdown(item, indent)).join('\n')
 
     case 'taskItem': {
       const checked = node.attrs?.checked ? 'x' : ' '
       const children = node.content || []
       const lines = children.map((c, i) => {
-        const md = tiptapNodeToMarkdown(c, indent + '  ')
+        const md = tiptapNodeToMarkdown(c, `${indent}  `)
         return i === 0 ? md.replace(new RegExp(`^${indent}  `), '') : md
       })
       return `${indent}- [${checked}] ${lines.join('\n')}`
@@ -118,9 +112,7 @@ function tiptapNodeToMarkdown(node: TiptapNode, indent = '', orderedIndex?: numb
     }
 
     case 'blockquote':
-      return (node.content || [])
-        .map((c) => `> ${tiptapNodeToMarkdown(c, indent)}`)
-        .join('\n')
+      return (node.content || []).map((c) => `> ${tiptapNodeToMarkdown(c, indent)}`).join('\n')
 
     case 'horizontalRule':
       return '---'
@@ -175,7 +167,7 @@ export const useJournalStore = create<JournalStore>()(
       updateEntry: (date, content) =>
         set((state) => ({
           entries: state.entries.map((e) =>
-            e.date === date ? { ...e, content, updatedAt: new Date().toISOString() } : e
+            e.date === date ? { ...e, content, updatedAt: new Date().toISOString() } : e,
           ),
         })),
       addLinkedIssue: (date, issueKey) =>
@@ -183,7 +175,7 @@ export const useJournalStore = create<JournalStore>()(
           entries: state.entries.map((e) =>
             e.date === date && !e.linkedIssues.includes(issueKey)
               ? { ...e, linkedIssues: [...e.linkedIssues, issueKey] }
-              : e
+              : e,
           ),
         })),
       getAllDates: () =>
@@ -214,6 +206,6 @@ export const useJournalStore = create<JournalStore>()(
         }
         return state as JournalStore
       },
-    }
-  )
+    },
+  ),
 )

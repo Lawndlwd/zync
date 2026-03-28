@@ -1,15 +1,15 @@
+import { ChevronLeft, ChevronRight, SkipForward } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSetupStore } from '@/store/setup'
-import { getSetupStatus, completeSetup } from '@/services/setup'
-import { WelcomeStep } from '@/components/setup/welcome-step'
-import { VaultStep } from '@/components/setup/vault-step'
-import { IntegrationsStep } from '@/components/setup/integrations-step'
 import { ConfigureStep } from '@/components/setup/configure-step'
 import { DoneStep } from '@/components/setup/done-step'
+import { IntegrationsStep } from '@/components/setup/integrations-step'
+import { VaultStep } from '@/components/setup/vault-step'
+import { WelcomeStep } from '@/components/setup/welcome-step'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, SkipForward } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { completeSetup, getSetupStatus } from '@/services/setup'
+import { useSetupStore } from '@/store/setup'
 
 const STEP_LABELS = ['Welcome', 'Vault', 'Integrations', 'Configure', 'Done']
 
@@ -63,17 +63,17 @@ export function SetupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950">
+    <div className="flex min-h-screen flex-col bg-background">
       {/* Background orbs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-[20%] -left-[10%] h-[500px] w-[600px] rounded-full bg-indigo-500/[0.07] blur-[120px]" />
+        <div className="absolute -top-[20%] -left-[10%] h-[500px] w-[600px] rounded-full bg-primary/[0.07] blur-[120px]" />
         <div className="absolute top-[30%] -right-[5%] h-[500px] w-[500px] rounded-full bg-emerald-500/[0.07] blur-[120px]" />
       </div>
 
       {/* Progress bar */}
-      <div className="relative z-10 border-b border-white/[0.06] bg-black/20 backdrop-blur-xl">
+      <div className="relative z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <span className="text-sm font-medium text-zinc-400">Setup</span>
+          <span className="text-sm font-medium text-muted-foreground">Setup</span>
           <div className="flex items-center gap-2">
             {STEP_LABELS.map((label, i) => (
               <div key={label} className="flex items-center gap-2">
@@ -83,26 +83,28 @@ export function SetupPage() {
                   className={cn(
                     'flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors',
                     i === currentStep
-                      ? 'bg-indigo-500/20 text-indigo-400'
+                      ? 'bg-primary/10 text-primary'
                       : i < currentStep
-                        ? 'bg-white/[0.06] text-zinc-400 hover:text-zinc-300 cursor-pointer'
-                        : 'text-zinc-600'
+                        ? 'bg-accent text-muted-foreground hover:text-foreground cursor-pointer'
+                        : 'text-muted-foreground',
                   )}
                 >
-                  <span className={cn(
-                    'flex h-4 w-4 items-center justify-center rounded-full text-[10px]',
-                    i === currentStep ? 'bg-indigo-500 text-white' :
-                    i < currentStep ? 'bg-zinc-600 text-zinc-300' : 'bg-zinc-800 text-zinc-600'
-                  )}>
+                  <span
+                    className={cn(
+                      'flex h-4 w-4 items-center justify-center rounded-full text-[10px]',
+                      i === currentStep
+                        ? 'bg-primary text-white'
+                        : i < currentStep
+                          ? 'bg-muted-foreground text-foreground'
+                          : 'bg-secondary text-muted-foreground',
+                    )}
+                  >
                     {i < currentStep ? '\u2713' : i + 1}
                   </span>
                   <span className="hidden sm:inline">{label}</span>
                 </button>
                 {i < STEP_LABELS.length - 1 && (
-                  <div className={cn(
-                    'h-px w-6',
-                    i < currentStep ? 'bg-indigo-500/40' : 'bg-white/[0.06]'
-                  )} />
+                  <div className={cn('h-px w-6', i < currentStep ? 'bg-primary/40' : 'bg-border')} />
                 )}
               </div>
             ))}
@@ -121,14 +123,9 @@ export function SetupPage() {
       </div>
 
       {/* Navigation */}
-      <div className="relative z-10 border-t border-white/[0.06] bg-black/20 backdrop-blur-xl">
+      <div className="relative z-10 border-t border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            disabled={currentStep === 0}
-          >
+          <Button variant="ghost" size="sm" onClick={handleBack} disabled={currentStep === 0}>
             <ChevronLeft className="h-4 w-4" />
             Back
           </Button>
@@ -140,12 +137,7 @@ export function SetupPage() {
                 Skip for now
               </Button>
             )}
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleNext}
-              disabled={finishing}
-            >
+            <Button variant="default" size="sm" onClick={handleNext} disabled={finishing}>
               {isLastStep ? 'Finish' : 'Next'}
               {!isLastStep && <ChevronRight className="h-4 w-4" />}
             </Button>

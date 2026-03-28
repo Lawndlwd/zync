@@ -1,9 +1,9 @@
-import { getProfile, updateProfileSection, type ProfileSection } from './profile.js'
+import { logger } from '../lib/logger.js'
+import { getOrCreateSession, getSessionMessages } from '../opencode/client.js'
+import { waitForResponse } from '../opencode/wait-for-response.js'
 import { addInstruction } from './instructions.js'
 import { saveMemoryWithDedup } from './memories.js'
-import { getSessionMessages, getOrCreateSession } from '../opencode/client.js'
-import { waitForResponse } from '../opencode/wait-for-response.js'
-import { logger } from '../lib/logger.js'
+import { getProfile, type ProfileSection, updateProfileSection } from './profile.js'
 
 const EXTRACTION_PROMPT = `Analyze this conversation between a user and AI assistant.
 Extract ONLY information worth remembering long-term:
@@ -76,9 +76,9 @@ export async function extractFromSession(sessionId: string): Promise<void> {
 
     // Build profile context
     const profile = getProfile()
-    const profileText = profile.map(p => `${p.section}: ${p.content || '(empty)'}`).join('\n')
+    const profileText = profile.map((p) => `${p.section}: ${p.content || '(empty)'}`).join('\n')
 
-    const prompt = EXTRACTION_PROMPT.replace('{PROFILE}', profileText) + '\n\nConversation:\n' + conversation
+    const prompt = `${EXTRACTION_PROMPT.replace('{PROFILE}', profileText)}\n\nConversation:\n${conversation}`
 
     // Use a dedicated extraction session
     const exSessionId = await getOrCreateSession(extractionSessionPurpose)
@@ -108,10 +108,8 @@ export async function extractFromSession(sessionId: string): Promise<void> {
     for (const update of result.profile_updates || []) {
       const sections: ProfileSection[] = ['identity', 'technical', 'interests', 'communication', 'work_patterns']
       if (!sections.includes(update.section)) continue
-      const existing = profile.find(p => p.section === update.section)
-      const newContent = existing?.content
-        ? existing.content + '\n' + update.content
-        : update.content
+      const existing = profile.find((p) => p.section === update.section)
+      const newContent = existing?.content ? `${existing.content}\n${update.content}` : update.content
       updateProfileSection(update.section, newContent)
       logger.info({ section: update.section }, 'Profile updated from extraction')
     }
@@ -128,12 +126,15 @@ export async function extractFromSession(sessionId: string): Promise<void> {
       logger.info({ content: memory.content }, 'Memory extracted')
     }
 
-    logger.info({
-      sessionId,
-      profiles: result.profile_updates?.length || 0,
-      instructions: result.new_instructions?.length || 0,
-      memories: result.new_memories?.length || 0,
-    }, 'Post-conversation extraction complete')
+    logger.info(
+      {
+        sessionId,
+        profiles: result.profile_updates?.length || 0,
+        instructions: result.new_instructions?.length || 0,
+        memories: result.new_memories?.length || 0,
+      },
+      'Post-conversation extraction complete',
+    )
   } catch (err) {
     logger.error({ err, sessionId }, 'Post-conversation extraction failed')
   }

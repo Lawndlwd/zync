@@ -1,18 +1,12 @@
-import { z } from 'zod'
 import cron from 'node-cron'
+import { z } from 'zod'
 import { listSchedules as dbListSchedules } from '../../bot/heartbeat/db.js'
-import {
-  addSchedule,
-  removeSchedule,
-  toggleSchedule,
-} from '../../bot/heartbeat/scheduler.js'
+import { addSchedule, removeSchedule, toggleSchedule } from '../../bot/heartbeat/scheduler.js'
 
 export const createScheduleSchema = z.object({
   cron_expression: z
     .string()
-    .describe(
-      'Cron expression (e.g. "0 8 * * *" for daily at 8am, "*/5 * * * *" for every 5 min)'
-    ),
+    .describe('Cron expression (e.g. "0 8 * * *" for daily at 8am, "*/5 * * * *" for every 5 min)'),
   prompt: z.string().describe('The prompt/task to execute on each trigger'),
   chat_id: z.number().describe('Telegram chat ID to send results to'),
 })
@@ -33,10 +27,7 @@ export async function listSchedulesHandler(input: z.infer<typeof listSchedulesSc
   const schedules = dbListSchedules(input.chat_id)
   if (schedules.length === 0) return 'No schedules found.'
   return schedules
-    .map(
-      (s) =>
-        `#${s.id} | ${s.enabled ? 'ON' : 'OFF'} | ${s.cron_expression} | ${s.prompt} | created ${s.created_at}`
-    )
+    .map((s) => `#${s.id} | ${s.enabled ? 'ON' : 'OFF'} | ${s.cron_expression} | ${s.prompt} | created ${s.created_at}`)
     .join('\n')
 }
 
@@ -47,9 +38,7 @@ export const deleteScheduleSchema = z.object({
 
 export async function deleteScheduleHandler(input: z.infer<typeof deleteScheduleSchema>) {
   const removed = removeSchedule(input.id, input.chat_id)
-  return removed
-    ? `Schedule #${input.id} deleted.`
-    : `Schedule #${input.id} not found or not yours.`
+  return removed ? `Schedule #${input.id} deleted.` : `Schedule #${input.id} not found or not yours.`
 }
 
 export const toggleScheduleSchema = z.object({

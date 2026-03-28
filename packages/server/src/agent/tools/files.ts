@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, unlinkSync, readdirSync, statSync, existsSync, realpathSync, mkdirSync } from 'fs'
-import { resolve, join } from 'path'
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 
 const CONFIG_PATH = resolve(import.meta.dirname, '../../../data/tool-config.json')
 
@@ -39,7 +39,7 @@ function isPathAllowed(filePath: string): boolean {
       return false
     }
   }
-  return getAllowedPaths().some(allowed => real.startsWith(allowed))
+  return getAllowedPaths().some((allowed) => real.startsWith(allowed))
 }
 
 export function readFileTool(filePath: string): string {
@@ -83,5 +83,5 @@ export function searchFilesTool(dirPath: string, pattern: string): string[] {
   if (!isPathAllowed(dirPath)) throw new Error(`Access denied: ${dirPath}`)
   const regex = new RegExp(pattern, 'i')
   const allFiles = listFilesTool(dirPath, true)
-  return allFiles.filter(f => regex.test(f))
+  return allFiles.filter((f) => regex.test(f))
 }

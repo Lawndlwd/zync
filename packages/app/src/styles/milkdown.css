@@ -8,45 +8,40 @@
 /* ------------------------------------------------------------------ */
 .milkdown-editor-wrapper .milkdown {
   --crepe-color-background: transparent;
-  --crepe-color-on-background: #e4e4e7;       /* zinc-200 */
-  --crepe-color-surface: #27272a;              /* zinc-800 — solid for menus */
-  --crepe-color-surface-low: #1e1e21;          /* slightly darker — solid */
-  --crepe-color-on-surface: #e4e4e7;           /* zinc-200 */
-  --crepe-color-on-surface-variant: #d4d4d8;   /* zinc-300 — bumped from 400 */
-  --crepe-color-outline: rgba(255, 255, 255, 0.15);
-  --crepe-color-primary: #a5b4fc;              /* indigo-300 — brighter */
-  --crepe-color-secondary: #3f3f46;             /* zinc-700 — solid */
-  --crepe-color-on-secondary: #e4e4e7;         /* zinc-200 */
-  --crepe-color-inverse: #f4f4f5;              /* zinc-100 */
-  --crepe-color-on-inverse: #18181b;           /* zinc-900 */
-  --crepe-color-inline-code: #a5b4fc;          /* indigo-300 — brighter */
-  --crepe-color-error: #f87171;                /* red-400 */
-  --crepe-color-hover: #3f3f46;                /* zinc-700 — solid */
-  --crepe-color-selected: #312e81;             /* indigo-900 — solid */
-  --crepe-color-inline-area: #27272a;          /* zinc-800 — solid */
+  --crepe-color-on-background: var(--foreground);
+  --crepe-color-surface: var(--secondary);
+  --crepe-color-surface-low: var(--muted);
+  --crepe-color-on-surface: var(--foreground);
+  --crepe-color-on-surface-variant: var(--foreground);
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--primary);
+  --crepe-color-secondary: var(--secondary);
+  --crepe-color-on-secondary: var(--foreground);
+  --crepe-color-inverse: var(--foreground);
+  --crepe-color-on-inverse: var(--background);
+  --crepe-color-inline-code: var(--primary);
+  --crepe-color-error: #f87171; /* red-400 */
+  --crepe-color-hover: var(--accent);
+  --crepe-color-selected: var(--accent);
+  --crepe-color-inline-area: var(--secondary);
 
   --crepe-font-title: inherit;
   --crepe-font-default: inherit;
-  --crepe-font-code: ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --crepe-font-code: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  --crepe-shadow-1:
-    0px 1px 3px 0px rgba(0, 0, 0, 0.4),
-    0px 1px 2px -1px rgba(0, 0, 0, 0.3);
-  --crepe-shadow-2:
-    0px 4px 6px -1px rgba(0, 0, 0, 0.4),
-    0px 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --crepe-shadow-1: 0px 1px 3px 0px rgba(0, 0, 0, 0.06), 0px 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --crepe-shadow-2: 0px 4px 6px -1px rgba(0, 0, 0, 0.06), 0px 2px 4px -2px rgba(0, 0, 0, 0.04);
 }
 
 /* ------------------------------------------------------------------ */
 /* 2. ProseMirror content styles                                       */
 /* ------------------------------------------------------------------ */
 .milkdown-editor-wrapper .ProseMirror {
-  color: #e4e4e7;               /* zinc-200 */
+  color: var(--foreground);
   font-size: 14px;
   line-height: 1.75;
   padding: 1rem 1.25rem 1rem 4.5rem;
-  padding-bottom: 40vh;          /* large click target — click below content to focus last line */
+  padding-bottom: 40vh; /* large click target — click below content to focus last line */
   outline: none;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -69,7 +64,7 @@
 .milkdown-editor-wrapper .ProseMirror h4,
 .milkdown-editor-wrapper .ProseMirror h5,
 .milkdown-editor-wrapper .ProseMirror h6 {
-  color: #f4f4f5;               /* zinc-100 */
+  color: var(--foreground);
   font-weight: 600;
   line-height: 1.3;
 }
@@ -94,20 +89,20 @@
 
 /* Links */
 .milkdown-editor-wrapper .ProseMirror a {
-  color: #818cf8;               /* indigo-400 */
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .milkdown-editor-wrapper .ProseMirror a:hover {
-  color: #a5b4fc;               /* indigo-300 */
+  color: var(--primary);
 }
 
 /* Inline code */
 .milkdown-editor-wrapper .ProseMirror code {
   font-family: var(--crepe-font-code);
-  background: rgba(255, 255, 255, 0.1);
-  color: #e4e4e7;               /* zinc-200 */
+  background: var(--secondary);
+  color: var(--foreground);
   padding: 0.15em 0.35em;
   border-radius: 4px;
   font-size: 0.9em;
@@ -115,8 +110,8 @@
 
 /* Code blocks (CodeMirror) */
 .milkdown-editor-wrapper .ProseMirror pre {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   overflow-x: auto;
@@ -126,15 +121,15 @@
   background: none;
   padding: 0;
   border-radius: 0;
-  color: #d4d4d8;               /* zinc-300 */
+  color: var(--foreground);
   font-size: 13px;
 }
 
 /* Blockquotes */
 .milkdown-editor-wrapper .ProseMirror blockquote {
-  border-left: 3px solid #818cf8; /* indigo-400 */
+  border-left: 3px solid var(--primary);
   padding-left: 1em;
-  color: #a1a1aa;                 /* zinc-400 */
+  color: var(--muted-foreground);
   margin: 0.75em 0;
 }
 
@@ -168,32 +163,32 @@
   content: none;
 }
 
-.milkdown-editor-wrapper .ProseMirror input[type='checkbox'] {
+.milkdown-editor-wrapper .ProseMirror input[type="checkbox"] {
   appearance: none;
   width: 14px;
   height: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--border);
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--muted);
   vertical-align: middle;
   margin-right: 0.4em;
   cursor: pointer;
   position: relative;
 }
 
-.milkdown-editor-wrapper .ProseMirror input[type='checkbox']:checked {
-  background: #818cf8;           /* indigo-400 */
-  border-color: #818cf8;
+.milkdown-editor-wrapper .ProseMirror input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
-.milkdown-editor-wrapper .ProseMirror input[type='checkbox']:checked::after {
-  content: '';
+.milkdown-editor-wrapper .ProseMirror input[type="checkbox"]:checked::after {
+  content: "";
   position: absolute;
   left: 3px;
   top: 0px;
   width: 5px;
   height: 9px;
-  border: solid #18181b;
+  border: solid var(--background);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -207,14 +202,14 @@
 
 .milkdown-editor-wrapper .ProseMirror th,
 .milkdown-editor-wrapper .ProseMirror td {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
   padding: 0.4em 0.75em;
   text-align: left;
 }
 
 .milkdown-editor-wrapper .ProseMirror th {
-  background: rgba(255, 255, 255, 0.06);
-  color: #f4f4f5;               /* zinc-100 */
+  background: var(--muted);
+  color: var(--foreground);
   font-weight: 600;
   font-size: 0.9em;
 }
@@ -226,7 +221,7 @@
 /* Horizontal rule */
 .milkdown-editor-wrapper .ProseMirror hr {
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border);
   margin: 1.25em 0;
 }
 
@@ -238,7 +233,7 @@
 
 /* Placeholder */
 .milkdown-editor-wrapper .ProseMirror .crepe-placeholder::before {
-  color: #71717a;               /* zinc-500 — more visible */
+  color: var(--muted-foreground);
 }
 
 /* ------------------------------------------------------------------ */
@@ -250,66 +245,66 @@
 /* Floating toolbar */
 .milkdown-editor-wrapper .crepe-toolbar,
 .milkdown-editor-wrapper [data-crepe-toolbar] {
-  background: #27272a;           /* zinc-800 */
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--secondary);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  color: #e4e4e7;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  color: var(--foreground);
 }
 
 .milkdown-editor-wrapper .crepe-toolbar button,
 .milkdown-editor-wrapper [data-crepe-toolbar] button {
-  color: #d4d4d8;               /* zinc-300 */
+  color: var(--foreground);
 }
 
 .milkdown-editor-wrapper .crepe-toolbar button:hover,
 .milkdown-editor-wrapper [data-crepe-toolbar] button:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #f4f4f5;               /* zinc-100 */
+  background: var(--accent);
+  color: var(--foreground);
 }
 
 .milkdown-editor-wrapper .crepe-toolbar button[data-active],
 .milkdown-editor-wrapper [data-crepe-toolbar] button[data-active] {
-  color: #a5b4fc;               /* indigo-300 */
-  background: rgba(129, 140, 248, 0.18);
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 /* Link preview tooltip */
 .milkdown-editor-wrapper .crepe-link-preview,
 .milkdown-editor-wrapper [data-crepe-link-tooltip] {
-  background: #27272a;           /* zinc-800 */
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--secondary);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  color: #e4e4e7;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  color: var(--foreground);
 }
 
 .milkdown-editor-wrapper .crepe-link-preview a,
 .milkdown-editor-wrapper [data-crepe-link-tooltip] a {
-  color: #a5b4fc;               /* indigo-300 */
+  color: var(--primary);
 }
 
 /* Block handle (drag handle) */
 .milkdown-editor-wrapper .crepe-block-handle,
 .milkdown-editor-wrapper [data-crepe-block-handle] {
-  color: #71717a;               /* zinc-500 — bumped from 600 */
+  color: var(--muted-foreground);
 }
 
 .milkdown-editor-wrapper .crepe-block-handle:hover,
 .milkdown-editor-wrapper [data-crepe-block-handle]:hover {
-  color: #d4d4d8;               /* zinc-300 — bumped from 400 */
-  background: rgba(255, 255, 255, 0.1);
+  color: var(--foreground);
+  background: var(--accent);
   border-radius: 4px;
 }
 
 /* Block edit menu (add block dropdown) */
 .milkdown-editor-wrapper .crepe-block-menu,
 .milkdown-editor-wrapper [data-crepe-block-edit] {
-  background: #27272a;           /* zinc-800 */
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--secondary);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  color: #e4e4e7;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  color: var(--foreground);
 }
 
 /* ------------------------------------------------------------------ */
@@ -325,7 +320,7 @@
 .milkdown-editor-readonly [data-crepe-slash],
 .milkdown-editor-readonly .crepe-link-preview,
 .milkdown-editor-readonly [data-crepe-link-tooltip] {
-  display: none !important;
+  display: none;
 }
 
 .milkdown-editor-readonly .ProseMirror {

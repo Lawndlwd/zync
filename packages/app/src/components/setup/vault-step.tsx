@@ -1,10 +1,10 @@
+import { AlertTriangle, Check, Shield } from 'lucide-react'
 import { useState } from 'react'
-import { Shield, Check, AlertTriangle } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { setVaultPin } from '@/services/secrets'
 import toast from 'react-hot-toast'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { setVaultPin } from '@/services/secrets'
 
 interface VaultStepProps {
   vaultStatus: 'available' | 'uninitialized'
@@ -23,10 +23,8 @@ export function VaultStep({ vaultStatus, hasPin }: VaultStepProps) {
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20">
           <Check className="h-8 w-8 text-emerald-400" />
         </div>
-        <h2 className="text-2xl font-bold text-zinc-100 mb-2">Vault Ready</h2>
-        <p className="text-zinc-400 mb-4">
-          Your encrypted vault is set up and secured with a PIN.
-        </p>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Vault Ready</h2>
+        <p className="text-muted-foreground mb-4">Your encrypted vault is set up and secured with a PIN.</p>
         <Badge variant="success">PIN configured</Badge>
       </div>
     )
@@ -38,9 +36,10 @@ export function VaultStep({ vaultStatus, hasPin }: VaultStepProps) {
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/20">
           <AlertTriangle className="h-8 w-8 text-amber-400" />
         </div>
-        <h2 className="text-2xl font-bold text-zinc-100 mb-2">Vault Not Available</h2>
-        <p className="text-zinc-400 mb-4">
-          The server needs a <code className="text-zinc-300 bg-white/[0.06] px-1.5 py-0.5 rounded text-xs">SECRET_KEY</code> environment variable. It should auto-generate on first start — try restarting the server.
+        <h2 className="text-2xl font-bold text-foreground mb-2">Vault Not Available</h2>
+        <p className="text-muted-foreground mb-4">
+          The server needs a <code className="text-foreground bg-accent px-1.5 py-0.5 rounded text-xs">SECRET_KEY</code>{' '}
+          environment variable. It should auto-generate on first start — try restarting the server.
         </p>
       </div>
     )
@@ -52,8 +51,8 @@ export function VaultStep({ vaultStatus, hasPin }: VaultStepProps) {
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20">
           <Check className="h-8 w-8 text-emerald-400" />
         </div>
-        <h2 className="text-2xl font-bold text-zinc-100 mb-2">PIN Set</h2>
-        <p className="text-zinc-400 mb-4">
+        <h2 className="text-2xl font-bold text-foreground mb-2">PIN Set</h2>
+        <p className="text-muted-foreground mb-4">
           Use your 6-digit PIN to reveal secrets in the Vault. You can change it anytime from the Vault page.
         </p>
         <Badge variant="success">PIN configured</Badge>
@@ -88,37 +87,44 @@ export function VaultStep({ vaultStatus, hasPin }: VaultStepProps) {
         <Shield className="h-8 w-8 text-amber-400" />
       </div>
 
-      <h2 className="text-2xl font-bold text-zinc-100 mb-2 text-center">Secure Your Vault</h2>
-      <p className="text-zinc-400 mb-6 text-center text-sm leading-relaxed">
-        Set a 6-digit PIN to reveal your stored secrets. Your API keys are encrypted automatically — the PIN is just for viewing them.
+      <h2 className="text-2xl font-bold text-foreground mb-2 text-center">Secure Your Vault</h2>
+      <p className="text-muted-foreground mb-6 text-center text-sm leading-relaxed">
+        Set a 6-digit PIN to reveal your stored secrets. Your API keys are encrypted automatically — the PIN is just for
+        viewing them.
       </p>
 
       <div className="w-full space-y-4">
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 space-y-4">
+        <div className="rounded-xl bg-card border border-border p-5 space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-300">Choose a 6-digit PIN</label>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">Choose a 6-digit PIN</label>
             <Input
               type="password"
               inputMode="numeric"
               maxLength={6}
               value={pin}
-              onChange={(e) => { if (/^\d{0,6}$/.test(e.target.value)) setPin(e.target.value) }}
+              onChange={(e) => {
+                if (/^\d{0,6}$/.test(e.target.value)) setPin(e.target.value)
+              }}
               placeholder="••••••"
               className="text-center tracking-[0.5em] text-lg font-mono h-12"
               autoFocus
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-300">Confirm PIN</label>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">Confirm PIN</label>
             <Input
               type="password"
               inputMode="numeric"
               maxLength={6}
               value={confirmPin}
-              onChange={(e) => { if (/^\d{0,6}$/.test(e.target.value)) setConfirmPin(e.target.value) }}
+              onChange={(e) => {
+                if (/^\d{0,6}$/.test(e.target.value)) setConfirmPin(e.target.value)
+              }}
               placeholder="••••••"
               className="text-center tracking-[0.5em] text-lg font-mono h-12"
-              onKeyDown={(e) => { if (e.key === 'Enter' && pin.length === 6 && confirmPin.length === 6) handleSave() }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && pin.length === 6 && confirmPin.length === 6) handleSave()
+              }}
             />
           </div>
 

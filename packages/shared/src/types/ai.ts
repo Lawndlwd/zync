@@ -19,4 +19,3 @@ export interface ToolResult {
   name: string
   result: unknown
 }
-

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as telegramService from '@/services/telegram'
 
 export function useTelegramDMs(category?: string) {
@@ -29,8 +29,7 @@ export function useTelegramConfig() {
 export function useReplyToDM() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, text }: { id: number; text: string }) =>
-      telegramService.replyToDM(id, text),
+    mutationFn: ({ id, text }: { id: number; text: string }) => telegramService.replyToDM(id, text),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['telegram-dms'] })
       queryClient.invalidateQueries({ queryKey: ['telegram-dm-stats'] })
@@ -48,8 +47,7 @@ export function useCrossPostToTelegram() {
 export function useSaveTelegramConfig() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (config: Partial<telegramService.TelegramConfig>) =>
-      telegramService.saveTelegramConfig(config),
+    mutationFn: (config: Partial<telegramService.TelegramConfig>) => telegramService.saveTelegramConfig(config),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['telegram-config'] })
     },

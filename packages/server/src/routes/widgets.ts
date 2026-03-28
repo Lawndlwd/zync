@@ -1,10 +1,17 @@
 import { Router } from 'express'
-import { getWidgets, getWidget, createWidget, deleteWidget, updateWidgetCache, updateWidgetSettings } from '../widgets/db.js'
-import { fetchWeather } from '../widgets/fetchers/weather.js'
-import { fetchLeagueScores, searchTeams, LEAGUES } from '../widgets/fetchers/football.js'
-import { fetchNews } from '../widgets/fetchers/news.js'
-import { fetchFinanceTips } from '../widgets/fetchers/finance.js'
 import { logger } from '../lib/logger.js'
+import {
+  createWidget,
+  deleteWidget,
+  getWidget,
+  getWidgets,
+  updateWidgetCache,
+  updateWidgetSettings,
+} from '../widgets/db.js'
+import { fetchFinanceTips } from '../widgets/fetchers/finance.js'
+import { fetchLeagueScores, LEAGUES, searchTeams } from '../widgets/fetchers/football.js'
+import { fetchNews } from '../widgets/fetchers/news.js'
+import { fetchWeather } from '../widgets/fetchers/weather.js'
 import type { WidgetType } from '../widgets/types.js'
 
 export const widgetsRouter = Router()
@@ -35,7 +42,7 @@ widgetsRouter.post('/', (req, res) => {
 // Update widget settings
 widgetsRouter.put('/:id', (req, res) => {
   try {
-    const id = parseInt(req.params.id)
+    const id = parseInt(req.params.id, 10)
     const { settings } = req.body
     if (!settings) return res.status(400).json({ error: 'settings required' })
     updateWidgetSettings(id, settings)
@@ -50,7 +57,7 @@ widgetsRouter.put('/:id', (req, res) => {
 // Delete a widget
 widgetsRouter.delete('/:id', (req, res) => {
   try {
-    deleteWidget(parseInt(req.params.id))
+    deleteWidget(parseInt(req.params.id, 10))
     res.json({ ok: true })
   } catch (err) {
     logger.error({ err }, 'Failed to delete widget')
@@ -61,7 +68,7 @@ widgetsRouter.delete('/:id', (req, res) => {
 // Refresh a single widget's data
 widgetsRouter.post('/:id/refresh', async (req, res) => {
   try {
-    const widget = getWidget(parseInt(req.params.id))
+    const widget = getWidget(parseInt(req.params.id, 10))
     if (!widget) return res.status(404).json({ error: 'Widget not found' })
     const data = await refreshWidget(widget.type, widget.settings)
     updateWidgetCache(widget.id, data)
@@ -81,7 +88,7 @@ widgetsRouter.post('/refresh-all', async (_req, res) => {
         const data = await refreshWidget(w.type, w.settings)
         updateWidgetCache(w.id, data)
         return { id: w.id, status: 'ok' }
-      })
+      }),
     )
     res.json({ refreshed: results.length })
   } catch (err) {

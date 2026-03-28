@@ -1,13 +1,9 @@
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import Database from 'better-sqlite3'
-import { mkdirSync } from 'fs'
-import { dirname, resolve } from 'path'
 import { logger } from '../lib/logger.js'
 
 const DB_PATH = resolve(import.meta.dirname, '../../data/brain.db')
-
-export function getBrainDbPath(): string {
-  return DB_PATH
-}
 
 let db: Database.Database | null = null
 
@@ -27,7 +23,11 @@ export function getBrainDb(): Database.Database {
  */
 export function checkpointBrainDb(): void {
   if (db) {
-    try { db.pragma('wal_checkpoint(PASSIVE)') } catch { /* ignore */ }
+    try {
+      db.pragma('wal_checkpoint(PASSIVE)')
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -108,6 +108,7 @@ export function initBrainDb(): void {
     CREATE INDEX IF NOT EXISTS idx_llm_calls_session_id ON llm_calls(session_id);
     CREATE INDEX IF NOT EXISTS idx_llm_calls_message_id ON llm_calls(message_id);
 
+    -- Legacy: retained for existing data; no longer written to by active code
     CREATE TABLE IF NOT EXISTS pr_agent_results (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       project_id INTEGER NOT NULL,
@@ -139,11 +140,4 @@ export function initBrainDb(): void {
   }
 
   logger.info('Brain database initialized')
-}
-
-export function closeBrainDb(): void {
-  if (db) {
-    db.close()
-    db = null
-  }
 }

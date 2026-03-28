@@ -1,62 +1,57 @@
-import express from 'express'
+import { randomBytes } from 'node:crypto'
+// Channel config now read from vault/config services (no JSON file)
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, resolve } from 'node:path'
 import cors from 'cors'
 import { config } from 'dotenv'
-import { jiraRouter } from './routes/jira.js'
-import { linearRouter } from './routes/linear.js'
-import { llmRouter } from './routes/llm.js'
-import { settingsRouter } from './routes/settings.js'
-import { botRouter } from './routes/bot.js'
-import { activityRouter } from './routes/activity.js'
-import { todosRouter } from './routes/todos.js'
-import { gitlabRouter } from './routes/gitlab.js'
-import { githubRouter } from './routes/github.js'
-import { gitLocalRouter } from './routes/git-local.js'
-import { prAgentRouter } from './routes/pr-agent.js'
-import { documentsRouter } from './routes/documents.js'
-import { projectsRouter } from './routes/projects.js'
-import opencodeRouter from './routes/opencode.js'
-import { voiceRouter } from './routes/voice.js'
-import { canvasRouter } from './routes/canvas.js'
-import { secretsRouter } from './routes/secrets.js'
-import configRouter from './routes/config.js'
-import { setupRouter } from './routes/setup.js'
-import { initDb, initHeartbeat } from './bot/index.js'
-import { getChannelManager } from './channels/manager.js'
+import express from 'express'
 import { handleMessage } from './agent/loop.js'
-import { startUsageTracker } from './opencode/client.js'
-import { insertLLMCall, extractUsageFromSession } from './bot/memory/activity.js'
-import { getBrainDb as getDb } from './memory/brain-db.js'
-import { initTodosTable } from './mcp-server/tools/todos.js'
-import { scheduleBriefings } from './proactive/briefing.js'
-import { jobsRouter } from './routes/jobs.js'
-import { initJobsDb } from './jobs/db.js'
-import { scheduleJobScraping } from './jobs/scheduler.js'
-import { socialRouter } from './routes/social.js'
-import { telegramRouter } from './routes/telegram.js'
-import { initSocialDb } from './social/db.js'
-import { initTelegramDb } from './telegram/db.js'
-import { initWidgetsDb } from './widgets/db.js'
-import { scheduleSocialSync } from './social/scheduler.js'
-import { widgetsRouter } from './routes/widgets.js'
-import { scheduleWidgetRefresh } from './widgets/scheduler.js'
+import { initDb, initHeartbeat } from './bot/index.js'
+import { extractUsageFromSession, insertLLMCall } from './bot/memory/activity.js'
 import { initCanvasWebSocket } from './canvas/renderer.js'
-import { startWakeWordServer, stopWakeWordServer } from './voice/wakeword.js'
-import { WhatsAppAdapter } from './channels/whatsapp.js'
+import { getChannelManager } from './channels/manager.js'
 import { TelegramAdapter } from './channels/telegram.js'
-// Channel config now read from vault/config services (no JSON file)
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
-import { resolve, dirname } from 'path'
-import { randomBytes } from 'crypto'
-import { createRequire } from 'module'
-import { logger } from './lib/logger.js'
-import { getSecret } from './secrets/index.js'
+import { WhatsAppAdapter } from './channels/whatsapp.js'
 import { getConfig } from './config/index.js'
 import { migrateJsonConfigs } from './config/migrate.js'
-import { initBrainDb } from './memory/brain-db.js'
+import { logger } from './lib/logger.js'
+import { initTodosTable } from './mcp-server/tools/todos.js'
+import { getBrainDb as getDb, initBrainDb } from './memory/brain-db.js'
 import { migrateToBrain } from './memory/migrate-brain.js'
+import { startUsageTracker } from './opencode/client.js'
+import { startBreakerScheduler } from './planner/breaker-scheduler.js'
+import { initPlannerDb } from './planner/db.js'
+import { scheduleBriefings } from './proactive/briefing.js'
+import { activityRouter } from './routes/activity.js'
+import { botRouter } from './routes/bot.js'
+import { canvasRouter } from './routes/canvas.js'
+import configRouter from './routes/config.js'
+import { documentsRouter } from './routes/documents.js'
+import { llmRouter } from './routes/llm.js'
 import { memoryRouter } from './routes/memory.js'
+import opencodeRouter from './routes/opencode.js'
+import { plannerRouter } from './routes/planner.js'
+import { projectsRouter } from './routes/projects.js'
+import { secretsRouter } from './routes/secrets.js'
+import { settingsRouter } from './routes/settings.js'
+import { setupRouter } from './routes/setup.js'
+import { telegramRouter } from './routes/telegram.js'
+import { todosRouter } from './routes/todos.js'
+import { voiceRouter } from './routes/voice.js'
+import { widgetsRouter } from './routes/widgets.js'
+import { getSecret } from './secrets/index.js'
+import { initTelegramDb } from './telegram/db.js'
+import { startWakeWordServer, stopWakeWordServer } from './voice/wakeword.js'
+import { initWidgetsDb } from './widgets/db.js'
+import { scheduleWidgetRefresh } from './widgets/scheduler.js'
 
 config()
+
+// Default DOCUMENTS_PATH to data/documents relative to server root
+if (!process.env.DOCUMENTS_PATH) {
+  process.env.DOCUMENTS_PATH = resolve(import.meta.dirname, '../../../data/documents')
+}
 
 // Read version from package.json
 const require = createRequire(import.meta.url)
@@ -100,17 +95,11 @@ app.get('/api/health', (_req, res) => {
 })
 
 // Routes
-app.use('/api/jira', jiraRouter)
-app.use('/api/linear', linearRouter)
 app.use('/api/llm', llmRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/bot', botRouter)
 app.use('/api/activity', activityRouter)
 app.use('/api/todos', todosRouter)
-app.use('/api/gitlab', gitlabRouter)
-app.use('/api/github', githubRouter)
-app.use('/api/git-local', gitLocalRouter)
-app.use('/api/pr-agent', prAgentRouter)
 app.use('/api/documents', documentsRouter)
 app.use('/api/projects', projectsRouter)
 app.use('/api/opencode', opencodeRouter)
@@ -119,11 +108,19 @@ app.use('/api/canvas', canvasRouter)
 app.use('/api/secrets', secretsRouter)
 app.use('/api/config', configRouter)
 app.use('/api/setup', setupRouter)
-app.use('/api/jobs', jobsRouter)
-app.use('/api/social', socialRouter)
 app.use('/api/telegram', telegramRouter)
 app.use('/api/widgets', widgetsRouter)
 app.use('/api/memory', memoryRouter)
+app.use('/api/planner', plannerRouter)
+
+// In production, serve the built React frontend
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = resolve(import.meta.dirname, '../../app/dist')
+  app.use(express.static(clientDist))
+  app.get('/{*path}', (_req, res) => {
+    res.sendFile(resolve(clientDist, 'index.html'))
+  })
+}
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -135,7 +132,7 @@ const httpServer = app.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT}`)
 })
 
-initCanvasWebSocket(httpServer)
+initCanvasWebSocket(httpServer as import('node:http').Server)
 
 // Start wake word sidecar (if enabled)
 startWakeWordServer()
@@ -150,10 +147,10 @@ initBrainDb()
 migrateToBrain()
 initTodosTable()
 initHeartbeat()
-initJobsDb()
-initSocialDb()
 initTelegramDb()
 initWidgetsDb()
+initPlannerDb()
+startBreakerScheduler()
 migrateJsonConfigs()
 
 // Initialize channel manager
@@ -167,11 +164,16 @@ channelManager.onMessage(handleMessage)
   if (existsSync(resolve(waAuthDir, 'creds.json'))) {
     logger.info('WhatsApp: found saved auth, auto-reconnecting...')
     const allowedNumbers = (getConfig('WHATSAPP_ALLOWED_NUMBERS') || '')
-      .split(',').map(s => s.trim()).filter(Boolean)
-      .map(n => n.includes('@') ? n : `${n}@s.whatsapp.net`)
-    const adapter = new WhatsAppAdapter({ authDir: waAuthDir, allowedNumbers: allowedNumbers.length > 0 ? allowedNumbers : undefined })
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((n) => (n.includes('@') ? n : `${n}@s.whatsapp.net`))
+    const adapter = new WhatsAppAdapter({
+      authDir: waAuthDir,
+      allowedNumbers: allowedNumbers.length > 0 ? allowedNumbers : undefined,
+    })
     channelManager.register(adapter)
-    adapter.start().catch(err => logger.error({ err }, 'WhatsApp auto-reconnect failed'))
+    adapter.start().catch((err) => logger.error({ err }, 'WhatsApp auto-reconnect failed'))
   }
 
   // Telegram: reconnect if bot token exists
@@ -179,10 +181,13 @@ channelManager.onMessage(handleMessage)
   if (telegramToken) {
     logger.info('Telegram: found saved token, auto-reconnecting...')
     const allowedUsers = (getConfig('TELEGRAM_ALLOWED_USERS') || getSecret('TELEGRAM_ALLOWED_USERS') || '')
-      .split(',').map(s => s.trim()).filter(Boolean).map(Number)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map(Number)
     const adapter = new TelegramAdapter({ botToken: telegramToken, allowedUsers })
     channelManager.register(adapter)
-    adapter.start().catch(err => logger.error({ err }, 'Telegram auto-reconnect failed'))
+    adapter.start().catch((err) => logger.error({ err }, 'Telegram auto-reconnect failed'))
   }
 
   // Gmail: no auto-polling — accessed on-demand via MCP tools and briefings
@@ -190,12 +195,6 @@ channelManager.onMessage(handleMessage)
 
 // Schedule briefings (reads config; re-called from PUT /briefing/config)
 scheduleBriefings()
-
-// Schedule job scraping if there's an active hunting campaign
-scheduleJobScraping()
-
-// Schedule social media sync
-scheduleSocialSync()
 
 // Schedule widget refresh
 scheduleWidgetRefresh()
@@ -225,4 +224,3 @@ startUsageTracker(async (sessionId) => {
     // ignore
   }
 })
-

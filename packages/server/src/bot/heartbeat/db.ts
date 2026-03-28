@@ -1,5 +1,5 @@
-import { getDb } from '../memory/db.js'
 import { logger } from '../../lib/logger.js'
+import { getDb } from '../memory/db.js'
 
 export interface Schedule {
   id: number
@@ -27,9 +27,7 @@ export function initSchedulesTable(): void {
 
 export function addSchedule(chatId: number, cronExpression: string, prompt: string): Schedule {
   const db = getDb()
-  const stmt = db.prepare(
-    'INSERT INTO schedules (chat_id, cron_expression, prompt) VALUES (?, ?, ?)',
-  )
+  const stmt = db.prepare('INSERT INTO schedules (chat_id, cron_expression, prompt) VALUES (?, ?, ?)')
   const result = stmt.run(chatId, cronExpression, prompt)
   return db.prepare('SELECT * FROM schedules WHERE id = ?').get(result.lastInsertRowid) as Schedule
 }
@@ -52,11 +50,9 @@ export function getAllEnabledSchedules(): Schedule[] {
 
 export function toggleSchedule(id: number, chatId: number, enabled: boolean): boolean {
   const db = getDb()
-  const result = db.prepare('UPDATE schedules SET enabled = ? WHERE id = ? AND chat_id = ?').run(
-    enabled ? 1 : 0,
-    id,
-    chatId,
-  )
+  const result = db
+    .prepare('UPDATE schedules SET enabled = ? WHERE id = ? AND chat_id = ?')
+    .run(enabled ? 1 : 0, id, chatId)
   return result.changes > 0
 }
 
@@ -73,9 +69,6 @@ export function adminRemoveSchedule(id: number): boolean {
 
 export function adminToggleSchedule(id: number, enabled: boolean): boolean {
   const db = getDb()
-  const result = db.prepare('UPDATE schedules SET enabled = ? WHERE id = ?').run(
-    enabled ? 1 : 0,
-    id,
-  )
+  const result = db.prepare('UPDATE schedules SET enabled = ? WHERE id = ?').run(enabled ? 1 : 0, id)
   return result.changes > 0
 }

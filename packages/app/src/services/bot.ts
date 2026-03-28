@@ -1,4 +1,12 @@
-import type { BotStatus, BotSchedule, BotToolDefinition, ChannelStatus, BriefingConfig, ToolConfig, ChannelConfigResponse, WhatsAppQRResponse } from '@zync/shared/types'
+import type {
+  BotSchedule,
+  BotStatus,
+  BriefingConfig,
+  ChannelConfigResponse,
+  ChannelStatus,
+  ToolConfig,
+  WhatsAppQRResponse,
+} from '@zync/shared/types'
 
 const API_BASE = '/api/bot'
 
@@ -42,21 +50,9 @@ export async function toggleSchedule(id: number, enabled: boolean): Promise<{ su
   })
 }
 
-export async function getBotTools(): Promise<BotToolDefinition[]> {
-  return fetchJSON<BotToolDefinition[]>(`${API_BASE}/tools`)
-}
-
-export async function sendBotChat(message: string): Promise<{ response: string }> {
-  return fetchJSON<{ response: string }>(`${API_BASE}/chat`, {
-    method: 'POST',
-    body: JSON.stringify({ message }),
-  })
-}
-
 export async function getBotChannels(): Promise<ChannelStatus[]> {
   return fetchJSON<ChannelStatus[]>(`${API_BASE}/channels`)
 }
-
 
 export async function getBriefingConfig(): Promise<BriefingConfig> {
   return fetchJSON<BriefingConfig>(`${API_BASE}/briefing/config`)
@@ -95,7 +91,10 @@ export async function getChannelConfig(): Promise<ChannelConfigResponse> {
   return fetchJSON<ChannelConfigResponse>(`${API_BASE}/channels/config`)
 }
 
-export async function saveChannelConfig(channel: string, config: Record<string, unknown>): Promise<{ success: boolean }> {
+export async function saveChannelConfig(
+  channel: string,
+  config: Record<string, unknown>,
+): Promise<{ success: boolean }> {
   return fetchJSON<{ success: boolean }>(`${API_BASE}/channels/config/${channel}`, {
     method: 'PUT',
     body: JSON.stringify(config),
@@ -112,8 +111,4 @@ export async function disconnectChannel(channel: string): Promise<{ success: boo
 
 export async function getWhatsAppQR(): Promise<WhatsAppQRResponse> {
   return fetchJSON<WhatsAppQRResponse>(`${API_BASE}/channels/whatsapp/qr`)
-}
-
-export async function getGmailAuthUrl(): Promise<{ url: string }> {
-  return fetchJSON<{ url: string }>(`${API_BASE}/channels/gmail/auth-url`)
 }

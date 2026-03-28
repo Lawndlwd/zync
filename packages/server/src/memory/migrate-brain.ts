@@ -1,8 +1,8 @@
+import { existsSync, renameSync } from 'node:fs'
+import { resolve } from 'node:path'
 import Database from 'better-sqlite3'
-import { resolve } from 'path'
-import { existsSync, renameSync } from 'fs'
-import { getBrainDb } from './brain-db.js'
 import { logger } from '../lib/logger.js'
+import { getBrainDb } from './brain-db.js'
 
 const DATA_DIR = resolve(import.meta.dirname, '../../data')
 
@@ -31,7 +31,11 @@ export function migrateToBrain(): void {
 
   // Migrate memories
   try {
-    const rows = old.prepare('SELECT content, category, embedding, embedding_model, access_count, last_accessed, relevance_score, created_at, updated_at FROM memories').all() as Array<{
+    const rows = old
+      .prepare(
+        'SELECT content, category, embedding, embedding_model, access_count, last_accessed, relevance_score, created_at, updated_at FROM memories',
+      )
+      .all() as Array<{
       content: string
       category: string
       embedding: Buffer | null
@@ -68,7 +72,11 @@ export function migrateToBrain(): void {
 
   // Migrate llm_calls
   try {
-    const rows = old.prepare('SELECT source, model, prompt_tokens, completion_tokens, total_tokens, tool_names, duration_ms, created_at, session_id, cost, message_id FROM llm_calls').all() as Array<{
+    const rows = old
+      .prepare(
+        'SELECT source, model, prompt_tokens, completion_tokens, total_tokens, tool_names, duration_ms, created_at, session_id, cost, message_id FROM llm_calls',
+      )
+      .all() as Array<{
       source: string
       model: string
       prompt_tokens: number
@@ -109,7 +117,9 @@ export function migrateToBrain(): void {
 
   // Migrate pr_agent_results
   try {
-    const rows = old.prepare('SELECT project_id, mr_iid, tool, head_sha, result, created_at FROM pr_agent_results').all() as Array<{
+    const rows = old
+      .prepare('SELECT project_id, mr_iid, tool, head_sha, result, created_at FROM pr_agent_results')
+      .all() as Array<{
       project_id: number
       mr_iid: number
       tool: string
@@ -133,7 +143,9 @@ export function migrateToBrain(): void {
 
   // Migrate processed_emails (might not exist in old DB)
   try {
-    const rows = old.prepare('SELECT message_id, thread_id, processed_at, action FROM processed_emails').all() as Array<{
+    const rows = old
+      .prepare('SELECT message_id, thread_id, processed_at, action FROM processed_emails')
+      .all() as Array<{
       message_id: string
       thread_id: string | null
       processed_at: string

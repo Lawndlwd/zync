@@ -1,8 +1,8 @@
-import { readFileSync, existsSync, renameSync } from 'fs'
-import { resolve } from 'path'
+import { existsSync, readFileSync, renameSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { logger } from '../lib/logger.js'
-import { getConfigService } from './index.js'
 import { getSecrets } from '../secrets/index.js'
+import { getConfigService } from './index.js'
 
 const DATA_DIR = resolve(import.meta.dirname, '../../data')
 
@@ -28,6 +28,7 @@ interface FileMigration {
 }
 
 const MIGRATIONS: FileMigration[] = [
+  // Legacy: migrates old gitlab.json for users upgrading from pre-monorepo versions
   {
     file: 'gitlab.json',
     entries: [
@@ -39,11 +40,31 @@ const MIGRATIONS: FileMigration[] = [
     file: 'channel-config.json',
     entries: [
       { sourcePath: 'telegram.botToken', targetKey: 'CHANNEL_TELEGRAM_BOT_TOKEN', category: 'channel', type: 'secret' },
-      { sourcePath: 'gmail.clientSecret', targetKey: 'CHANNEL_GMAIL_CLIENT_SECRET', category: 'channel', type: 'secret' },
-      { sourcePath: 'gmail.refreshToken', targetKey: 'CHANNEL_GMAIL_REFRESH_TOKEN', category: 'channel', type: 'secret' },
+      {
+        sourcePath: 'gmail.clientSecret',
+        targetKey: 'CHANNEL_GMAIL_CLIENT_SECRET',
+        category: 'channel',
+        type: 'secret',
+      },
+      {
+        sourcePath: 'gmail.refreshToken',
+        targetKey: 'CHANNEL_GMAIL_REFRESH_TOKEN',
+        category: 'channel',
+        type: 'secret',
+      },
       { sourcePath: 'gmail.clientId', targetKey: 'CHANNEL_GMAIL_CLIENT_ID', category: 'channel', type: 'secret' },
-      { sourcePath: 'telegram.allowedUsers', targetKey: 'TELEGRAM_ALLOWED_USERS', category: 'channels', type: 'config' },
-      { sourcePath: 'whatsapp.allowedNumbers', targetKey: 'WHATSAPP_ALLOWED_NUMBERS', category: 'channels', type: 'config' },
+      {
+        sourcePath: 'telegram.allowedUsers',
+        targetKey: 'TELEGRAM_ALLOWED_USERS',
+        category: 'channels',
+        type: 'config',
+      },
+      {
+        sourcePath: 'whatsapp.allowedNumbers',
+        targetKey: 'WHATSAPP_ALLOWED_NUMBERS',
+        category: 'channels',
+        type: 'config',
+      },
     ],
   },
   {
@@ -59,6 +80,7 @@ const MIGRATIONS: FileMigration[] = [
   {
     file: 'agent-models.json',
     entries: [
+      // Legacy: migrates old prAgent config for users upgrading
       { sourcePath: 'prAgent.model', targetKey: 'AGENT_MODEL_PR', category: 'llm', type: 'config' },
       { sourcePath: 'opencode.model', targetKey: 'AGENT_MODEL_OPENCODE', category: 'llm', type: 'config' },
       { sourcePath: 'bot.model', targetKey: 'AGENT_MODEL_BOT', category: 'llm', type: 'config' },
@@ -66,9 +88,7 @@ const MIGRATIONS: FileMigration[] = [
   },
   {
     file: 'tool-config.json',
-    entries: [
-      { sourcePath: 'sandboxEnabled', targetKey: 'TOOL_SANDBOX_ENABLED', category: 'general', type: 'config' },
-    ],
+    entries: [{ sourcePath: 'sandboxEnabled', targetKey: 'TOOL_SANDBOX_ENABLED', category: 'general', type: 'config' }],
   },
 ]
 

@@ -1,6 +1,6 @@
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { basename, join, relative } from 'node:path'
 import { z } from 'zod'
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'fs'
-import { join, basename, relative } from 'path'
 import { getConfig } from '../../config/index.js'
 
 function getDocsRoot(): string {
@@ -117,7 +117,7 @@ export async function updateDocument(input: z.infer<typeof updateDocumentSchema>
   }
 
   if (input.title) {
-    const { renameSync } = await import('fs')
+    const { renameSync } = await import('node:fs')
     const parts = input.path.split('/')
     const folder = parts.slice(0, -1).join('/')
     const newFileName = `${input.title.trim()}.md`

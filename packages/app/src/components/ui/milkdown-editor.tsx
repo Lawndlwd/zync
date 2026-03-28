@@ -1,6 +1,5 @@
-import { useRef, useLayoutEffect, useEffect } from 'react'
-import { Crepe, type CrepeConfig } from '@milkdown/crepe'
-import { CrepeFeature } from '@milkdown/crepe'
+import { Crepe, type CrepeConfig, CrepeFeature } from '@milkdown/crepe'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame-dark.css'
 import '@/styles/milkdown.css'
@@ -142,7 +141,7 @@ export function MilkdownEditor({
       ref={containerRef}
       className={cn(
         'milkdown-editor-wrapper',
-        variant === 'default' && 'rounded-lg border border-white/[0.1] bg-white/[0.04]',
+        variant === 'default' && 'rounded-lg border border-border bg-secondary',
         className,
       )}
       style={{ minHeight }}

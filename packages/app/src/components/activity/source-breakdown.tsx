@@ -11,18 +11,14 @@ const SOURCE_LABELS: Record<string, string> = {
   schedule: 'Schedule',
   dashboard: 'Dashboard',
   opencode: 'OpenCode',
-  'pr-agent': 'PR Agent',
-  'code-review': 'Code Review',
 }
 
 const SOURCE_COLORS: Record<string, string> = {
-  chat: 'bg-indigo-500',
+  chat: 'bg-primary',
   bot: 'bg-violet-500',
   schedule: 'bg-amber-500',
-  dashboard: 'bg-indigo-500',
+  dashboard: 'bg-primary',
   opencode: 'bg-emerald-500',
-  'pr-agent': 'bg-sky-500',
-  'code-review': 'bg-rose-500',
 }
 
 function formatTokens(n: number): string {
@@ -44,28 +40,25 @@ export function SourceBreakdown({ days }: SourceBreakdownProps) {
   const maxTokens = Math.max(...sources.map((s) => s.total_tokens), 1)
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4">
-      <p className="text-sm font-medium text-zinc-300 mb-4">Usage by Source</p>
+    <div className="rounded-lg border border-border bg-secondary p-4">
+      <p className="text-sm font-medium text-foreground mb-4">Usage by Source</p>
       <div className="space-y-3">
         {sources.map((s) => {
           const pct = (s.total_tokens / maxTokens) * 100
           const label = SOURCE_LABELS[s.source] ?? s.source
-          const color = SOURCE_COLORS[s.source] ?? 'bg-zinc-500'
+          const color = SOURCE_COLORS[s.source] ?? 'bg-muted-foreground'
           return (
             <div key={s.source}>
               <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-zinc-300 font-medium">{label}</span>
-                <div className="flex items-center gap-3 text-xs text-zinc-500">
+                <span className="text-foreground font-medium">{label}</span>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>{s.calls} calls</span>
                   <span>{formatTokens(s.total_tokens)} tokens</span>
                   {s.cost > 0 && <span>${s.cost.toFixed(4)}</span>}
                 </div>
               </div>
-              <div className="h-2 rounded-full bg-white/[0.06]">
-                <div
-                  className={`h-2 rounded-full ${color} opacity-60`}
-                  style={{ width: `${pct}%` }}
-                />
+              <div className="h-2 rounded-full bg-accent">
+                <div className={`h-2 rounded-full ${color} opacity-60`} style={{ width: `${pct}%` }} />
               </div>
             </div>
           )

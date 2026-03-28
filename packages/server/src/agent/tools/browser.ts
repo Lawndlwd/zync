@@ -1,9 +1,9 @@
-import { chromium, type Browser, type Page } from 'playwright'
+import { type Browser, chromium } from 'playwright'
 
 let browser: Browser | null = null
 
 async function getBrowser(): Promise<Browser> {
-  if (!browser || !browser.isConnected()) {
+  if (!browser?.isConnected()) {
     browser = await chromium.launch({ headless: true })
   }
   return browser
@@ -38,7 +38,7 @@ export async function takeScreenshot(url: string): Promise<Buffer> {
   const page = await b.newPage()
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 })
-    return await page.screenshot({ type: 'png', fullPage: false }) as Buffer
+    return (await page.screenshot({ type: 'png', fullPage: false })) as Buffer
   } finally {
     await page.close()
   }

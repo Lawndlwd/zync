@@ -1,17 +1,16 @@
-import { useState, useCallback } from 'react'
-import { ArrowLeft, Plus, Pencil, Save, Loader2, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { MilkdownEditor } from '@/components/ui/milkdown-editor'
-import { MarkdownContent } from '@/components/ui/markdown'
-import { KanbanBoard } from '@/components/projects/kanban-board'
-import { TaskDrawer } from '@/components/projects/task-drawer'
-import { CreateTaskDialog } from '@/components/projects/create-task-dialog'
-import { getProjectIcon, getProjectColor } from '@/components/projects/project-card'
-import { useProject, useUpdateProject } from '@/hooks/useProjects'
-import { useProjectTasks } from '@/hooks/useTasks'
-import { useUpdateTaskStatus } from '@/hooks/useTasks'
 import type { Task, TaskStatus } from '@zync/shared/types'
+import { ArrowLeft, Loader2, Pencil, Plus, Save, X } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { CreateTaskDialog } from '@/components/projects/create-task-dialog'
+import { KanbanBoard } from '@/components/projects/kanban-board'
+import { getProjectColor, getProjectIcon } from '@/components/projects/project-utils'
+import { TaskDrawer } from '@/components/projects/task-drawer'
+import { Button } from '@/components/ui/button'
+import { MarkdownContent } from '@/components/ui/markdown'
+import { MilkdownEditor } from '@/components/ui/milkdown-editor'
+import { useProject, useUpdateProject } from '@/hooks/useProjects'
+import { useProjectTasks, useUpdateTaskStatus } from '@/hooks/useTasks'
+import { cn } from '@/lib/utils'
 
 interface ProjectDetailProps {
   projectName: string
@@ -79,7 +78,7 @@ export function ProjectDetail({ projectName, onBack }: ProjectDetailProps) {
   if (projectLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 size={32} className="animate-spin text-zinc-500" />
+        <Loader2 size={32} className="animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -87,7 +86,7 @@ export function ProjectDetail({ projectName, onBack }: ProjectDetailProps) {
   if (!project) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4">
-        <p className="text-zinc-500">Project not found.</p>
+        <p className="text-muted-foreground">Project not found.</p>
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft size={16} className="mr-2" />
           Go back
@@ -102,57 +101,39 @@ export function ProjectDetail({ projectName, onBack }: ProjectDetailProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.08] px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 w-9 p-0"
-            onClick={onBack}
-          >
-            <ArrowLeft size={18} className="text-zinc-400" />
+          <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={onBack}>
+            <ArrowLeft size={18} className="text-muted-foreground" />
           </Button>
 
-          <div
-            className={cn(
-              'flex items-center justify-center w-10 h-10 rounded-lg',
-              colors.bg,
-            )}
-          >
+          <div className={cn('flex items-center justify-center w-10 h-10 rounded-lg', colors.bg)}>
             <Icon size={20} className={colors.text} />
           </div>
 
           <div>
-            <h1 className="text-xl font-bold text-zinc-100">
-              {project.metadata.title || project.name}
-            </h1>
-            <p className="text-sm text-zinc-500">
+            <h1 className="text-xl font-bold text-foreground">{project.metadata.title || project.name}</h1>
+            <p className="text-sm text-muted-foreground">
               {tasks.length} task{tasks.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
 
-        <Button
-          size="sm"
-          className="gap-2"
-          onClick={() => setCreateDialogOpen(true)}
-        >
+        <Button size="sm" className="gap-2" onClick={() => setCreateDialogOpen(true)}>
           <Plus size={16} />
           New Task
         </Button>
       </div>
 
       {/* Description section */}
-      <div className="border-b border-white/[0.08] p-6">
+      <div className="border-b border-border p-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
-            Description
-          </h2>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Description</h2>
           {!isEditing && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 gap-2 text-zinc-500 hover:text-zinc-300"
+              className="h-8 gap-2 text-muted-foreground hover:text-foreground"
               onClick={handleEditStart}
             >
               <Pencil size={14} />
@@ -170,17 +151,8 @@ export function ProjectDetail({ projectName, onBack }: ProjectDetailProps) {
               minHeight="200px"
             />
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                className="gap-2"
-                onClick={handleEditSave}
-                disabled={updateProject.isPending}
-              >
-                {updateProject.isPending ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Save size={14} />
-                )}
+              <Button size="sm" className="gap-2" onClick={handleEditSave} disabled={updateProject.isPending}>
+                {updateProject.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save
               </Button>
               <Button
@@ -196,13 +168,11 @@ export function ProjectDetail({ projectName, onBack }: ProjectDetailProps) {
             </div>
           </div>
         ) : project.content ? (
-          <div className="prose-docs text-sm text-zinc-300">
+          <div className="prose-docs text-sm text-foreground">
             <MarkdownContent raw>{project.content}</MarkdownContent>
           </div>
         ) : (
-          <p className="text-sm text-zinc-600 italic">
-            No project description yet. Click edit to add one.
-          </p>
+          <p className="text-sm text-muted-foreground italic">No project description yet. Click edit to add one.</p>
         )}
       </div>
 
@@ -218,18 +188,10 @@ export function ProjectDetail({ projectName, onBack }: ProjectDetailProps) {
       </div>
 
       {/* Task drawer */}
-      <TaskDrawer
-        task={selectedTask}
-        open={drawerOpen}
-        onClose={handleCloseDrawer}
-      />
+      <TaskDrawer task={selectedTask} open={drawerOpen} onClose={handleCloseDrawer} />
 
       {/* Create task dialog */}
-      <CreateTaskDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        defaultProject={projectName}
-      />
+      <CreateTaskDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} defaultProject={projectName} />
     </div>
   )
 }

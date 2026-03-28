@@ -1,14 +1,18 @@
+import { Bot, CalendarClock, ChevronDown, ChevronRight, Code, Link2, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
-import {
-  Link2, Bot, ShieldCheck, CalendarClock, Code,
-  ChevronDown, ChevronRight,
-} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type SettingsSection =
   | 'integrations'
-  | 'agent' | 'profile' | 'instructions' | 'memories' | 'schedules' | 'tools'
-  | 'security' | 'config' | 'tool-config'
+  | 'agent'
+  | 'profile'
+  | 'instructions'
+  | 'memories'
+  | 'schedules'
+  | 'tools'
+  | 'security'
+  | 'config'
+  | 'tool-config'
   | 'briefings'
   | 'opencode'
 
@@ -69,15 +73,15 @@ export function SettingsSidebar({ activeSection, onNavigate }: SettingsSidebarPr
   const isActive = (id: SettingsSection) => activeSection === id
   const isGroupActive = (group: SidebarGroup) => {
     if (activeSection === group.id) return true
-    return group.children?.some(c => c.id === activeSection) ?? false
+    return group.children?.some((c) => c.id === activeSection) ?? false
   }
 
   const toggleCollapse = (groupId: string) => {
-    setCollapsed(prev => ({ ...prev, [groupId]: !prev[groupId] }))
+    setCollapsed((prev) => ({ ...prev, [groupId]: !prev[groupId] }))
   }
 
   return (
-    <nav className="w-[200px] shrink-0 space-y-1 pr-4 border-r border-white/[0.06] overflow-y-auto">
+    <nav className="w-[200px] shrink-0 space-y-1 pr-4 border-r border-border overflow-y-auto">
       {groups.map((group) => {
         const hasChildren = !!group.children?.length
         const isOpen = !collapsed[group.id]
@@ -99,8 +103,8 @@ export function SettingsSidebar({ activeSection, onNavigate }: SettingsSidebarPr
               className={cn(
                 'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
                 groupActive
-                  ? 'bg-white/[0.08] text-zinc-100'
-                  : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
               {group.icon}
@@ -111,7 +115,7 @@ export function SettingsSidebar({ activeSection, onNavigate }: SettingsSidebarPr
                     e.stopPropagation()
                     toggleCollapse(group.id)
                   }}
-                  className="p-0.5 text-zinc-500 hover:text-zinc-300"
+                  className="p-0.5 text-muted-foreground hover:text-foreground"
                 >
                   {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </button>
@@ -119,7 +123,7 @@ export function SettingsSidebar({ activeSection, onNavigate }: SettingsSidebarPr
             </button>
 
             {hasChildren && isOpen && (
-              <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/[0.06] pl-2">
+              <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-2">
                 {group.children!.map((child) => (
                   <button
                     key={child.id}
@@ -127,8 +131,8 @@ export function SettingsSidebar({ activeSection, onNavigate }: SettingsSidebarPr
                     className={cn(
                       'flex w-full items-center rounded-md px-2 py-1 text-xs transition-colors',
                       isActive(child.id)
-                        ? 'bg-indigo-500/10 text-indigo-400'
-                        : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300'
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                     )}
                   >
                     {child.label}

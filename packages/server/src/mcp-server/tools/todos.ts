@@ -32,9 +32,12 @@ export const createTodoSchema = z.object({
 export async function createTodo(input: z.infer<typeof createTodoSchema>) {
   const db = getDb()
   const id = generateId()
-  db.prepare(
-    `INSERT INTO todos (id, title, description, linked_issue) VALUES (?, ?, ?, ?)`
-  ).run(id, input.title, input.description, input.linked_issue || null)
+  db.prepare(`INSERT INTO todos (id, title, description, linked_issue) VALUES (?, ?, ?, ?)`).run(
+    id,
+    input.title,
+    input.description,
+    input.linked_issue || null,
+  )
   return JSON.stringify({ id, title: input.title })
 }
 
@@ -44,9 +47,7 @@ export const markTodoDoneSchema = z.object({
 
 export async function markTodoDone(input: z.infer<typeof markTodoDoneSchema>) {
   const db = getDb()
-  const result = db
-    .prepare(`UPDATE todos SET status = 'done', updated_at = datetime('now') WHERE id = ?`)
-    .run(input.id)
+  const result = db.prepare(`UPDATE todos SET status = 'done', updated_at = datetime('now') WHERE id = ?`).run(input.id)
   return JSON.stringify({ success: result.changes > 0 })
 }
 
@@ -77,11 +78,26 @@ export async function updateTodo(input: z.infer<typeof updateTodoSchema>) {
   const db = getDb()
   const sets: string[] = []
   const values: any[] = []
-  if (input.title !== undefined) { sets.push('title = ?'); values.push(input.title) }
-  if (input.description !== undefined) { sets.push('description = ?'); values.push(input.description) }
-  if (input.priority !== undefined) { sets.push('priority = ?'); values.push(input.priority) }
-  if (input.due_date !== undefined) { sets.push('due_date = ?'); values.push(input.due_date) }
-  if (input.status !== undefined) { sets.push('status = ?'); values.push(input.status) }
+  if (input.title !== undefined) {
+    sets.push('title = ?')
+    values.push(input.title)
+  }
+  if (input.description !== undefined) {
+    sets.push('description = ?')
+    values.push(input.description)
+  }
+  if (input.priority !== undefined) {
+    sets.push('priority = ?')
+    values.push(input.priority)
+  }
+  if (input.due_date !== undefined) {
+    sets.push('due_date = ?')
+    values.push(input.due_date)
+  }
+  if (input.status !== undefined) {
+    sets.push('status = ?')
+    values.push(input.status)
+  }
   if (sets.length === 0) return JSON.stringify({ success: false, error: 'No fields to update' })
   sets.push("updated_at = datetime('now')")
   values.push(input.id)

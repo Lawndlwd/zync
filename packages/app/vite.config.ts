@@ -38,6 +38,10 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 180_000, // 3 min for LLM-powered endpoints
       },
+      '/ws/canvas': {
+        target: backendUrl,
+        ws: true,
+      },
       '/ws/wakeword': {
         target: wakewordUrl,
         ws: true,

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useOpenCodeStore } from '@/store/opencode'
 
 /**
@@ -21,16 +21,19 @@ export function useOpenCodeSSE() {
   // Track session that just finished to suppress duplicate completion events
   const justFinishedRef = useRef<{ sessionId: string; time: number } | null>(null)
 
-  const invalidate = useCallback((key: string[]) => {
-    const cacheKey = key.join('/')
-    if (debounceTimers.current[cacheKey]) {
-      clearTimeout(debounceTimers.current[cacheKey])
-    }
-    debounceTimers.current[cacheKey] = setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: key })
-      delete debounceTimers.current[cacheKey]
-    }, 500)
-  }, [queryClient])
+  const invalidate = useCallback(
+    (key: string[]) => {
+      const cacheKey = key.join('/')
+      if (debounceTimers.current[cacheKey]) {
+        clearTimeout(debounceTimers.current[cacheKey])
+      }
+      debounceTimers.current[cacheKey] = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: key })
+        delete debounceTimers.current[cacheKey]
+      }, 500)
+    },
+    [queryClient],
+  )
 
   const isJustFinished = useCallback((sessionId: string) => {
     const jf = justFinishedRef.current
@@ -104,8 +107,8 @@ export function useOpenCodeSSE() {
         if (type === 'question.asked') {
           const req = data.properties
           if (req?.id && req?.questions) {
-            const answers = (req.questions as Array<{ options?: Array<{ label: string }> }>).map(
-              (q) => q.options?.length ? [q.options[0].label] : ['yes']
+            const answers = (req.questions as Array<{ options?: Array<{ label: string }> }>).map((q) =>
+              q.options?.length ? [q.options[0].label] : ['yes'],
             )
             fetch(`${serverUrl}/question/${req.id}/reply`, {
               method: 'POST',
@@ -149,9 +152,16 @@ export function useOpenCodeSSE() {
                 toolInvocation: {
                   id: part.callID || part.id,
                   toolName: part.tool || 'unknown',
-                  args: typeof part.state?.input === 'string'
-                    ? (() => { try { return JSON.parse(part.state.input) } catch { return {} } })()
-                    : (part.state?.input || {}),
+                  args:
+                    typeof part.state?.input === 'string'
+                      ? (() => {
+                          try {
+                            return JSON.parse(part.state.input)
+                          } catch {
+                            return {}
+                          }
+                        })()
+                      : part.state?.input || {},
                   state: part.state?.status === 'completed' || part.state?.status === 'error' ? 'result' : 'call',
                   result: part.state?.output ?? part.state?.error,
                 },

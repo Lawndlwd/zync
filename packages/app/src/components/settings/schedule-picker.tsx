@@ -1,14 +1,8 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import cronstrue from 'cronstrue'
-import { cn } from '@/lib/utils'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 interface SchedulePickerProps {
   value: string
@@ -77,9 +71,7 @@ function presetToDaySet(preset: DayPreset): Set<string> {
  * Try to parse a cron string of form `M H * * D` into simple mode values.
  * Returns null if the cron is too complex for simple mode.
  */
-function parseSimpleCron(
-  cron: string
-): { time: string; days: Set<string> } | null {
+function parseSimpleCron(cron: string): { time: string; days: Set<string> } | null {
   const parts = cron.trim().split(/\s+/)
   if (parts.length !== 5) return null
 
@@ -128,7 +120,8 @@ function parseSimpleCron(
 function collapseToRanges(sorted: number[]): string {
   if (sorted.length === 0) return '*'
   const parts: string[] = []
-  let start = sorted[0], end = sorted[0]
+  let start = sorted[0],
+    end = sorted[0]
   for (let i = 1; i < sorted.length; i++) {
     if (sorted[i] === end + 1) {
       end = sorted[i]
@@ -166,24 +159,15 @@ function humanReadable(cron: string): string | null {
   }
 }
 
-export function SchedulePicker({
-  value,
-  onChange,
-  label,
-  className,
-}: SchedulePickerProps) {
+export function SchedulePicker({ value, onChange, label, className }: SchedulePickerProps) {
   // Determine initial mode from value
   const parsed = useMemo(() => parseSimpleCron(value), [value])
   const [advanced, setAdvanced] = useState(!parsed)
   const userChoseMode = useRef(false)
   const [rawCron, setRawCron] = useState(value)
   const [time, setTime] = useState(parsed?.time ?? '09:00')
-  const [dayPreset, setDayPreset] = useState<DayPreset>(
-    parsed ? daySetToPreset(parsed.days) : 'every'
-  )
-  const [customDays, setCustomDays] = useState<Set<string>>(
-    parsed ? parsed.days : new Set(ALL_KEYS)
-  )
+  const [dayPreset, setDayPreset] = useState<DayPreset>(parsed ? daySetToPreset(parsed.days) : 'every')
+  const [customDays, setCustomDays] = useState<Set<string>>(parsed ? parsed.days : new Set(ALL_KEYS))
 
   // Sync raw cron when value prop changes externally
   useEffect(() => {
@@ -210,7 +194,7 @@ export function SchedulePicker({
       setRawCron(cron)
       onChange(cron)
     },
-    [dayPreset, customDays, onChange]
+    [dayPreset, customDays, onChange],
   )
 
   const handlePresetChange = useCallback(
@@ -224,7 +208,7 @@ export function SchedulePicker({
         onChange(cron)
       }
     },
-    [time, onChange]
+    [time, onChange],
   )
 
   const toggleDay = useCallback(
@@ -241,7 +225,7 @@ export function SchedulePicker({
       setRawCron(cron)
       onChange(cron)
     },
-    [customDays, time, onChange]
+    [customDays, time, onChange],
   )
 
   const handleRawChange = useCallback(
@@ -252,7 +236,7 @@ export function SchedulePicker({
         onChange(raw.trim())
       }
     },
-    [onChange]
+    [onChange],
   )
 
   const switchToAdvanced = useCallback(() => {
@@ -271,18 +255,13 @@ export function SchedulePicker({
     }
   }, [rawCron])
 
-  const canSwitchToSimple = useMemo(
-    () => parseSimpleCron(rawCron) !== null,
-    [rawCron]
-  )
+  const canSwitchToSimple = useMemo(() => parseSimpleCron(rawCron) !== null, [rawCron])
 
   const preview = useMemo(() => humanReadable(rawCron), [rawCron])
 
   return (
     <div className={cn('space-y-2', className)}>
-      {label && (
-        <label className="block text-xs font-medium text-zinc-400">{label}</label>
-      )}
+      {label && <label className="block text-xs font-medium text-muted-foreground">{label}</label>}
 
       {!advanced ? (
         <div className="space-y-2">
@@ -324,8 +303,8 @@ export function SchedulePicker({
                   className={cn(
                     'h-7 w-7 rounded text-xs font-medium transition-colors',
                     customDays.has(day.key)
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white/[0.06] text-zinc-400 hover:bg-white/[0.1]'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-accent text-muted-foreground hover:bg-accent/80',
                   )}
                 >
                   {day.short}
@@ -348,7 +327,7 @@ export function SchedulePicker({
       {/* Footer: preview + mode toggle */}
       <div className="flex items-center justify-between">
         {preview ? (
-          <p className="text-xs text-zinc-500">{preview}</p>
+          <p className="text-xs text-muted-foreground">{preview}</p>
         ) : (
           <p className="text-xs text-red-400">Invalid cron expression</p>
         )}
@@ -356,7 +335,7 @@ export function SchedulePicker({
           type="button"
           onClick={advanced ? switchToSimple : switchToAdvanced}
           disabled={advanced && !canSwitchToSimple}
-          className="text-xs text-indigo-400 hover:text-indigo-300 disabled:text-zinc-600 disabled:cursor-not-allowed"
+          className="text-xs text-primary hover:text-primary/80 disabled:text-muted-foreground disabled:cursor-not-allowed"
         >
           {advanced ? 'Simple mode' : 'Advanced'}
         </button>

@@ -1,10 +1,5 @@
-import type {
-  ChannelAdapter,
-  ChannelType,
-  MessageHandler,
-  OutboundMessage,
-} from './types.js'
 import { logger } from '../lib/logger.js'
+import type { ChannelAdapter, ChannelType, MessageHandler, OutboundMessage } from './types.js'
 
 const MAX_LENGTHS: Record<ChannelType, number> = {
   telegram: 4096,
@@ -42,9 +37,7 @@ class ChannelManager {
   }
 
   async startAll(): Promise<void> {
-    const results = await Promise.allSettled(
-      [...this.adapters.values()].map((a) => a.start()),
-    )
+    const results = await Promise.allSettled([...this.adapters.values()].map((a) => a.start()))
     for (const result of results) {
       if (result.status === 'rejected') {
         logger.error({ err: result.reason }, 'Failed to start channel adapter')
@@ -53,9 +46,7 @@ class ChannelManager {
   }
 
   async stopAll(): Promise<void> {
-    const results = await Promise.allSettled(
-      [...this.adapters.values()].map((a) => a.stop()),
-    )
+    const results = await Promise.allSettled([...this.adapters.values()].map((a) => a.stop()))
     for (const result of results) {
       if (result.status === 'rejected') {
         logger.error({ err: result.reason }, 'Failed to stop channel adapter')
@@ -63,11 +54,7 @@ class ChannelManager {
     }
   }
 
-  async send(
-    channelType: ChannelType,
-    chatId: string,
-    message: OutboundMessage,
-  ): Promise<void> {
+  async send(channelType: ChannelType, chatId: string, message: OutboundMessage): Promise<void> {
     const adapter = this.adapters.get(channelType)
     if (!adapter) {
       throw new Error(`No adapter registered for channel: ${channelType}`)

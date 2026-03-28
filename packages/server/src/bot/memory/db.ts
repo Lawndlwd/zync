@@ -1,6 +1,6 @@
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import Database from 'better-sqlite3'
-import { mkdirSync } from 'fs'
-import { dirname, resolve } from 'path'
 import { logger } from '../../lib/logger.js'
 
 const DB_PATH = resolve(import.meta.dirname, '../../../data/memory.db')
@@ -70,7 +70,7 @@ export function initDb(): void {
   `)
 
   // Migrate: add session_id and cost columns to llm_calls
-  const llmCallsInfo = db.prepare("PRAGMA table_info(llm_calls)").all() as Array<{ name: string }>
+  const llmCallsInfo = db.prepare('PRAGMA table_info(llm_calls)').all() as Array<{ name: string }>
   const columns = llmCallsInfo.map((c) => c.name)
   if (!columns.includes('session_id')) {
     db.exec(`ALTER TABLE llm_calls ADD COLUMN session_id TEXT`)
@@ -85,9 +85,11 @@ export function initDb(): void {
   }
 
   // Migrate: drop old table with UNIQUE constraint, recreate without it (allows history)
-  const hasUniqueConstraint = db.prepare(`
+  const hasUniqueConstraint = db
+    .prepare(`
     SELECT sql FROM sqlite_master WHERE type='table' AND name='pr_agent_results'
-  `).get() as { sql: string } | undefined
+  `)
+    .get() as { sql: string } | undefined
   if (hasUniqueConstraint?.sql?.includes('UNIQUE')) {
     db.exec(`
       ALTER TABLE pr_agent_results RENAME TO pr_agent_results_old;
@@ -124,7 +126,7 @@ export function initDb(): void {
   `)
 
   // Migrate: add vector search and evolving memory columns
-  const memoriesInfo = db.prepare("PRAGMA table_info(memories)").all() as Array<{ name: string }>
+  const memoriesInfo = db.prepare('PRAGMA table_info(memories)').all() as Array<{ name: string }>
   const memCols = memoriesInfo.map((c) => c.name)
   if (!memCols.includes('embedding')) {
     db.exec(`ALTER TABLE memories ADD COLUMN embedding BLOB`)

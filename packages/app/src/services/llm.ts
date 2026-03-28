@@ -23,7 +23,7 @@ export interface StreamCallbacks {
 
 export async function chatCompletion(
   messages: LLMMessage[],
-  tools?: string[]
+  tools?: string[],
 ): Promise<{ content: string; usage?: TokenUsage }> {
   const res = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
@@ -34,11 +34,7 @@ export async function chatCompletion(
   return res.json()
 }
 
-export async function streamChat(
-  messages: LLMMessage[],
-  callbacks: StreamCallbacks,
-  tools?: string[]
-) {
+export async function streamChat(messages: LLMMessage[], callbacks: StreamCallbacks, tools?: string[]) {
   const res = await fetch(`${API_BASE}/chat/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

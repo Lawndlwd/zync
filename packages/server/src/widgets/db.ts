@@ -1,6 +1,6 @@
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import Database from 'better-sqlite3'
-import { mkdirSync } from 'fs'
-import { dirname, resolve } from 'path'
 import { logger } from '../lib/logger.js'
 import type { WidgetConfig, WidgetType } from './types.js'
 
@@ -57,27 +57,21 @@ export function getWidget(id: number): WidgetConfig | undefined {
 
 export function createWidget(type: WidgetType, settings: Record<string, any>): WidgetConfig {
   const db = getWidgetsDb()
-  const result = db.prepare('INSERT INTO widgets (type, settings) VALUES (?, ?)').run(
-    type,
-    JSON.stringify(settings)
-  )
+  const result = db.prepare('INSERT INTO widgets (type, settings) VALUES (?, ?)').run(type, JSON.stringify(settings))
   return getWidget(result.lastInsertRowid as number)!
 }
 
 export function updateWidgetCache(id: number, data: any): void {
   const db = getWidgetsDb()
-  db.prepare('UPDATE widgets SET cached_data = ?, last_refreshed = datetime(\'now\') WHERE id = ?').run(
+  db.prepare("UPDATE widgets SET cached_data = ?, last_refreshed = datetime('now') WHERE id = ?").run(
     JSON.stringify(data),
-    id
+    id,
   )
 }
 
 export function updateWidgetSettings(id: number, settings: Record<string, any>): WidgetConfig | undefined {
   const db = getWidgetsDb()
-  db.prepare('UPDATE widgets SET settings = ? WHERE id = ?').run(
-    JSON.stringify(settings),
-    id
-  )
+  db.prepare('UPDATE widgets SET settings = ? WHERE id = ?').run(JSON.stringify(settings), id)
   return getWidget(id)
 }
 

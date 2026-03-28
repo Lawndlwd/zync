@@ -1,6 +1,5 @@
 import { EventSource } from 'eventsource'
-import { logger } from '../lib/logger.js'
-import { getOpenCodeUrl, sendPromptAsync, getSessionMessages } from './client.js'
+import { getOpenCodeUrl, getSessionMessages, sendPromptAsync } from './client.js'
 
 /**
  * Simple OpenCode SSE streaming.
@@ -22,7 +21,7 @@ export async function streamOpenCode(
   sessionId: string,
   prompt: string,
   callbacks: StreamCallbacks,
-  opts?: { timeoutMs?: number }
+  opts?: { timeoutMs?: number },
 ): Promise<() => void> {
   const openCodeUrl = getOpenCodeUrl()
   const es = new EventSource(`${openCodeUrl}/global/event`)
@@ -34,7 +33,7 @@ export async function streamOpenCode(
   let promptSent = false
   let sseReady = false
   let sawAssistant = false // true once we see an assistant message
-  let promptSentAt = 0    // timestamp when prompt was sent
+  let promptSentAt = 0 // timestamp when prompt was sent
 
   const finish = () => {
     if (done) return
@@ -141,13 +140,16 @@ export async function streamOpenCode(
       }
 
       // Session idle → done (but only if we've seen assistant output or enough time has passed)
-      const isIdleReady = () => sawAssistant || fullText.length > 0 || (Date.now() - promptSentAt > 5000)
+      const isIdleReady = () => sawAssistant || fullText.length > 0 || Date.now() - promptSentAt > 5000
 
       if (type === 'session.status') {
         const sid = props.sessionID
         if (sid !== sessionId || !promptSent) return
         const status = props.status?.type || props.status
-        if (status === 'error') { finishWithFallback(); return }
+        if (status === 'error') {
+          finishWithFallback()
+          return
+        }
         if ((status === 'idle' || status === 'completed') && isIdleReady()) {
           finishWithFallback()
         }
@@ -207,11 +209,7 @@ export async function streamOpenCode(
 }
 
 /** Check if an assistant message comes after any tracked user message in the list */
-function isAfterUserMsg(
-  assistantMsg: any,
-  allMsgs: any[],
-  userMsgIds: Set<string>
-): boolean {
+function isAfterUserMsg(assistantMsg: any, allMsgs: any[], userMsgIds: Set<string>): boolean {
   const aIdx = allMsgs.indexOf(assistantMsg)
   for (let i = aIdx - 1; i >= 0; i--) {
     if (userMsgIds.has(allMsgs[i].info?.id)) return true

@@ -4,6 +4,8 @@ Accepts audio uploads via POST /transcribe, returns JSON { "text": "..." }.
 Uses faster-whisper (CTranslate2) for efficient CPU inference.
 """
 
+from __future__ import annotations
+
 import os
 import tempfile
 import subprocess

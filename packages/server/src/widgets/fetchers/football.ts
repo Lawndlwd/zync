@@ -1,5 +1,3 @@
-import { logger } from '../../lib/logger.js'
-
 // ESPN hidden API — free, no API key, no auth
 // Scoreboard: https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/scoreboard
 // Teams:      https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/teams
@@ -57,8 +55,8 @@ export async function fetchLeagueScores(leagueSlug: string): Promise<FootballDat
       homeLogo: home?.team?.logo || '',
       awayTeam: away?.team?.shortDisplayName || away?.team?.displayName || '?',
       awayLogo: away?.team?.logo || '',
-      homeScore: home?.score != null ? parseInt(home.score) : null,
-      awayScore: away?.score != null ? parseInt(away.score) : null,
+      homeScore: home?.score != null ? parseInt(home.score, 10) : null,
+      awayScore: away?.score != null ? parseInt(away.score, 10) : null,
       status: status?.type?.state || 'pre', // pre | in | post
       statusDetail: status?.type?.shortDetail || status?.type?.detail || '',
       date: evt.date || '',
@@ -69,17 +67,21 @@ export async function fetchLeagueScores(leagueSlug: string): Promise<FootballDat
   return { league: leagueName, leagueSlug, matches }
 }
 
-export async function searchTeams(query: string, leagueSlug = 'eng.1'): Promise<Array<{ id: string; name: string; logo: string }>> {
+export async function searchTeams(
+  query: string,
+  leagueSlug = 'eng.1',
+): Promise<Array<{ id: string; name: string; logo: string }>> {
   const data = await espn(`${leagueSlug}/teams`)
   const teams: any[] = data.sports?.[0]?.leagues?.[0]?.teams || []
   const q = query.toLowerCase()
 
   return teams
     .map((t: any) => t.team)
-    .filter((t: any) =>
-      t.displayName?.toLowerCase().includes(q) ||
-      t.shortDisplayName?.toLowerCase().includes(q) ||
-      t.abbreviation?.toLowerCase().includes(q)
+    .filter(
+      (t: any) =>
+        t.displayName?.toLowerCase().includes(q) ||
+        t.shortDisplayName?.toLowerCase().includes(q) ||
+        t.abbreviation?.toLowerCase().includes(q),
     )
     .slice(0, 8)
     .map((t: any) => ({

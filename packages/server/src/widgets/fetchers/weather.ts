@@ -1,5 +1,3 @@
-import { logger } from '../../lib/logger.js'
-
 // Open-Meteo — free, open-source, no API key needed
 // Geocoding: https://geocoding-api.open-meteo.com/v1/search?name=Paris
 // Forecast:  https://api.open-meteo.com/v1/forecast?latitude=X&longitude=Y&...
@@ -56,7 +54,7 @@ export interface WeatherData {
 export async function fetchWeather(city: string): Promise<WeatherData> {
   // Step 1: geocode city name → coordinates
   const geoRes = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en`
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en`,
   )
   if (!geoRes.ok) throw new Error(`Geocoding error: ${geoRes.status}`)
   const geoData = await geoRes.json()
@@ -67,9 +65,9 @@ export async function fetchWeather(city: string): Promise<WeatherData> {
   // Step 2: fetch current + 5-day forecast
   const forecastRes = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
-    `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m` +
-    `&daily=temperature_2m_max,temperature_2m_min,weather_code` +
-    `&timezone=auto&forecast_days=5`
+      `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m` +
+      `&daily=temperature_2m_max,temperature_2m_min,weather_code` +
+      `&timezone=auto&forecast_days=5`,
   )
   if (!forecastRes.ok) throw new Error(`Forecast error: ${forecastRes.status}`)
   const data = await forecastRes.json()

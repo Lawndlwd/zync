@@ -1,10 +1,10 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { RotateCcw, Save, Wrench } from 'lucide-react'
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import toast from 'react-hot-toast'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Wrench, Save, RotateCcw } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface McpToolGroup {
   id: string
@@ -56,18 +56,16 @@ export function ToolsSettingsCard() {
   }
 
   const toggleGroup = (id: string, currentEnabled: boolean) => {
-    setLocalState(prev => ({ ...prev, [id]: !currentEnabled }))
+    setLocalState((prev) => ({ ...prev, [id]: !currentEnabled }))
   }
 
   const handleSave = () => {
     if (!data) return
-    const enabledGroups = data.groups
-      .filter(g => !g.alwaysOn && getEnabled(g))
-      .map(g => g.id)
+    const enabledGroups = data.groups.filter((g) => !g.alwaysOn && getEnabled(g)).map((g) => g.id)
     mutation.mutate(enabledGroups)
   }
 
-  const totalTools = data?.groups.reduce((sum, g) => getEnabled(g) ? sum + g.toolCount : sum, 0) ?? 0
+  const totalTools = data?.groups.reduce((sum, g) => (getEnabled(g) ? sum + g.toolCount : sum), 0) ?? 0
 
   return (
     <Card>
@@ -77,14 +75,16 @@ export function ToolsSettingsCard() {
           MCP Tool Groups
           {data && <Badge className="text-[10px] ml-2">{totalTools} tools</Badge>}
         </CardTitle>
-        <p className="text-xs text-zinc-500">Enable or disable tool groups for the MCP server. Changes restart the MCP process.</p>
+        <p className="text-xs text-muted-foreground">
+          Enable or disable tool groups for the MCP server. Changes restart the MCP process.
+        </p>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
           {isLoading ? (
-            <p className="text-sm text-zinc-500">Loading...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : !data?.groups.length ? (
-            <p className="text-sm text-zinc-500">No tool groups found.</p>
+            <p className="text-sm text-muted-foreground">No tool groups found.</p>
           ) : (
             data.groups.map((g) => {
               const enabled = getEnabled(g)
@@ -94,15 +94,23 @@ export function ToolsSettingsCard() {
                   type="button"
                   disabled={g.alwaysOn}
                   onClick={() => !g.alwaysOn && toggleGroup(g.id, enabled)}
-                  className="flex w-full items-center gap-3 rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-left transition-colors hover:bg-white/[0.06] disabled:opacity-60 disabled:cursor-default"
+                  className="flex w-full items-center gap-3 rounded-lg bg-card border border-border p-3 text-left transition-colors hover:bg-accent disabled:opacity-60 disabled:cursor-default"
                 >
-                  <div className={`h-4 w-7 rounded-full transition-colors ${enabled ? 'bg-indigo-500' : 'bg-zinc-700'} relative`}>
-                    <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${enabled ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  <div
+                    className={`h-4 w-7 rounded-full transition-colors ${enabled ? 'bg-primary' : 'bg-muted-foreground'} relative`}
+                  >
+                    <div
+                      className={`absolute top-0.5 h-3 w-3 rounded-full bg-background transition-transform ${enabled ? 'translate-x-3.5' : 'translate-x-0.5'}`}
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-zinc-300">{g.label}</p>
-                      {g.alwaysOn && <Badge variant="info" className="text-[9px]">always on</Badge>}
+                      <p className="text-sm font-medium text-foreground">{g.label}</p>
+                      {g.alwaysOn && (
+                        <Badge variant="info" className="text-[9px]">
+                          always on
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <Badge className="text-[10px]">{g.toolCount}</Badge>

@@ -1,9 +1,9 @@
-import { useHabitsStore } from '@/store/habits'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { CartesianGrid, XAxis, YAxis, Line, ComposedChart, Bar } from 'recharts'
 import { format, parseISO } from 'date-fns'
+import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ChartConfig } from '@/components/ui/chart'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { useHabitsStore } from '@/store/habits'
 
 const chartConfig: ChartConfig = {
   count: {
@@ -39,12 +39,7 @@ export function CompletionChart() {
         <ChartContainer config={chartConfig} className="h-[250px] w-full">
           <ComposedChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(240 3.7% 15.9%)" />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              tick={{ fontSize: 11 }}
-            />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
             <YAxis
               tickLine={false}
               axisLine={false}
@@ -53,19 +48,8 @@ export function CompletionChart() {
               allowDecimals={false}
             />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar
-              dataKey="count"
-              fill="var(--color-count)"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={32}
-            />
-            <Line
-              dataKey="trend"
-              type="monotone"
-              stroke="var(--color-trend)"
-              strokeWidth={2}
-              dot={false}
-            />
+            <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+            <Line dataKey="trend" type="monotone" stroke="var(--color-trend)" strokeWidth={2} dot={false} />
           </ComposedChart>
         </ChartContainer>
       </CardContent>

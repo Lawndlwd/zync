@@ -14,7 +14,7 @@ export async function gtasksListTasklists(input: z.infer<typeof gtasksListTaskli
     maxResults: input.max_results,
   })
 
-  const lists = (res.data.items || []).map(l => ({
+  const lists = (res.data.items || []).map((l) => ({
     id: l.id,
     title: l.title,
     updated: l.updated,
@@ -41,7 +41,7 @@ export async function gtasksListTasks(input: z.infer<typeof gtasksListTasksSchem
     showHidden: input.show_completed,
   })
 
-  const items = (res.data.items || []).map(t => ({
+  const items = (res.data.items || []).map((t) => ({
     id: t.id,
     title: t.title,
     notes: t.notes || '',

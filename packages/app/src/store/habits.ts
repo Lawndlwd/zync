@@ -1,7 +1,7 @@
+import type { Habit, HabitLog, Journey } from '@zync/shared/types'
+import { differenceInCalendarDays, format, subDays } from 'date-fns'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Habit, HabitLog, Journey } from '@zync/shared/types'
-import { format, differenceInCalendarDays, subDays } from 'date-fns'
 
 interface CycleProgress {
   dayNumber: number
@@ -92,9 +92,7 @@ export const useHabitsStore = create<HabitsState>()(
       restartHabit: (id) => {
         set((s) => ({
           habits: s.habits.map((h) =>
-            h.id === id
-              ? { ...h, archived: false, startDate: format(new Date(), 'yyyy-MM-dd') }
-              : h
+            h.id === id ? { ...h, archived: false, startDate: format(new Date(), 'yyyy-MM-dd') } : h,
           ),
         }))
       },
@@ -117,7 +115,7 @@ export const useHabitsStore = create<HabitsState>()(
 
       getCycleProgress: (id) => {
         const habit = get().habits.find((h) => h.id === id)
-        if (!habit || !habit.targetDays) return null
+        if (!habit?.targetDays) return null
         const dayNumber = differenceInCalendarDays(new Date(), new Date(habit.startDate)) + 1
         return {
           dayNumber,
@@ -260,30 +258,30 @@ export const useHabitsStore = create<HabitsState>()(
         return get().logs.filter((l) => l.date === date)
       },
 
-  getDayNumber: (date) => {
-    const { journey } = get()
-    if (!journey || !journey.active) return null
-    const diff = differenceInCalendarDays(new Date(date), new Date(journey.startDate))
-    if (diff < 0) return null
-    return diff + 1
-  },
+      getDayNumber: (date) => {
+        const { journey } = get()
+        if (!journey?.active) return null
+        const diff = differenceInCalendarDays(new Date(date), new Date(journey.startDate))
+        if (diff < 0) return null
+        return diff + 1
+      },
 
-  ensureJournalHabit: () => {
-    const journalHabit = get().habits.find(h => h.name === 'Journal')
-    if (!journalHabit) {
-      const habit: Habit = {
-        id: 'journal-system-habit', // Special ID for system habit
-        name: 'Journal',
-        icon: 'BookOpen',
-        frequency: 'daily',
-        startDate: format(new Date(), 'yyyy-MM-dd'),
-        createdAt: new Date().toISOString(),
-        system: true, // Mark as system habit
-      }
-      set((s) => ({ habits: [...s.habits, habit] }))
-    }
-  },
+      ensureJournalHabit: () => {
+        const journalHabit = get().habits.find((h) => h.name === 'Journal')
+        if (!journalHabit) {
+          const habit: Habit = {
+            id: 'journal-system-habit', // Special ID for system habit
+            name: 'Journal',
+            icon: 'BookOpen',
+            frequency: 'daily',
+            startDate: format(new Date(), 'yyyy-MM-dd'),
+            createdAt: new Date().toISOString(),
+            system: true, // Mark as system habit
+          }
+          set((s) => ({ habits: [...s.habits, habit] }))
+        }
+      },
     }),
-    { name: 'zync-habits' }
-  )
+    { name: 'zync-habits' },
+  ),
 )

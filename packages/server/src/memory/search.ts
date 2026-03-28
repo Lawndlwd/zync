@@ -1,8 +1,8 @@
 // server/src/memory/search.ts
 
-import { getBrainDb } from './brain-db.js'
-import { generateEmbedding, embeddingToBuffer, bufferToEmbedding, cosineSimilarity, getModelName } from './embeddings.js'
 import { logger } from '../lib/logger.js'
+import { getBrainDb } from './brain-db.js'
+import { bufferToEmbedding, cosineSimilarity, generateEmbedding } from './embeddings.js'
 
 export interface MemorySearchResult {
   id: number
@@ -22,14 +22,16 @@ export async function hybridSearch(query: string, limit = 10): Promise<MemorySea
   // BM25 keyword search via FTS5
   let keywordResults: Array<{ id: number; content: string; category: string; created_at: string; rank: number }> = []
   try {
-    keywordResults = db.prepare(`
+    keywordResults = db
+      .prepare(`
       SELECT m.id, m.content, m.category, m.created_at, rank
       FROM memories_fts f
       JOIN memories m ON m.id = f.rowid
       WHERE memories_fts MATCH ?
       ORDER BY rank
       LIMIT ?
-    `).all(query, limit * 2) as typeof keywordResults
+    `)
+      .all(query, limit * 2) as typeof keywordResults
   } catch {
     // FTS match can fail on special characters
   }
@@ -38,15 +40,30 @@ export async function hybridSearch(query: string, limit = 10): Promise<MemorySea
   let vectorResults: Array<{ id: number; content: string; category: string; created_at: string; score: number }> = []
   try {
     const queryEmbedding = await generateEmbedding(query)
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(`
       SELECT id, content, category, created_at, embedding, relevance_score
       FROM memories WHERE embedding IS NOT NULL
-    `).all() as Array<{ id: number; content: string; category: string; created_at: string; embedding: Buffer; relevance_score: number }>
+    `)
+      .all() as Array<{
+      id: number
+      content: string
+      category: string
+      created_at: string
+      embedding: Buffer
+      relevance_score: number
+    }>
 
     const scored = rows.map((row) => {
       const rowEmbedding = bufferToEmbedding(row.embedding)
       const sim = cosineSimilarity(queryEmbedding, rowEmbedding)
-      return { id: row.id, content: row.content, category: row.category, created_at: row.created_at, score: sim * (row.relevance_score ?? 1) }
+      return {
+        id: row.id,
+        content: row.content,
+        category: row.category,
+        created_at: row.created_at,
+        score: sim * (row.relevance_score ?? 1),
+      }
     })
     scored.sort((a, b) => b.score - a.score)
     vectorResults = scored.slice(0, limit * 2)
@@ -57,11 +74,14 @@ export async function hybridSearch(query: string, limit = 10): Promise<MemorySea
   // Combine results with hybrid scoring
   const combined = new Map<number, MemorySearchResult>()
 
-  const maxRank = keywordResults.length > 0 ? Math.max(...keywordResults.map(r => Math.abs(r.rank))) : 1
+  const maxRank = keywordResults.length > 0 ? Math.max(...keywordResults.map((r) => Math.abs(r.rank))) : 1
   for (const r of keywordResults) {
-    const normalizedScore = 1 - (Math.abs(r.rank) / (maxRank + 1))
+    const normalizedScore = 1 - Math.abs(r.rank) / (maxRank + 1)
     combined.set(r.id, {
-      id: r.id, content: r.content, category: r.category, created_at: r.created_at,
+      id: r.id,
+      content: r.content,
+      category: r.category,
+      created_at: r.created_at,
       score: normalizedScore * KEYWORD_WEIGHT,
       source: 'keyword',
     })
@@ -74,7 +94,10 @@ export async function hybridSearch(query: string, limit = 10): Promise<MemorySea
       existing.source = 'hybrid'
     } else {
       combined.set(r.id, {
-        id: r.id, content: r.content, category: r.category, created_at: r.created_at,
+        id: r.id,
+        content: r.content,
+        category: r.category,
+        created_at: r.created_at,
         score: r.score * VECTOR_WEIGHT,
         source: 'vector',
       })
@@ -85,7 +108,7 @@ export async function hybridSearch(query: string, limit = 10): Promise<MemorySea
   results.sort((a, b) => b.score - a.score)
 
   // Track access for retrieved memories
-  const ids = results.slice(0, limit).map(r => r.id)
+  const ids = results.slice(0, limit).map((r) => r.id)
   if (ids.length > 0) {
     db.prepare(`
       UPDATE memories SET access_count = access_count + 1, last_accessed = datetime('now')
@@ -94,17 +117,4 @@ export async function hybridSearch(query: string, limit = 10): Promise<MemorySea
   }
 
   return results.slice(0, limit)
-}
-
-export async function saveMemoryWithEmbedding(content: string, category = 'general'): Promise<{ id: number }> {
-  const db = getBrainDb()
-  const embedding = await generateEmbedding(content)
-  const embeddingBuf = embeddingToBuffer(embedding)
-
-  const result = db.prepare(`
-    INSERT INTO memories (content, category, embedding, embedding_model)
-    VALUES (?, ?, ?, ?)
-  `).run(content, category, embeddingBuf, getModelName())
-
-  return { id: Number(result.lastInsertRowid) }
 }

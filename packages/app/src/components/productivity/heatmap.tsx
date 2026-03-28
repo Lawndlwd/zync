@@ -1,14 +1,14 @@
-import { useHabitsStore } from '@/store/habits'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { format, parseISO } from 'date-fns'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { useHabitsStore } from '@/store/habits'
 
 const intensityColors: Record<number, string> = {
-  0: 'bg-zinc-800',
+  0: 'bg-secondary',
   1: 'bg-indigo-900',
   2: 'bg-indigo-800',
   3: 'bg-indigo-700',
-  4: 'bg-indigo-500',
+  4: 'bg-primary',
   5: 'bg-indigo-400',
 }
 
@@ -34,7 +34,7 @@ export function Heatmap() {
           {/* Day labels */}
           <div className="flex flex-col gap-2 pr-1">
             {dayLabels.map((label, i) => (
-              <div key={i} className="h-3 w-6 text-xs text-zinc-500 leading-3">
+              <div key={i} className="h-3 w-6 text-xs text-muted-foreground leading-3">
                 {label}
               </div>
             ))}
@@ -55,13 +55,10 @@ export function Heatmap() {
         </div>
 
         {/* Legend */}
-        <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
+        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
           <span>Less</span>
           {[0, 1, 2, 3, 4, 5].map((level) => (
-            <div
-              key={level}
-              className={cn('h-3 w-3 rounded-[2px]', intensityColors[level])}
-            />
+            <div key={level} className={cn('h-3 w-3 rounded-[2px]', intensityColors[level])} />
           ))}
           <span>More</span>
         </div>

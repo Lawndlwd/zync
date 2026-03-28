@@ -1,9 +1,9 @@
+import { Save, User } from 'lucide-react'
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { User, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Textarea } from '@/components/ui/textarea'
 import { useProfile, useUpdateProfile } from '@/hooks/useMemory'
 
 const SECTIONS = [
@@ -63,22 +63,18 @@ export function MemoryProfileTab() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12 text-sm text-zinc-500">
-        Loading profile...
-      </div>
+      <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">Loading profile...</div>
     )
   }
 
   return (
-    <Card className="border-white/[0.08] bg-white/[0.03]">
+    <Card className="border-border bg-secondary">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium text-zinc-200">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-foreground">
           <User size={16} />
           Core Profile
         </CardTitle>
-        <p className="text-xs text-zinc-500">
-          Tell the AI about yourself so it can personalize responses.
-        </p>
+        <p className="text-xs text-muted-foreground">Tell the AI about yourself so it can personalize responses.</p>
       </CardHeader>
       <CardContent className="space-y-5">
         {SECTIONS.map(({ key, label, hint }) => {
@@ -88,10 +84,10 @@ export function MemoryProfileTab() {
           return (
             <div key={key} className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-400">{label}</label>
+                <label className="text-xs font-medium text-muted-foreground">{label}</label>
                 <div className="flex items-center gap-2">
                   {updatedAt && (
-                    <span className="text-[10px] text-zinc-600">
+                    <span className="text-[10px] text-muted-foreground">
                       Last updated{' '}
                       {new Date(updatedAt).toLocaleDateString(undefined, {
                         month: 'short',
@@ -103,7 +99,7 @@ export function MemoryProfileTab() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 px-2 text-xs text-zinc-400 hover:text-zinc-200"
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => handleSave(key)}
                       disabled={updateProfile.isPending}
                     >
@@ -118,7 +114,7 @@ export function MemoryProfileTab() {
                 onChange={(e) => handleChange(key, e.target.value)}
                 placeholder={hint}
                 rows={3}
-                className="resize-none border-white/[0.08] bg-white/[0.03] text-sm text-zinc-300 placeholder:text-zinc-600"
+                className="resize-none border-border bg-secondary text-sm text-foreground placeholder:text-muted-foreground"
               />
             </div>
           )

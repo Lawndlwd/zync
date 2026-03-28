@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import { Cpu, DollarSign, Hash, Zap } from 'lucide-react'
 import { fetchActivityStats } from '@/services/activity'
-import { Zap, Hash, Cpu, DollarSign } from 'lucide-react'
 
 interface StatsCardsProps {
   days: number
@@ -15,9 +15,7 @@ export function StatsCards({ days, source }: StatsCardsProps) {
   })
 
   const filteredBySource = stats?.bySource ?? []
-  const sourceData = source && source !== 'all'
-    ? filteredBySource.filter((s) => s.source === source)
-    : filteredBySource
+  const sourceData = source && source !== 'all' ? filteredBySource.filter((s) => s.source === source) : filteredBySource
 
   const totalTokens = sourceData.reduce((sum, s) => sum + s.total_tokens, 0)
   const totalCalls = sourceData.reduce((sum, s) => sum + s.calls, 0)
@@ -28,7 +26,7 @@ export function StatsCards({ days, source }: StatsCardsProps) {
       label: 'Total Tokens',
       value: stats ? formatNumber(totalTokens) : '—',
       icon: Zap,
-      color: 'text-indigo-400',
+      color: 'text-primary',
     },
     {
       label: 'Total Calls',
@@ -53,15 +51,12 @@ export function StatsCards({ days, source }: StatsCardsProps) {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {cards.map((card) => (
-        <div
-          key={card.label}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"
-        >
+        <div key={card.label} className="rounded-lg border border-border bg-secondary p-4">
           <div className="flex items-center gap-2 mb-2">
             <card.icon size={14} className={card.color} />
-            <span className="text-xs text-zinc-500">{card.label}</span>
+            <span className="text-xs text-muted-foreground">{card.label}</span>
           </div>
-          <p className="text-lg font-semibold text-zinc-100 truncate">{card.value}</p>
+          <p className="text-lg font-semibold text-foreground truncate">{card.value}</p>
         </div>
       ))}
     </div>

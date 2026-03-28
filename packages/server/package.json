@@ -11,12 +11,13 @@
     "start": "node dist/index.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "secrets:migrate": "tsx src/secrets/migrate.ts"
+    "secrets:migrate": "tsx src/secrets/migrate.ts",
+    "mcp": "tsx src/mcp-server/index.ts"
   },
   "dependencies": {
-    "@zync/shared": "workspace:*",
     "@huggingface/transformers": "^3.0.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "@zync/shared": "workspace:*",
     "baileys": "7.0.0-rc.9",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",
@@ -44,6 +45,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.0.0",
+    "@types/node": "^25.5.0",
     "@types/node-cron": "^3.0.11",
     "@types/pdf-parse": "^1.1.5",
     "@types/qrcode": "^1.5.6",

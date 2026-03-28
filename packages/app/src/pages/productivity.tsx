@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react'
-import { MetricsRow } from '@/components/productivity/metrics-row'
+import { Archive, BarChart3, ChevronDown, ChevronUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { CompletionChart } from '@/components/productivity/completion-chart'
-import { Heatmap } from '@/components/productivity/heatmap'
-import { HabitBreakdown } from '@/components/productivity/habit-breakdown'
 import { FollowUps } from '@/components/productivity/follow-ups'
-import { HabitCreator } from '@/components/productivity/habit-creator'
+import { HabitBreakdown } from '@/components/productivity/habit-breakdown'
 import { HabitCard } from '@/components/productivity/habit-card'
+import { HabitCreator } from '@/components/productivity/habit-creator'
+import { Heatmap } from '@/components/productivity/heatmap'
 import { JournalSection } from '@/components/productivity/journal-section'
-import { useHabitsStore } from '@/store/habits'
-import { BarChart3, ChevronDown, ChevronUp, Archive } from 'lucide-react'
+import { MetricsRow } from '@/components/productivity/metrics-row'
 import { cn } from '@/lib/utils'
+import { useHabitsStore } from '@/store/habits'
 
 export function ProductivityPage() {
   const habits = useHabitsStore((s) => s.habits)
@@ -25,20 +25,20 @@ export function ProductivityPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-zinc-100">Productivity</h1>
-        <p className="text-base text-zinc-500">Track your habits, streaks, and progress</p>
+        <h1 className="text-2xl font-display font-bold text-foreground">Productivity</h1>
+        <p className="text-base text-muted-foreground">Track your habits, streaks, and progress</p>
       </div>
 
       {/* Add tab navigation */}
-      <div className="mb-4 border-b border-white/[0.06]">
+      <div className="mb-4 border-b border-border">
         <nav className="flex gap-6">
           <button
             onClick={() => setActiveTab('habits')}
             className={cn(
               'pb-2 text-sm font-medium transition-colors',
-              activeTab === 'habits' 
-                ? 'border-b-2 border-indigo-400 text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-300'
+              activeTab === 'habits'
+                ? 'border-b-2 border-primary text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             Habits
@@ -48,8 +48,8 @@ export function ProductivityPage() {
             className={cn(
               'pb-2 text-sm font-medium transition-colors',
               activeTab === 'journal'
-                ? 'border-b-2 border-indigo-400 text-zinc-100'
-                : 'text-zinc-500 hover:text-zinc-300'
+                ? 'border-b-2 border-primary text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             Journal
@@ -66,7 +66,7 @@ export function ProductivityPage() {
           {/* Active Habits */}
           {activeHabits.length > 0 && (
             <div>
-              <p className="text-sm font-medium text-zinc-500 mb-3">Active Habits</p>
+              <p className="text-sm font-medium text-muted-foreground mb-3">Active Habits</p>
               <div className="space-y-3">
                 {activeHabits.map((h) => (
                   <HabitCard key={h.id} habit={h} />
@@ -91,10 +91,10 @@ export function ProductivityPage() {
           )}
 
           {activeHabits.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] py-16 text-center">
-              <BarChart3 size={40} className="text-zinc-600 mb-3" />
-              <p className="text-zinc-400 mb-1">No active habits yet</p>
-              <p className="text-base text-zinc-500">
+            <div className="flex flex-col items-center justify-center rounded-lg bg-card border border-border py-16 text-center">
+              <BarChart3 size={40} className="text-muted-foreground mb-3" />
+              <p className="text-muted-foreground mb-1">No active habits yet</p>
+              <p className="text-base text-muted-foreground">
                 Create a habit above to start tracking your productivity.
               </p>
             </div>
@@ -105,11 +105,10 @@ export function ProductivityPage() {
             <div>
               <button
                 onClick={() => setShowArchived((s) => !s)}
-                className="flex items-center gap-3 text-sm font-medium text-zinc-500 hover:text-zinc-300 transition-colors mb-3"
+                className="flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-3"
               >
                 <Archive size={16} />
-                Archived ({archivedHabits.length})
-                {showArchived ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                Archived ({archivedHabits.length}){showArchived ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
               {showArchived && (
                 <div className="space-y-3">

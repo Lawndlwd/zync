@@ -68,7 +68,7 @@ export async function replyToDM(id: number, text: string): Promise<void> {
 
 export async function crossPostToTelegram(
   content: string,
-  mediaUrl?: string
+  mediaUrl?: string,
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   return fetchJSON(`${API_BASE}/crosspost`, {
     method: 'POST',
@@ -80,7 +80,9 @@ export async function fetchTelegramConfig(): Promise<TelegramConfig> {
   return fetchJSON(`${API_BASE}/config`)
 }
 
-export async function saveTelegramConfig(config: Partial<TelegramConfig>): Promise<{ success: boolean; channel?: TelegramChannelInfo }> {
+export async function saveTelegramConfig(
+  config: Partial<TelegramConfig>,
+): Promise<{ success: boolean; channel?: TelegramChannelInfo }> {
   return fetchJSON(`${API_BASE}/config`, {
     method: 'PUT',
     body: JSON.stringify(config),

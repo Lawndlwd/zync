@@ -1,19 +1,17 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Task, TaskStatus } from '@zync/shared/types'
 import {
+  createTask,
+  deleteTask,
   fetchAllTasks,
   fetchProjectTasks,
-  createTask,
   updateTask,
   updateTaskStatus,
-  deleteTask,
 } from '@/services/projects'
 
 // Helper: patch a single task in a cached task list
 function patchTaskInList(old: Task[] | undefined, updated: Task): Task[] | undefined {
-  return old?.map((t) =>
-    t.fileName === updated.fileName && t.project === updated.project ? updated : t
-  )
+  return old?.map((t) => (t.fileName === updated.fileName && t.project === updated.project ? updated : t))
 }
 
 export function useAllTasks() {
@@ -36,8 +34,17 @@ export function useProjectTasks(projectName: string) {
 export function useCreateTask() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ projectName, ...input }: { projectName: string; title: string; assignee?: string; priority?: string; tags?: string[]; content?: string }) =>
-      createTask(projectName, input),
+    mutationFn: ({
+      projectName,
+      ...input
+    }: {
+      projectName: string
+      title: string
+      assignee?: string
+      priority?: string
+      tags?: string[]
+      content?: string
+    }) => createTask(projectName, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks'] })
       qc.invalidateQueries({ queryKey: ['projects'] })
@@ -48,8 +55,20 @@ export function useCreateTask() {
 export function useUpdateTask() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ projectName, taskFile, ...updates }: { projectName: string; taskFile: string; title?: string; status?: string; assignee?: string; priority?: string; tags?: string[]; content?: string }) =>
-      updateTask(projectName, taskFile, updates),
+    mutationFn: ({
+      projectName,
+      taskFile,
+      ...updates
+    }: {
+      projectName: string
+      taskFile: string
+      title?: string
+      status?: string
+      assignee?: string
+      priority?: string
+      tags?: string[]
+      content?: string
+    }) => updateTask(projectName, taskFile, updates),
     onSuccess: (updatedTask) => {
       // Patch the task directly in cache — no refetch, no board flicker
       qc.setQueryData<Task[]>(['tasks', 'all'], (old) => patchTaskInList(old, updatedTask))
@@ -75,16 +94,12 @@ export function useUpdateTaskStatus() {
         old?.map((task) =>
           task.fileName === taskFile && task.project === projectName
             ? { ...task, metadata: { ...task.metadata, status } }
-            : task
-        )
+            : task,
+        ),
       )
 
       qc.setQueryData<Task[]>(['tasks', projectName], (old) =>
-        old?.map((task) =>
-          task.fileName === taskFile
-            ? { ...task, metadata: { ...task.metadata, status } }
-            : task
-        )
+        old?.map((task) => (task.fileName === taskFile ? { ...task, metadata: { ...task.metadata, status } } : task)),
       )
 
       return { previousAllTasks, previousProjectTasks }

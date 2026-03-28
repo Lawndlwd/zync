@@ -1,14 +1,14 @@
 // server/src/memory/memories.ts
 
+import { logger } from '../lib/logger.js'
 import { getBrainDb } from './brain-db.js'
 import {
-  generateEmbedding,
+  bufferToEmbedding,
   cosineSimilarity,
   embeddingToBuffer,
-  bufferToEmbedding,
+  generateEmbedding,
   getModelName,
 } from './embeddings.js'
-import { logger } from '../lib/logger.js'
 
 export interface MemoryRow {
   id: number
@@ -38,9 +38,11 @@ export async function saveMemoryWithDedup(
   const embeddingBuf = embeddingToBuffer(embedding)
 
   // Scan all memories with embeddings for similarity
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT id, content, embedding FROM memories WHERE embedding IS NOT NULL
-  `).all() as Array<{ id: number; content: string; embedding: Buffer }>
+  `)
+    .all() as Array<{ id: number; content: string; embedding: Buffer }>
 
   let bestMatch: { id: number; content: string; similarity: number } | null = null
 
@@ -68,31 +70,16 @@ export async function saveMemoryWithDedup(
   }
 
   // Insert new memory
-  const result = db.prepare(`
+  const result = db
+    .prepare(`
     INSERT INTO memories (content, category, source, embedding, embedding_model)
     VALUES (?, ?, ?, ?, ?)
-  `).run(content, category, source, embeddingBuf, getModelName())
+  `)
+    .run(content, category, source, embeddingBuf, getModelName())
 
   const id = Number(result.lastInsertRowid)
   logger.info({ id, category, source }, 'Saved new memory')
   return { id, merged: false }
-}
-
-/**
- * Simple save without dedup (for migration).
- */
-export function saveMemoryDirect(
-  content: string,
-  category = 'general',
-  source = 'tool',
-): { id: number } {
-  const db = getBrainDb()
-  const result = db.prepare(`
-    INSERT INTO memories (content, category, source)
-    VALUES (?, ?, ?)
-  `).run(content, category, source)
-
-  return { id: Number(result.lastInsertRowid) }
 }
 
 export function deleteMemoryById(id: number): boolean {
@@ -101,32 +88,32 @@ export function deleteMemoryById(id: number): boolean {
   return result.changes > 0
 }
 
-export function listMemories(opts?: {
-  category?: string
-  limit?: number
-  offset?: number
-}): MemoryRow[] {
+export function listMemories(opts?: { category?: string; limit?: number; offset?: number }): MemoryRow[] {
   const db = getBrainDb()
   const category = opts?.category
   const limit = opts?.limit ?? 50
   const offset = opts?.offset ?? 0
 
   if (category) {
-    return db.prepare(`
+    return db
+      .prepare(`
       SELECT id, content, category, source, access_count, last_accessed, created_at, updated_at
       FROM memories
       WHERE category = ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
-    `).all(category, limit, offset) as MemoryRow[]
+    `)
+      .all(category, limit, offset) as MemoryRow[]
   }
 
-  return db.prepare(`
+  return db
+    .prepare(`
     SELECT id, content, category, source, access_count, last_accessed, created_at, updated_at
     FROM memories
     ORDER BY created_at DESC
     LIMIT ? OFFSET ?
-  `).all(limit, offset) as MemoryRow[]
+  `)
+    .all(limit, offset) as MemoryRow[]
 }
 
 export function getMemoryCount(): number {
@@ -137,6 +124,8 @@ export function getMemoryCount(): number {
 
 export function listMemoryCategories(): string[] {
   const db = getBrainDb()
-  const rows = db.prepare('SELECT DISTINCT category FROM memories ORDER BY category').all() as Array<{ category: string }>
-  return rows.map(r => r.category)
+  const rows = db.prepare('SELECT DISTINCT category FROM memories ORDER BY category').all() as Array<{
+    category: string
+  }>
+  return rows.map((r) => r.category)
 }

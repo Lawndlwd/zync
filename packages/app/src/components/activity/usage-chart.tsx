@@ -1,13 +1,8 @@
-import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchActivityStats } from '@/services/activity'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
+import { useMemo } from 'react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { fetchActivityStats } from '@/services/activity'
 
 const chartConfig = {
   dashboard: { label: 'Dashboard', color: 'var(--color-indigo-500)' },
@@ -48,8 +43,8 @@ export function UsageChart({ days, source }: UsageChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-6 flex items-center justify-center h-64">
-        <p className="text-sm text-zinc-500">No data for this period</p>
+      <div className="rounded-lg bg-card border border-border p-6 flex items-center justify-center h-64">
+        <p className="text-sm text-muted-foreground">No data for this period</p>
       </div>
     )
   }
@@ -57,8 +52,8 @@ export function UsageChart({ days, source }: UsageChartProps) {
   const showBothSeries = !source || source === 'all'
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4">
-      <p className="text-sm font-medium text-zinc-300 mb-4">Token Usage Over Time</p>
+    <div className="rounded-lg bg-card border border-border p-4">
+      <p className="text-sm font-medium text-foreground mb-4">Token Usage Over Time</p>
       <ChartContainer config={chartConfig} className="h-56 w-full">
         <AreaChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-zinc-800)" />
