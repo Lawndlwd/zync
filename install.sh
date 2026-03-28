@@ -20,7 +20,6 @@ cd "$INSTALL_DIR"
 # Download deployment files
 info "Downloading Zync configuration..."
 curl -fsSL "$RAW_BASE/docker-compose.prod.yml" -o docker-compose.yml
-curl -fsSL "$RAW_BASE/Caddyfile" -o Caddyfile
 curl -fsSL "$RAW_BASE/.env.example" -o .env.example
 curl -fsSL "$RAW_BASE/install.sh" -o install.sh && chmod +x install.sh
 
@@ -33,9 +32,10 @@ docker compose up -d
 
 # Wait for health
 info "Waiting for Zync to start..."
+PORT="${ZYNC_PORT:-3001}"
 HEALTHY=false
 for i in $(seq 1 30); do
-  if curl -sf http://localhost:3001/api/health &>/dev/null; then
+  if curl -sf "http://localhost:$PORT/api/health" &>/dev/null; then
     HEALTHY=true
     break
   fi
@@ -55,7 +55,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 ok "Zync is ready!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-info "Open http://localhost to get started"
+info "Open http://localhost:$PORT to get started"
 echo ""
 info "Commands:"
 echo "  cd $INSTALL_DIR"

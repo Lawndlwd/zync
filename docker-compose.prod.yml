@@ -11,27 +11,14 @@ services:
     volumes:
       - zync-data:/app/packages/server/data
       - zync-documents:/app/documents
+    ports:
+      - "${ZYNC_PORT:-3001}:3001"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)process.exit(1)})"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 30s
-
-  caddy:
-    image: caddy:latest
-    restart: unless-stopped
-    depends_on:
-      - app
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      - DOMAIN=${DOMAIN:-}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
 
   whisper:
     image: ghcr.io/lawndlwd/zync-whisper:latest
@@ -60,5 +47,3 @@ services:
 volumes:
   zync-data:
   zync-documents:
-  caddy_data:
-  caddy_config:

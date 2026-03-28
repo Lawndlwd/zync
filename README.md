@@ -30,11 +30,11 @@ curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bas
 ```
 
 This will:
-1. Download the production Docker Compose config and Caddyfile
+1. Download the production Docker Compose config
 2. Pull pre-built Docker images
-3. Start the app behind Caddy (reverse proxy on port 80)
+3. Start the app on port 3001
 
-Open **http://localhost** once it's running.
+Open **http://localhost:3001** once it's running.
 
 ### Update
 
@@ -49,8 +49,7 @@ docker compose pull && docker compose up -d
 
 | Service  | Port | Description                          |
 |----------|------|--------------------------------------|
-| App      | —    | Unified frontend + API server        |
-| Caddy    | 80   | Reverse proxy                        |
+| App      | 3001 | Unified frontend + API server        |
 | Whisper  | —    | Voice transcription                  |
 | Wakeword | —    | Wake word detection                  |
 
@@ -86,7 +85,7 @@ Configured through the **Settings** page in the UI:
 - **Storage**: SQLite
 - **Linting**: Biome
 - **Voice**: Whisper (transcription) + OpenWakeWord (wake word detection)
-- **Deploy**: Docker Compose + Caddy
+- **Deploy**: Docker Compose
 
 ## Project Structure
 
