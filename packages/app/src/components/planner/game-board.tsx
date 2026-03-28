@@ -1,6 +1,5 @@
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { useDailyLevers, useIdentity, useLifeOsComponents, useLifeOsStats } from '@/hooks/useLifeOs'
-import { useHabitsStore } from '@/store/habits'
 import { ActivitySection } from '../dashboard/activity-section'
 import { OverviewSection } from '../dashboard/overview-section'
 import { ProductivitySection } from '../dashboard/productivity-section'
@@ -24,8 +23,6 @@ export function GameBoard() {
   const today = new Date().toISOString().slice(0, 10)
   const { data: levers = [] } = useDailyLevers(today)
   const { data: identity } = useIdentity()
-  const habits = useHabitsStore((s) => s.habits).filter((h) => !h.archived)
-  const _hasHabits = habits.length > 0
   const antiVision = components.find((c) => c.type === 'anti-vision')
   const vision = components.find((c) => c.type === 'vision')
   const yearGoal = components.find((c) => c.type === 'one-year-goal' && c.isActive)

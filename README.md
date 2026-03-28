@@ -1,92 +1,146 @@
 # Zync
 
-A self-hosted personal productivity dashboard for developers.
-Connects your tools — Jira, GitLab, Telegram — and uses AI to help
-you manage, prioritize, and act on your work from a single interface.
+A self-hosted, AI-powered personal operating system.
+Plan your life, track habits, chat with an AI agent that has access to your
+tools, and manage everything from a single dashboard.
 
 ## Features
 
-- **AI Chat** — Conversational agent powered by [OpenCode](https://opencode.ai) with
-  tool calling (create tasks, transition Jira issues, draft replies, summarize sprints)
-- **Jira Integration** — View assigned issues, transition statuses, add comments, detect blockers
-- **GitLab** — MR review queue, pipeline stats, project overview
-- **Daily Journal** — Rich text editor with AI-assisted standup generation, weekly recaps, and focus suggestions
-- **Productivity Tracking** — Habits, activity log, token usage stats
-- **Canvas** — AI-powered workspace for brainstorming and structured tasks
-- **Todos** — Personal task list linked to Jira issues with AI-generated sub-tasks
-- **Telegram Bot** — Chat with your agent, get daily briefings, proactive notifications
-- **WhatsApp Channel** — Message your agent via WhatsApp
-- **Documents** — Project knowledge base with search
-- **Daily Digest** — AI-generated briefing of open issues, unread messages, and sprint status
+- **Life OS** — Personal planning framework: vision, anti-vision, 1-year goals, monthly projects, daily levers, XP/level system with streaks
+- **AI Chat** — Conversational agent powered by [OpenCode](https://opencode.ai) with MCP tool calling
+- **Projects** — Kanban board with priority and assignee filters
+- **Documents** — Knowledge base with rich text editor
+- **Canvas** — Live AI-rendered HTML/CSS/JS workspace
+- **Productivity** — Habit tracking with heatmaps, morning/evening journaling
+- **Activity** — AI token usage and cost analytics
+- **Vault** — Encrypted secret management with PIN protection
+- **Channels** — Talk to your agent via Telegram, WhatsApp, or Gmail
+- **Briefings** — Scheduled AI-generated summaries (configurable cron)
+- **Google Workspace** — Gmail, Calendar, Drive, Contacts, Tasks (via MCP tools)
+- **Voice** — Wake word detection + Whisper transcription
+- **Dashboard** — Personal overview with configurable widgets
 - **Dark mode** by default
 
 ## Quick Start
+
+> **Prerequisite**: [OpenCode](https://opencode.ai) must be installed and running (`opencode serve`).
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Lawndlwd/zync/main/install.sh | bash
 ```
 
 This will:
-1. Install [OpenCode](https://opencode.ai) if not already installed
-2. Pull pre-built Docker images (frontend, backend, whisper, wakeword)
-3. Start all services
-4. Launch `opencode serve` with CORS configured
+1. Download the production Docker Compose config and Caddyfile
+2. Pull pre-built Docker images
+3. Start the app behind Caddy (reverse proxy on port 80)
+
+Open **http://localhost** once it's running.
+
+### Enable Voice (optional)
+
+```bash
+cd ~/.zync
+docker compose --profile voice up -d
+```
 
 ### Update
 
 ```bash
 cd ~/.zync
-./install.sh --update
+docker compose pull && docker compose up -d
 ```
 
 ## Services
 
-| Service    | URL                    | Description                |
-|------------|------------------------|----------------------------|
-| Frontend   | http://localhost:8080   | Dashboard UI               |
-| Backend    | http://localhost:3001   | API server                 |
-| OpenCode   | http://localhost:4096   | AI agent (runs on host)    |
-| Whisper    | internal               | Voice transcription        |
-| Wakeword   | http://localhost:9000   | Voice activation           |
+### Production (`docker-compose.prod.yml`)
+
+| Service  | Port | Description                          |
+|----------|------|--------------------------------------|
+| App      | —    | Unified frontend + API server        |
+| Caddy    | 80   | Reverse proxy                        |
+| Whisper  | —    | Voice transcription (voice profile)  |
+| Wakeword | —    | Wake word detection (voice profile)  |
+
+### Development (`docker-compose.yml`)
+
+| Service  | Port | Description              |
+|----------|------|--------------------------|
+| Frontend | 8080 | Vite dev server          |
+| Backend  | 3001 | Express API server       |
+| OpenCode | 4096 | AI agent (runs on host)  |
+| Whisper  | —    | Voice transcription      |
+| Wakeword | —    | Wake word detection      |
 
 ## Configuration
 
-All integrations (Jira, GitLab, Telegram, etc.) are configured through the **Settings** page in the UI. Secrets are stored in an encrypted local vault — no `.env` editing needed.
+Configured through the **Settings** page in the UI:
+
+- **Integrations** — Telegram, WhatsApp, Gmail
+- **Agent Profile** — Identity, instructions, memories
+- **Schedules** — Recurring AI tasks (cron)
+- **Tools** — Enable/disable MCP tool groups (web, canvas, files, shell, Google Workspace, etc.)
+- **Vault** — Encrypted secret storage
+- **Briefings** — Daily AI digest scheduling
 
 ## Tech Stack
 
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - **Backend**: Node.js + Express
-- **AI**: OpenCode (supports any provider — Anthropic, OpenAI, local models via Ollama)
+- **AI**: [OpenCode](https://opencode.ai) (supports Anthropic, OpenAI, Ollama)
+- **Monorepo**: pnpm workspaces + Turborepo
+- **Shared**: `@zync/shared` package for common types and utilities
 - **State**: Zustand + TanStack Query
 - **Storage**: SQLite
-- **Deploy**: Docker Compose (frontend via nginx, backend via Node)
+- **Linting**: Biome
+- **Voice**: Whisper (transcription) + OpenWakeWord (wake word detection)
+- **Deploy**: Docker Compose + Caddy
+
+## Project Structure
+
+```
+packages/
+  app/       — React frontend (@zync/app)
+  server/    — Express API server (@zync/server)
+  shared/    — Shared types and utilities (@zync/shared)
+  whisper/   — Whisper transcription service (Python)
+  wakeword/  — Wake word detection service (Python)
+```
 
 ## Development
 
 ```bash
 git clone https://github.com/Lawndlwd/zync.git
 cd zync
-
-# Frontend
 pnpm install
+
+# Start OpenCode (prerequisite)
+opencode serve
+
+# Start frontend + backend (via Turborepo)
 pnpm dev
 
-# Backend
-cd server
-pnpm install
-pnpm dev
+# Start everything including voice services
+pnpm dev:all
 
-# Or build and run everything locally with Docker
+# Or run with Docker
 docker compose up -d --build
 ```
 
 ## Useful Commands
 
 ```bash
+# Development
+pnpm dev                # Start app + server
+pnpm dev:all            # Start all services including voice
+pnpm build              # Build all packages
+pnpm typecheck          # Type-check all packages
+pnpm lint               # Lint with Biome
+pnpm lint:fix           # Lint and auto-fix
+
+# Docker (production)
 cd ~/.zync
-docker compose logs -f           # View logs
-docker compose down              # Stop Zync
-docker compose up -d             # Start Zync
-./install.sh --update            # Update to latest
+docker compose logs -f                       # View logs
+docker compose down                          # Stop
+docker compose pull && docker compose up -d  # Update
+docker compose --profile voice up -d         # Enable voice
 ```
