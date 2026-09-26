@@ -34,7 +34,7 @@ function parse(v: string | undefined): { date: Date | null; time: string } {
 
 const sameYmd = (a: Date | null, b: Date) => !!a && ymd(a) === ymd(b)
 
-export function CalendarIcon() {
+function CalendarIcon() {
   return (
     <svg
       width="14"

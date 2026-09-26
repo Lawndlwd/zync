@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { isMap, isScalar, isSeq, parseDocument } from 'yaml'
-import type { Board, Person } from '../api'
+import type { Person } from '../api'
 import { TextButton } from '../components/Button'
 import { Toggle } from '../components/Controls'
 import { DatePicker } from '../components/DatePicker'
 import { TextInput } from '../components/Field'
 import { PersonSelect } from '../components/PersonSelect'
-import { Select } from '../components/Select'
 import { TagInput } from '../components/TagInput'
 import { IconChevDown, IconChevRight } from '../icons'
 
@@ -20,13 +19,10 @@ const DATE_KEYS = new Set(['due', 'runAt', 'run_at', 'date'])
 export function Properties({
   source,
   onChange,
-  board,
   people,
 }: {
   source: string
   onChange: (yaml: string) => void
-  /** Set when the file is a card on this board. */
-  board?: Board
   people: Person[]
 }) {
   const [doc] = useState(() => parseDocument(source))
@@ -74,7 +70,7 @@ export function Properties({
             const key = isScalar(pair.key) ? String(pair.key.value) : String(pair.key)
             return (
               <Row key={key} name={key}>
-                <Value name={key} node={pair.value} board={board} people={people} onChange={(v) => set(key, v)} />
+                <Value name={key} node={pair.value} people={people} onChange={(v) => set(key, v)} />
               </Row>
             )
           })}
@@ -127,13 +123,11 @@ function Row({ name, children }: { name: string; children: React.ReactNode }) {
 function Value({
   name,
   node,
-  board,
   people,
   onChange,
 }: {
   name: string
   node: unknown
-  board?: Board
   people: Person[]
   onChange: (v: unknown) => void
 }) {
@@ -160,16 +154,6 @@ function Value({
   const value = isScalar(node) ? node.value : node
   if (typeof value === 'boolean') return <Toggle label={name} checked={value} onChange={onChange} />
   const text = value === null || value === undefined ? '' : String(value)
-  if (board && name === 'status')
-    return (
-      <Select
-        compact
-        ariaLabel="status"
-        value={text || board.columns[0].id}
-        options={board.columns.map((c) => ({ value: c.id, label: c.name, text: c.name }))}
-        onChange={onChange}
-      />
-    )
   if (name === 'assignee') return <PersonSelect compact value={text || undefined} people={people} onChange={onChange} />
   if (DATE_KEYS.has(name) || DATE.test(text))
     return (

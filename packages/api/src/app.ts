@@ -1,17 +1,28 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { createWorkspace, defaultTimezone, errorMessage, listWorkspaces, OpencodeClient } from '@zync/jobs'
+import { createWorkspace, defaultTimezone, errorMessage, listWorkspaces, type OpencodeClient } from '@zync/jobs'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { boardsRoutes, peopleRoutes } from './boards-routes.js'
 import { eventsHandler } from './events.js'
 import { fsRoutes } from './fs-routes.js'
 import { jobsRoutes } from './jobs-routes.js'
+import { opencodeProxy } from './opencode-proxy.js'
 import { opencodeRoutes } from './opencode-routes.js'
+
+/** zync's own REST API. Namespaced so the root stays free for opencode's UI (see opencode-proxy). */
+const API = '/zync/api'
+
+/** Paths the app serves itself; everything else belongs to opencode when the proxy is on. */
+export const isAppPath = (url: string) => {
+  const p = url.split('?')[0]
+  return p === '/' || p.startsWith('/zync/') || p === '/w' || p.startsWith('/w/')
+}
 
 export interface AppOptions {
   workspacesRoot: string
-  chatUrl?: string
   webDist?: string
+  /** Forward opencode's web UI and API through this app (internal URL, e.g. http://opencode:4096). */
+  opencodeUrl?: string
   /** The opencode config file editable from Settings. */
   opencodeConfigPath?: string
   opencodeClient?: OpencodeClient
@@ -22,39 +33,51 @@ export function createApp(opts: AppOptions) {
   app.disable('x-powered-by')
   app.set('workspacesRoot', opts.workspacesRoot)
 
-  app.get('/api/health', (_req, res) => {
+  app.get(`${API}/health`, (_req, res) => {
     res.json({ ok: true })
   })
 
-  app.get('/api/config', (_req, res) => {
-    res.json({ chatUrl: opts.chatUrl || null, workspacesRoot: opts.workspacesRoot, timezone: defaultTimezone() })
+  app.get(`${API}/config`, (_req, res) => {
+    res.json({ workspacesRoot: opts.workspacesRoot, timezone: defaultTimezone() })
   })
 
-  app.get('/api/workspaces', async (_req, res) => {
+  app.get(`${API}/workspaces`, async (_req, res) => {
     res.json(await listWorkspaces(opts.workspacesRoot))
   })
 
-  app.post('/api/workspaces', express.json(), async (req, res) => {
+  app.post(`${API}/workspaces`, express.json(), async (req, res) => {
     res.status(201).json(await createWorkspace(String(req.body?.name || '').trim(), opts.workspacesRoot))
   })
 
-  app.use('/api/people', peopleRoutes(opts.workspacesRoot))
-  app.use('/api/ws/:ws/boards', boardsRoutes())
-  app.use('/api/ws/:ws', fsRoutes())
-  app.use('/api/ws/:ws/jobs', jobsRoutes())
-  app.get('/api/ws/:ws/events', eventsHandler)
-  if (opts.opencodeConfigPath) app.use('/api/opencode', opencodeRoutes(opts.opencodeConfigPath, opts.opencodeClient))
+  app.use(`${API}/people`, peopleRoutes(opts.workspacesRoot))
+  app.use(`${API}/ws/:ws/boards`, boardsRoutes())
+  app.use(`${API}/ws/:ws`, fsRoutes())
+  app.use(`${API}/ws/:ws/jobs`, jobsRoutes())
+  app.get(`${API}/ws/:ws/events`, eventsHandler)
+  if (opts.opencodeConfigPath) app.use(`${API}/opencode`, opencodeRoutes(opts.opencodeConfigPath, opts.opencodeClient))
 
-  app.use('/api', (_req, res) => {
+  app.use(API, (_req, res) => {
     res.status(404).json({ error: 'Not found' })
   })
 
-  if (opts.webDist && existsSync(opts.webDist)) {
-    app.use(express.static(opts.webDist, { index: false }))
-    app.get('/{*splat}', (_req, res) => {
-      res.sendFile(path.join(opts.webDist as string, 'index.html'))
-    })
-  }
+  const web = opts.webDist && existsSync(opts.webDist) ? opts.webDist : null
+  const proxy = opts.opencodeUrl ? opencodeProxy(opts.opencodeUrl) : null
+  if (web) app.use('/zync/assets', express.static(path.join(web, 'zync/assets'), { immutable: true, maxAge: '1y' }))
+
+  app.use((req, res, next) => {
+    // opencode's own home page, when navigated to inside the chat frame.
+    const inFrame = req.get('sec-fetch-dest') === 'iframe'
+    const spa = req.path === '/' || req.path === '/w' || req.path.startsWith('/w/')
+    if (web && req.method === 'GET' && spa && !(inFrame && req.path === '/')) {
+      res.sendFile(path.join(web, 'index.html'))
+      return
+    }
+    if (proxy && !(req.path.startsWith('/zync/') || req.path === '/w' || req.path.startsWith('/w/'))) {
+      proxy(req, res)
+      return
+    }
+    next()
+  })
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const invalid = err?.name === 'ZodError'

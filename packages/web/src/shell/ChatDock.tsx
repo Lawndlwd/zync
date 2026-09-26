@@ -38,7 +38,6 @@ export function ChatDock({
   mode,
   width,
   frames,
-  chatUrl,
   view,
   onOpen,
   onFull,
@@ -48,7 +47,6 @@ export function ChatDock({
   mode: DockMode
   width: string
   frames: Record<string, string>
-  chatUrl: string | null | undefined
   view: ViewContext | null
   onOpen: () => void
   onFull: () => void
@@ -103,25 +101,16 @@ export function ChatDock({
           </button>
         </div>
         <div className="frame">
-          {chatUrl === null ? (
-            <div className="empty">
-              <span className="mono muted">AI server not configured</span>
-              <span className="mono-s muted" style={{ opacity: 0.8 }}>
-                Set CHAT_URL on the API server
-              </span>
-            </div>
-          ) : (
-            Object.entries(frames).map(([name, url]) => (
-              <iframe
-                key={name}
-                title={`AI chat – ${name}`}
-                src={url}
-                allow="clipboard-read; clipboard-write; microphone"
-                style={{ display: name === ws ? undefined : 'none' }}
-                onLoad={() => setLoaded((l) => ({ ...l, [name]: true }))}
-              />
-            ))
-          )}
+          {Object.entries(frames).map(([name, url]) => (
+            <iframe
+              key={name}
+              title={`AI chat – ${name}`}
+              src={url}
+              allow="clipboard-read; clipboard-write; microphone"
+              style={{ display: name === ws ? undefined : 'none' }}
+              onLoad={() => setLoaded((l) => ({ ...l, [name]: true }))}
+            />
+          ))}
         </div>
         <div className="row between mono-s muted" style={{ padding: '0 14px 12px' }}>
           <span className="row g6">
@@ -135,7 +124,7 @@ export function ChatDock({
                 display: 'inline-block',
               }}
             />
-            {chatUrl === null ? 'Not configured' : loaded[ws] ? 'Connected' : 'Connecting…'}
+            {loaded[ws] ? 'Connected' : 'Connecting…'}
           </span>
           <span>{mode === 'full' ? 'Esc to return' : 'Drag divider · double-click to reset 45%'}</span>
         </div>

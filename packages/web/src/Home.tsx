@@ -42,7 +42,7 @@ export function Home() {
   )
 }
 
-export function NewWorkspaceForm({ onDone }: { onDone?: () => void }) {
+function NewWorkspaceForm() {
   const [name, setName] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -58,7 +58,6 @@ export function NewWorkspaceForm({ onDone }: { onDone?: () => void }) {
         try {
           const ws = await api.createWorkspace(name)
           await qc.invalidateQueries({ queryKey: ['workspaces'] })
-          onDone?.()
           navigate(`/w/${encodeURIComponent(ws.name)}/overview`)
         } catch (e) {
           setErr((e as Error).message)

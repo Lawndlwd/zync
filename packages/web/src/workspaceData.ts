@@ -77,7 +77,7 @@ const basenameNoExt = (p: string) => p.slice(p.lastIndexOf('/') + 1).replace(/\.
 
 // ── derived ────────────────────────────────────────────────────────────────
 
-export function isDoneColumn(board: Board, status?: string): boolean {
+function isDoneColumn(board: Board, status?: string): boolean {
   const last = board.columns[board.columns.length - 1]?.id
   return (status ?? board.columns[0]?.id) === last
 }

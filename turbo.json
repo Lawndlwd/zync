@@ -31,7 +31,6 @@
     "WORKSPACES_ROOT",
     "OPENCODE_URL",
     "OPENCODE_SERVER_PASSWORD",
-    "CHAT_URL",
     "APP_URL",
     "PORT",
     "TZ",

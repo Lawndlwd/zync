@@ -106,15 +106,6 @@ export class OpencodeClient {
     await this.call('/global/dispose', undefined, { method: 'POST' })
   }
 
-  async health(): Promise<boolean> {
-    try {
-      await this.call('/config', undefined)
-      return true
-    } catch {
-      return false
-    }
-  }
-
   /**
    * Subscribe to the global event stream. Reconnects forever; returns a stop function.
    * `onEvent` receives `{ directory, payload: { type, properties } }`.

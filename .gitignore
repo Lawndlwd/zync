@@ -25,7 +25,6 @@ dist-ssr
 
 # Data files
 data/
-packages/server/data/
 
 # Internal docs and plans
 docs/
@@ -36,7 +35,6 @@ docs/
 
 # Environment files
 .env
-packages/server/.env
 
 # Local MCP config (contains tokens)
 .mcp.json
@@ -47,9 +45,5 @@ packages/server/.env
 # Turborepo
 .turbo/
 
-# Secrets vault
-packages/server/data/secrets.db
-packages/server/data/secrets.db-shm
-packages/server/data/secrets.db-wal
 
 .claude

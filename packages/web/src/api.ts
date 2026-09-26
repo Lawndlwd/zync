@@ -10,7 +10,6 @@ export interface Workspace {
 }
 
 export interface AppConfig {
-  chatUrl: string | null
   workspacesRoot: string
   timezone: string
 }
@@ -127,12 +126,12 @@ const json = (method: string, body: unknown): RequestInit => ({
 })
 
 const enc = (p: string) => p.split('/').map(encodeURIComponent).join('/')
-const ws = (name: string) => `/api/ws/${encodeURIComponent(name)}`
+const ws = (name: string) => `/zync/api/ws/${encodeURIComponent(name)}`
 
 export const api = {
-  config: () => req<AppConfig>('/api/config'),
-  workspaces: () => req<Workspace[]>('/api/workspaces'),
-  createWorkspace: (name: string) => req<Workspace>('/api/workspaces', json('POST', { name })),
+  config: () => req<AppConfig>('/zync/api/config'),
+  workspaces: () => req<Workspace[]>('/zync/api/workspaces'),
+  createWorkspace: (name: string) => req<Workspace>('/zync/api/workspaces', json('POST', { name })),
 
   tree: (w: string, path: string) =>
     req<{ path: string; entries: TreeEntry[] }>(`${ws(w)}/tree?path=${encodeURIComponent(path)}`),
@@ -161,11 +160,11 @@ export const api = {
     req(`${ws(w)}/jobs/${encodeURIComponent(name)}`, json('PATCH', { enabled })),
   deleteJob: (w: string, name: string) => req<void>(`${ws(w)}/jobs/${encodeURIComponent(name)}`, { method: 'DELETE' }),
 
-  people: () => req<Person[]>('/api/people'),
-  createPerson: (name: string, color?: string) => req<Person>('/api/people', json('POST', { name, color })),
+  people: () => req<Person[]>('/zync/api/people'),
+  createPerson: (name: string, color?: string) => req<Person>('/zync/api/people', json('POST', { name, color })),
   updatePerson: (id: string, patch: { name?: string; color?: string }) =>
-    req<Person>(`/api/people/${encodeURIComponent(id)}`, json('PATCH', patch)),
-  deletePerson: (id: string) => req<void>(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    req<Person>(`/zync/api/people/${encodeURIComponent(id)}`, json('PATCH', patch)),
+  deletePerson: (id: string) => req<void>(`/zync/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
   boards: (w: string) => req<Board[]>(`${ws(w)}/boards`),
   createBoard: (w: string, name: string, opts: { parent?: string; columns?: Column[] } = {}) =>
@@ -185,15 +184,16 @@ export const api = {
 
   eventsUrl: (w: string) => `${ws(w)}/events`,
 
-  opencodeConfig: () => req<{ path: string; exists: boolean; mtime: number; content: string }>('/api/opencode/config'),
+  opencodeConfig: () =>
+    req<{ path: string; exists: boolean; mtime: number; content: string }>('/zync/api/opencode/config'),
   saveOpencodeConfig: (content: string, baseMtime: number) =>
-    req<{ mtime: number }>('/api/opencode/config', {
+    req<{ mtime: number }>('/zync/api/opencode/config', {
       method: 'PUT',
       headers: { 'content-type': 'text/plain', 'x-base-mtime': String(baseMtime) },
       body: content,
     }),
-  opencodeHealth: () => req<OpencodeHealth>('/api/opencode/health'),
-  restartOpencode: () => req<OpencodeHealth>('/api/opencode/restart', { method: 'POST' }),
+  opencodeHealth: () => req<OpencodeHealth>('/zync/api/opencode/health'),
+  restartOpencode: () => req<OpencodeHealth>('/zync/api/opencode/restart', { method: 'POST' }),
 }
 
 export function dirname(p: string): string {
@@ -209,12 +209,15 @@ export function joinPath(dir: string, name: string): string {
   return dir ? `${dir}/${name}` : name
 }
 
-/** opencode web addresses a project directory as base64url(path) in the URL. */
-export function chatUrlFor(chatUrl: string, dir: string, sessionId?: string): string {
+/**
+ * The chat for a workspace. opencode's web UI is served through this app (see api/opencode-proxy),
+ * and addresses a project directory as base64url(path).
+ */
+export function chatUrlFor(dir: string, sessionId?: string): string {
   const bytes = new TextEncoder().encode(dir)
   let bin = ''
   for (const b of bytes) bin += String.fromCharCode(b)
   const encoded = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  const base = `${chatUrl.replace(/\/$/, '')}/${encoded}`
+  const base = `/${encoded}`
   return sessionId ? `${base}/session/${sessionId}` : base
 }

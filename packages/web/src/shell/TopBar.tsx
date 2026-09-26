@@ -216,19 +216,7 @@ function Notifications({ data }: { data: WorkspaceData }) {
   )
 }
 
-export function AccountMenu({
-  name,
-  theme,
-  setTheme,
-  trigger,
-  placement = 'down',
-}: {
-  name?: string
-  theme: Theme
-  setTheme: (t: Theme) => void
-  trigger?: (toggle: () => void, open: boolean) => React.ReactNode
-  placement?: 'down' | 'up'
-}) {
+function AccountMenu({ name, theme, setTheme }: { name?: string; theme: Theme; setTheme: (t: Theme) => void }) {
   const { ws } = useShell()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -239,19 +227,11 @@ export function AccountMenu({
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {trigger ? (
-        trigger(toggle, open)
-      ) : (
-        <button className="av av-l av-me" aria-label={`Account — ${label}`} aria-expanded={open} onClick={toggle}>
-          {initials(label)}
-        </button>
-      )}
+      <button className="av av-l av-me" aria-label={`Account — ${label}`} aria-expanded={open} onClick={toggle}>
+        {initials(label)}
+      </button>
       {open && (
-        <div
-          className="menu pop"
-          style={placement === 'down' ? { top: 42, right: 0 } : { bottom: 40, left: 0 }}
-          role="menu"
-        >
+        <div className="menu pop" style={{ top: 42, right: 0 }} role="menu">
           <span className="mh">Theme</span>
           {(['system', 'light', 'dark'] as const).map((t) => (
             <button
