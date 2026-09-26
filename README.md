@@ -59,8 +59,8 @@ confined to the workspace, but its shell commands aren't. Runs are aborted after
 ## Deploy on Dokploy
 
 1. DNS: point your host (e.g. `zync.example.com`) at the Dokploy server.
-2. On the server, create the workspaces folder:
-   `mkdir -p /srv/zync/workspaces && chown -R 1000:1000 /srv/zync/workspaces`.
+2. Pick a host folder for the workspaces (e.g. `/srv/zync/workspaces`). It may be missing or
+   root-owned: the containers hand it to their `node` user (uid 1000) on every start.
 3. Dokploy → **Create Service → Compose**, source = this git repo, compose path `docker-compose.yml`.
 4. **Environment**: copy `.env.example` and fill in `APP_URL`, `WORKSPACES_HOST_DIR`, your provider
    keys, `NTFY_TOPIC`, and `ALLOW_NO_AUTH=1` (read the security note below first).

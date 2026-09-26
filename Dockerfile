@@ -20,7 +20,7 @@ RUN pnpm install --prod --frozen-lockfile --filter "@zync/api..."
 FROM node:24-bookworm-slim AS runtime
 ARG OPENCODE_VERSION=1.18.30
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git curl ca-certificates ripgrep python3 tini \
+  && apt-get install -y --no-install-recommends git curl ca-certificates ripgrep python3 tini gosu \
   && rm -rf /var/lib/apt/lists/*
 RUN npm install -g "opencode-ai@${OPENCODE_VERSION}" && npm cache clean --force \
   # `opencode web` tries to open a browser; there is none in a container.
@@ -40,7 +40,8 @@ ENV NODE_ENV=production \
 RUN chmod +x /entrypoint.sh \
   && mkdir -p /workspace /home/node/.config/opencode /home/node/.local/share/opencode /home/node/.local/state /home/node/.cache \
   && chown -R node:node /workspace /home/node
-USER node
+# No USER here: the entrypoint starts as root only to hand the mounted folders to `node`, then
+# re-runs itself as `node` (see docker/entrypoint.sh). Nothing else ever runs as root.
 
 ENTRYPOINT ["tini", "--", "/entrypoint.sh"]
 CMD ["api"]
