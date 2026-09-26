@@ -37,7 +37,7 @@ COPY docker/entrypoint.sh /entrypoint.sh
 ENV NODE_ENV=production \
     WORKSPACES_ROOT=/workspace \
     PORT=3001
-RUN chmod +x /entrypoint.sh \
+RUN chmod +x /entrypoint.sh /app/opencode/run.sh \
   && mkdir -p /workspace /home/node/.config/opencode /home/node/.local/share/opencode /home/node/.local/state /home/node/.cache \
   && chown -R node:node /workspace /home/node
 # No USER here: the entrypoint starts as root only to hand the mounted folders to `node`, then

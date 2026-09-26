@@ -6,7 +6,19 @@ import express, { Router } from 'express'
 // The opencode config file the chat and jobs run with, editable from Settings, plus a reload.
 // The file is only ever written when it parses as JSON (opencode/configure.mjs needs plain JSON).
 
-export function opencodeRoutes(configPath: string, client = new OpencodeClient()): Router {
+export interface RestartTiming {
+  pollMs: number
+  /** How long to wait for opencode to go down after asking. */
+  downMs: number
+  /** How long to wait for it to answer again. */
+  upMs: number
+}
+
+export function opencodeRoutes(
+  configPath: string,
+  client = new OpencodeClient(),
+  timing: RestartTiming = { pollMs: 250, downMs: 6000, upMs: 60_000 },
+): Router {
   const r = Router()
 
   r.get('/config', async (_req, res) => {
@@ -42,23 +54,30 @@ export function opencodeRoutes(configPath: string, client = new OpencodeClient()
     res.json({ url: client.baseUrl, ...((await client.healthInfo()) ?? { healthy: false }) })
   })
 
-  // Reload opencode with the saved config: dispose every instance, then wait until it answers again.
+  // A real restart (opencode loads providers/models once per process): ask opencode/run.sh, which
+  // watches <config dir>/.restart, then wait for opencode to go down and come back up.
   r.post('/restart', async (_req, res) => {
-    try {
-      await client.disposeAll()
-    } catch (err) {
-      res.status(502).json({ error: `Could not reach the AI server: ${(err as Error).message}` })
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    const until = async (ok: (up: boolean) => boolean, ms: number) => {
+      for (const end = Date.now() + ms; Date.now() < end; await sleep(timing.pollMs)) {
+        if (ok(!!(await client.healthInfo())?.healthy)) return true
+      }
+      return false
+    }
+    await mkdir(path.dirname(configPath), { recursive: true })
+    await writeFile(path.join(path.dirname(configPath), '.restart'), `${Date.now()}\n`)
+    if (!(await until((up) => !up, timing.downMs))) {
+      res.status(409).json({
+        error:
+          'The AI server did not restart: it is not running under zync’s supervisor. Restart it once by hand (pnpm dev:opencode, or redeploy).',
+      })
       return
     }
-    for (let i = 0; i < 20; i++) {
-      const h = await client.healthInfo()
-      if (h?.healthy) {
-        res.json({ url: client.baseUrl, ...h })
-        return
-      }
-      await new Promise((r) => setTimeout(r, 250))
+    if (!(await until((up) => up, timing.upMs))) {
+      res.status(504).json({ error: 'The AI server stopped but did not come back within a minute — check its logs' })
+      return
     }
-    res.status(504).json({ error: 'The AI server did not come back within 5 seconds' })
+    res.json({ url: client.baseUrl, ...((await client.healthInfo()) ?? { healthy: true }) })
   })
 
   return r

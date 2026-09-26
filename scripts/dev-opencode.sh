@@ -20,7 +20,8 @@ config="$XDG_CONFIG_HOME/opencode/opencode.json"
 mkdir -p "$WORKSPACES_ROOT" "$(dirname "$config")"
 # First run only: afterwards the file belongs to you (Settings → AI server in the app).
 [ -f "$config" ] || cp opencode/opencode.json "$config"
-node opencode/configure.mjs "$config"
 
+run="$PWD/opencode/run.sh"
 cd "$WORKSPACES_ROOT"
-exec opencode web --hostname 127.0.0.1 --port 4096
+# Supervised so Settings → Restart AI server can restart it (see opencode/run.sh).
+exec "$run" "$config" --hostname 127.0.0.1 --port 4096

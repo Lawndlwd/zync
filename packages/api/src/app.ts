@@ -7,7 +7,7 @@ import { eventsHandler } from './events.js'
 import { fsRoutes } from './fs-routes.js'
 import { jobsRoutes } from './jobs-routes.js'
 import { opencodeProxy } from './opencode-proxy.js'
-import { opencodeRoutes } from './opencode-routes.js'
+import { opencodeRoutes, type RestartTiming } from './opencode-routes.js'
 
 /** zync's own REST API. Namespaced so the root stays free for opencode's UI (see opencode-proxy). */
 const API = '/zync/api'
@@ -26,6 +26,7 @@ export interface AppOptions {
   /** The opencode config file editable from Settings. */
   opencodeConfigPath?: string
   opencodeClient?: OpencodeClient
+  restartTiming?: RestartTiming
 }
 
 export function createApp(opts: AppOptions) {
@@ -54,7 +55,8 @@ export function createApp(opts: AppOptions) {
   app.use(`${API}/ws/:ws`, fsRoutes())
   app.use(`${API}/ws/:ws/jobs`, jobsRoutes())
   app.get(`${API}/ws/:ws/events`, eventsHandler)
-  if (opts.opencodeConfigPath) app.use(`${API}/opencode`, opencodeRoutes(opts.opencodeConfigPath, opts.opencodeClient))
+  if (opts.opencodeConfigPath)
+    app.use(`${API}/opencode`, opencodeRoutes(opts.opencodeConfigPath, opts.opencodeClient, opts.restartTiming))
 
   app.use(API, (_req, res) => {
     res.status(404).json({ error: 'Not found' })

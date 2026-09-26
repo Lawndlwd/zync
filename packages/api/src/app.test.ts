@@ -210,7 +210,6 @@ describe('opencode config', () => {
   const fake = {
     baseUrl: 'http://oc',
     healthInfo: async () => ({ healthy: true, version: '1' }),
-    disposeAll: async () => {},
   }
   const make = (file: string) =>
     createApp({ workspacesRoot: root, opencodeConfigPath: file, opencodeClient: fake as any })
@@ -245,13 +244,33 @@ describe('opencode config', () => {
       .expect(200)
   })
 
-  it('restart reloads the AI server', async () => {
-    const res = (
-      await request(make(path.join(root, 'x.json')))
-        .post('/zync/api/opencode/restart')
-        .expect(200)
-    ).body
-    expect(res).toMatchObject({ healthy: true, version: '1' })
+  const timing = { pollMs: 5, downMs: 100, upMs: 200 }
+
+  it('restart asks the supervisor and waits for opencode to go down and come back', async () => {
+    const dir = path.join(root, 'oc2')
+    // opencode answers, then is down for two checks while the supervisor restarts it, then is back.
+    const states = [false, false, true]
+    const client = { baseUrl: 'http://oc', healthInfo: async () => ({ healthy: states.shift() ?? true, version: '2' }) }
+    const a = createApp({
+      workspacesRoot: root,
+      opencodeConfigPath: path.join(dir, 'opencode.json'),
+      opencodeClient: client as any,
+      restartTiming: timing,
+    })
+    const res = (await request(a).post('/zync/api/opencode/restart').expect(200)).body
+    expect(res).toMatchObject({ healthy: true, version: '2' })
+    expect(await readFile(path.join(dir, '.restart'), 'utf8')).toMatch(/^\d+\n$/)
+  })
+
+  it('restart says so when opencode is not supervised (never goes down)', async () => {
+    const a = createApp({
+      workspacesRoot: root,
+      opencodeConfigPath: path.join(root, 'oc3', 'opencode.json'),
+      opencodeClient: fake as any,
+      restartTiming: timing,
+    })
+    const res = await request(a).post('/zync/api/opencode/restart').expect(409)
+    expect(res.body.error).toMatch(/supervisor/)
   })
 })
 

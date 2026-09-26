@@ -10,14 +10,55 @@
         "apiKey": "{env:CODEX_ILIAD_API_KEY}"
       },
       "models": {
-        "Devstral2-123B": { "name": "Devstral 2 123B" },
+        "Devstral2-123B": {
+          "name": "Devstral 2 123B"
+        },
         "codiX-agent": {
           "name": "codiX agent",
-          "limit": { "context": 250000, "input": 250000, "output": 16000 },
-          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] }
+          "limit": {
+            "context": 250000,
+            "input": 250000,
+            "output": 16000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
         },
-        "Qwen3.5-397B-A17B": {},
-        "Qwen3.6-35B-A3B": {}
+        "Qwen3.5-397B-A17B": {
+          "id": "Qwen/Qwen3.5-397B-A17B",
+          "name": "Qwen 3.5 397B A17B",
+          "limit": {
+            "context": 250000,
+            "input": 250000,
+            "output": 16000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "Qwen3.6-35B-A3B": {
+          "id": "Qwen/Qwen3.6-35B-A3B",
+          "name": "Qwen 3.6 35B A3B",
+          "limit": {
+            "context": 250000,
+            "input": 250000,
+            "output": 16000
+          }
+        }
       }
     },
     "scaleway-2": {
@@ -27,7 +68,11 @@
         "apiKey": "{env:SCW_SECRET_KEY}"
       },
       "models": {
-        "glm-5.2": {}
+        "glm-5.2": {
+          "options": {
+            "max_tokens": 16384
+          }
+        }
       }
     }
   }

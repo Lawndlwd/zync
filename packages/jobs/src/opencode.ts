@@ -101,11 +101,6 @@ export class OpencodeClient {
     }
   }
 
-  /** Dispose every opencode instance so the next request reloads config (models, MCP, plugins…). */
-  async disposeAll(): Promise<void> {
-    await this.call('/global/dispose', undefined, { method: 'POST' })
-  }
-
   /**
    * Subscribe to the global event stream. Reconnects forever; returns a stop function.
    * `onEvent` receives `{ directory, payload: { type, properties } }`.

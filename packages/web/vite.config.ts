@@ -13,7 +13,8 @@ export default defineConfig({
     proxy: {
       '/zync/api': api,
       // Anything that isn't the app itself or Vite's dev files.
-      '^/(?!(w|zync|src|node_modules|@vite|@react-refresh|@id|@fs)(/|$)).+': api,
+      // Not "/" itself (with or without a query): that's the app, and Vite's own HMR websocket.
+      '^/(?!(?:w|zync|src|node_modules|@vite|@react-refresh|@id|@fs|__vite[^/?]*)(?:[/?]|$))[^?]': api,
     },
   },
 })

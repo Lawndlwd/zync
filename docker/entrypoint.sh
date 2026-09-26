@@ -41,10 +41,11 @@ case "$role" in
       mkdir -p "$(dirname "$config")"
       cp /app/opencode/opencode.json "$config"
     fi
-    ZYNC_MCP_PATH=/app/packages/jobs/dist/mcp.js ZYNC_SKILLS_DIR=/app/opencode/skills \
-      node /app/opencode/configure.mjs "$config"
+    export ZYNC_MCP_PATH=/app/packages/jobs/dist/mcp.js ZYNC_SKILLS_DIR=/app/opencode/skills
     cd "${WORKSPACES_ROOT:-/workspace}"
-    exec opencode web --hostname 0.0.0.0 --port 4096 --print-logs --log-level "${OPENCODE_LOG_LEVEL:-INFO}"
+    # Supervised so Settings → Restart AI server can restart it (see opencode/run.sh).
+    exec /app/opencode/run.sh "$config" --hostname 0.0.0.0 --port 4096 --print-logs \
+      --log-level "${OPENCODE_LOG_LEVEL:-INFO}"
     ;;
   *)
     exec "$@"
