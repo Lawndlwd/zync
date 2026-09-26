@@ -1,0 +1,433 @@
+/* Functional baseline only — real design comes later. */
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f6f6f5;
+  --fg: #1f1f1f;
+  --muted: #7a7a78;
+  --border: #e4e4e2;
+  --accent: #2f6feb;
+  --danger: #c93c37;
+  --ok: #2d8a4e;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #191919;
+    --bg-soft: #202020;
+    --fg: #e6e6e6;
+    --muted: #9b9b9b;
+    --border: #2f2f2f;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button.link {
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  background: none;
+}
+
+input,
+select {
+  font: inherit;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.topbar nav {
+  display: flex;
+  gap: 4px;
+}
+
+.topbar nav a {
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--fg);
+}
+
+.topbar nav a.active {
+  background: var(--bg-soft);
+  font-weight: 600;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.popover {
+  position: absolute;
+  top: 100%;
+  left: 12px;
+  z-index: 10;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 6px;
+  display: flex;
+  gap: 8px;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-soft);
+  overflow: auto;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+.chat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.body.split .chat {
+  flex: 0 0 45%;
+  border-left: 1px solid var(--border);
+}
+
+.chat iframe {
+  flex: 1;
+  border: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.tree-toolbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-soft);
+}
+
+.tree-toolbar .muted {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-root {
+  padding: 4px 0 40px;
+  min-height: 100%;
+}
+
+.node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.node:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.node.active {
+  background: rgba(47, 111, 235, 0.15);
+}
+
+.node.drop {
+  outline: 1px dashed var(--accent);
+}
+
+.node .icon {
+  width: 12px;
+  color: var(--muted);
+}
+
+.node .label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-actions {
+  display: none;
+}
+
+.node:hover .node-actions {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.node-actions button {
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+
+.file {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.file-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.file-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-state.error {
+  color: var(--danger);
+}
+
+.save-state.dirty,
+.save-state.saving {
+  color: var(--accent);
+}
+
+.file-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.md-editor {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.md-editor .milkdown {
+  background: transparent;
+}
+
+textarea.code {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 16px;
+  resize: none;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--fg);
+  outline: none;
+}
+
+.preview {
+  max-width: 100%;
+  display: block;
+  margin: 16px auto;
+}
+
+.preview-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.card.disabled {
+  opacity: 0.6;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.pill {
+  background: var(--bg-soft);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.instructions {
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.badge {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #fff;
+  background: var(--muted);
+}
+
+.badge.ok {
+  background: var(--ok);
+}
+
+.badge.failed,
+.badge.timeout {
+  background: var(--danger);
+}
+
+.runs {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.runs td {
+  border-top: 1px solid var(--border);
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+.runs .summary {
+  white-space: pre-wrap;
+  max-width: 420px;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.pad {
+  padding: 8px;
+}
+
+.error {
+  color: var(--danger);
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    width: 180px;
+  }
+  .body.split .chat {
+    display: none !important;
+  }
+}
