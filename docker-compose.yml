@@ -1,107 +1,83 @@
+# Production stack, deployed by Dokploy (Compose type, source = this git repo).
+# Domains are set in Dokploy's Domains tab (it adds the Traefik routing); nothing publishes host ports.
+#   ai-app.${DOMAIN} → service api, port 3001      (web UI + REST)
+#   ai.${DOMAIN}     → service opencode, port 4096 (opencode web, embedded as an iframe by the app)
+# See README → Deploy on Dokploy.
+
+x-common: &common
+  build: .
+  image: zync:latest
+  restart: unless-stopped
+  environment: &env
+    TZ: ${TZ:-UTC}
+    WORKSPACES_ROOT: /workspace
+    OPENCODE_URL: http://opencode:4096
+    APP_URL: https://ai-app.${DOMAIN}
+    CHAT_URL: https://ai.${DOMAIN}
+    BASIC_AUTH_USERS: ${BASIC_AUTH_USERS:-}
+    ALLOW_NO_AUTH: ${ALLOW_NO_AUTH:-0}
+  volumes:
+    - ${WORKSPACES_HOST_DIR:?set WORKSPACES_HOST_DIR to the host folder holding your workspaces}:/workspace
+
 services:
-  frontend:
-    build:
-      context: .
-      dockerfile: packages/app/Dockerfile
-      args:
-        MODE: development
-    ports:
-      - "${ZYNC_PORT:-8080}:5173"
-    volumes:
-      - ./packages/app/src:/app/packages/app/src
-      - ./packages/app/public:/app/packages/app/public
-      - ./packages/app/index.html:/app/packages/app/index.html
-      - ./packages/app/vite.config.ts:/app/packages/app/vite.config.ts
-      - ./packages/shared/src:/app/packages/shared/src
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    environment:
-      - VITE_BACKEND_URL=http://backend:3001
-      - VITE_WAKEWORD_URL=ws://wakeword:9000
-      - VITE_OPENCODE_URL=http://opencode:4096
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  backend:
-    build:
-      context: .
-      dockerfile: packages/server/Dockerfile
-      args:
-        MODE: development
-    ports:
-      - "3001:3001"
-    env_file:
-      - path: .env
-        required: false
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    environment:
-      - NODE_ENV=development
-      - OPENCODE_URL=http://opencode:4096
-      - WHISPER_SERVICE_URL=http://whisper:9100
-    volumes:
-      - ./packages/server/src:/app/packages/server/src
-      - ./packages/server/data:/app/packages/server/data
-      - ./data/documents:/app/documents
-      - ./packages/shared/src:/app/packages/shared/src
-    depends_on:
-      whisper:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>{if(!r.ok)process.exit(1)})"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    restart: unless-stopped
-
-  whisper:
-    build:
-      context: ./packages/whisper
-      dockerfile: Dockerfile
+  api:
+    <<: *common
+    command: ["api"]
     expose:
-      - "9100"
+      - "3001"
     environment:
-      - WHISPER_PORT=9100
-      - WHISPER_MODEL=${WHISPER_MODEL:-base.en}
-      - WHISPER_COMPUTE_TYPE=${WHISPER_COMPUTE_TYPE:-int8}
+      <<: *env
+      # Settings → AI server edits opencode's config file through the shared volume.
+      ZYNC_OPENCODE_CONFIG: /opencode-config/opencode.json
+    volumes:
+      - ${WORKSPACES_HOST_DIR}:/workspace
+      - opencode-config:/opencode-config
+    networks: [default, dokploy-network]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9100/health')"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 60s
-    restart: unless-stopped
-
-  wakeword:
-    build:
-      context: ./packages/wakeword
-      dockerfile: Dockerfile
-    environment:
-      - WAKEWORD_PORT=9000
-      - WAKEWORD_MODEL=${WAKEWORD_MODEL:-hey_jarvis}
-      - WAKEWORD_THRESHOLD=${WAKEWORD_THRESHOLD:-0.5}
-    restart: unless-stopped
 
   opencode:
-    build:
-      context: .
-      dockerfile: packages/opencode/Dockerfile
-    ports:
-      - "4096:4096"
-    env_file:
-      - path: .env
-        required: false
+    <<: *common
+    command: ["opencode"]
+    expose:
+      - "4096"
+    networks: [default, dokploy-network]
     environment:
-      - CORS_ORIGINS=http://frontend:5173,http://localhost:5173,http://backend:3001
-      - OPENCODE_LOG_LEVEL=${OPENCODE_LOG_LEVEL:-INFO}
+      <<: *env
+      # Provider keys: set whichever you use in Dokploy → Environment. Referenced as {env:…}
+      # from opencode/opencode.json (seeded into the opencode-config volume on first start).
+      CODEX_ILIAD_API_KEY: ${CODEX_ILIAD_API_KEY:-}
+      SCW_SECRET_KEY: ${SCW_SECRET_KEY:-}
+      SCW_PROJECT_ID: ${SCW_PROJECT_ID:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENCODE_LOG_LEVEL: ${OPENCODE_LOG_LEVEL:-INFO}
     volumes:
-      - ./packages/server/data:/app/packages/server/data
+      - ${WORKSPACES_HOST_DIR}:/workspace
+      - opencode-config:/home/node/.config/opencode
       - opencode-data:/home/node/.local/share/opencode
-      # Mount your opencode config with provider keys (optional)
-      # - ~/.config/opencode/opencode.json:/config/opencode.json:ro
-    restart: unless-stopped
+
+  scheduler:
+    <<: *common
+    command: ["scheduler"]
+    environment:
+      <<: *env
+      JOB_TIMEOUT_MIN: ${JOB_TIMEOUT_MIN:-30}
+      NTFY_URL: ${NTFY_URL:-https://ntfy.sh}
+      NTFY_TOPIC: ${NTFY_TOPIC:-}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
+    depends_on:
+      - opencode
 
 volumes:
+  opencode-config:
   opencode-data:
+
+networks:
+  dokploy-network:
+    external: true

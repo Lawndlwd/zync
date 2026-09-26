@@ -1,0 +1,23 @@
+# Local run only — NEVER used by Dokploy (it deploys docker-compose.yml alone).
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+# App: http://localhost:3001  Chat: http://localhost:4096  (no auth, no Traefik)
+
+services:
+  api:
+    ports: ["127.0.0.1:3001:3001"]
+    environment:
+      ALLOW_NO_AUTH: "1"
+      APP_URL: http://localhost:3001
+      CHAT_URL: http://localhost:4096
+  opencode:
+    ports: ["127.0.0.1:4096:4096"]
+    environment:
+      ALLOW_NO_AUTH: "1"
+  scheduler:
+    environment:
+      APP_URL: http://localhost:3001
+
+networks:
+  dokploy-network:
+    external: false
+    name: zync-local-dokploy

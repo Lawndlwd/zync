@@ -1,7 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
   "files": {
-    "includes": ["packages/app/src/**/*.{ts,tsx}", "packages/server/src/**/*.ts", "packages/shared/src/**/*.ts"],
+    "includes": ["packages/*/src/**/*.{ts,tsx}"],
     "ignoreUnknown": true
   },
   "formatter": {
@@ -38,7 +38,9 @@
         "noStaticElementInteractions": "off",
         "noSvgWithoutTitle": "off",
         "useSemanticElements": "off",
-        "useFocusableInteractive": "off"
+        "useFocusableInteractive": "off",
+        "useMediaCaption": "off",
+        "noAutofocus": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"

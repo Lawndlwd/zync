@@ -2,15 +2,43 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     },
     "dev": {
+      "dependsOn": [
+        "^build"
+      ],
       "cache": false,
       "persistent": true
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ]
     }
-  }
+  },
+  "globalPassThroughEnv": [
+    "WORKSPACES_ROOT",
+    "OPENCODE_URL",
+    "OPENCODE_SERVER_PASSWORD",
+    "CHAT_URL",
+    "APP_URL",
+    "PORT",
+    "TZ",
+    "NTFY_URL",
+    "NTFY_TOPIC",
+    "NTFY_TOKEN",
+    "JOB_TIMEOUT_MIN",
+    "JOB_DEFAULT_AGENT"
+  ]
 }
