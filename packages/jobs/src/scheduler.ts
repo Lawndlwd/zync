@@ -2,7 +2,8 @@ import { readdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Cron } from 'croner'
-import { buildCron, errorMessage, type Job, listJobs, readJob, TRIGGER_DIR, writeJob } from './job-file.js'
+import { applyCardRun, cardExists } from './boards.js'
+import { buildCron, deleteJob, errorMessage, type Job, listJobs, readJob, TRIGGER_DIR, writeJob } from './job-file.js'
 import { notify, sessionLink, shouldNotify } from './notify.js'
 import { OpencodeClient } from './opencode.js'
 import { appendRun, type RunRecord } from './runs.js'
@@ -33,12 +34,20 @@ export interface SchedulerOptions {
 
 const log = (...args: unknown[]) => console.log(new Date().toISOString(), '[scheduler]', ...args)
 
-export function buildPrompt(job: Job): string {
+export function buildPrompt(job: Job, wsPath?: string): string {
   const lines = [
     `You are running the scheduled job "${job.name}" unattended. No human is watching this session,`,
     'so do not ask questions: make reasonable decisions and complete the task.',
     '',
   ]
+  if (wsPath) {
+    // Models sometimes guess a project root from elsewhere (e.g. an enclosing git repo) and write there.
+    lines.push(
+      `Your workspace is ${wsPath}. Relative paths and "the workspace root" mean this directory.`,
+      'Read and write files only inside it, including from shell commands.',
+      '',
+    )
+  }
   if (job.context.length) {
     lines.push('Before starting, read these files/folders for context:')
     for (const c of job.context) lines.push(`- ${c}`)
@@ -153,6 +162,12 @@ export class Scheduler {
       log(`cannot run ${key}: ${errorMessage(err)}`)
       return
     }
+    if (job.card && !(await cardExists(ws.path, job.card))) {
+      // The card was deleted, moved or renamed outside the board: its job is an orphan.
+      log(`card ${job.card} is gone, deleting orphaned job ${key}`)
+      await deleteJob(ws.path, name).catch(() => {})
+      return
+    }
     if ([...this.running.values()].some((r) => r.key === key)) {
       log(`skip ${key}: previous run still active`)
       await this.record(ws, job, { status: 'skipped', summary: 'Previous run still active', trigger })
@@ -165,8 +180,9 @@ export class Scheduler {
       const agent = job.agent || process.env.JOB_DEFAULT_AGENT || 'job'
       sessionId = await this.client.createSession(ws.path, title, agent)
       this.running.set(sessionId, { key, ws, job, sessionId, started, trigger })
-      await this.client.promptAsync(sessionId, ws.path, buildPrompt(job), { agent, model: job.model })
+      await this.client.promptAsync(sessionId, ws.path, buildPrompt(job, ws.path), { agent, model: job.model })
       log(`started ${key} → session ${sessionId}`)
+      if (job.card) await applyCardRun(ws.path, job.card, { type: 'started', sessionId })
     } catch (err) {
       if (sessionId) this.running.delete(sessionId)
       log(`failed to start ${key}: ${errorMessage(err)}`)
@@ -240,6 +256,7 @@ export class Scheduler {
   private async record(ws: Workspace, job: Job, run: Omit<RunRecord, 'ts'>): Promise<void> {
     const rec: RunRecord = { ts: new Date().toISOString(), ...run }
     await appendRun(ws.path, job.name, rec).catch((err) => log(`could not write run log: ${errorMessage(err)}`))
+    if (job.card) await applyCardRun(ws.path, job.card, { type: 'finished', run: rec })
     if (shouldNotify(job.notify, rec)) {
       await notify({ workspace: ws.name, job: job.name, run: rec, link: sessionLink(ws.name, rec.sessionId) })
     }

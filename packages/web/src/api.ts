@@ -1,3 +1,9 @@
+export interface OpencodeHealth {
+  url: string
+  healthy: boolean
+  version?: string
+}
+
 export interface Workspace {
   name: string
   path: string
@@ -6,6 +12,7 @@ export interface Workspace {
 export interface AppConfig {
   chatUrl: string | null
   workspacesRoot: string
+  timezone: string
 }
 
 export interface TreeEntry {
@@ -40,6 +47,8 @@ export interface JobRow {
     name: string
     schedule?: string
     at?: string
+    /** Workspace-relative card file when the job belongs to a board card. */
+    card?: string
     timezone?: string
     agent?: string
     model?: string
@@ -51,6 +60,55 @@ export interface JobRow {
   nextRuns: string[]
   lastRun: RunRecord | null
 }
+
+export interface Person {
+  id: string
+  name: string
+  color?: string
+  builtin?: boolean
+}
+
+export interface Column {
+  id: string
+  name: string
+}
+
+export interface Board {
+  /** Workspace-relative folder path. */
+  path: string
+  name: string
+  columns: Column[]
+}
+
+export interface Card {
+  /** File name inside the board folder. */
+  file: string
+  title: string
+  /** Column id; unset means the first column. */
+  status?: string
+  order?: number
+  assignee?: string
+  due?: string
+  labels: string[]
+  runAt?: string
+  context: string[]
+  ai?: { state: 'scheduled' | 'running' | 'done' | 'failed'; sessionId?: string; finishedAt?: string; summary?: string }
+  description: string
+  extra: Record<string, unknown>
+}
+
+/** `null` clears a field. */
+export type CardPatch = Partial<{
+  title: string
+  status: string
+  order: number
+  assignee: string | null
+  due: string | null
+  labels: string[]
+  runAt: string | null
+  context: string[]
+  description: string
+}>
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
@@ -78,6 +136,7 @@ export const api = {
 
   tree: (w: string, path: string) =>
     req<{ path: string; entries: TreeEntry[] }>(`${ws(w)}/tree?path=${encodeURIComponent(path)}`),
+  recent: (w: string, limit = 10) => req<{ total: number; entries: TreeEntry[] }>(`${ws(w)}/recent?limit=${limit}`),
   file: (w: string, path: string) => req<FileData>(`${ws(w)}/file/${enc(path)}`),
   rawUrl: (w: string, path: string) => `${ws(w)}/file/${enc(path)}?raw=1`,
   save: (w: string, path: string, content: string) =>
@@ -102,7 +161,39 @@ export const api = {
     req(`${ws(w)}/jobs/${encodeURIComponent(name)}`, json('PATCH', { enabled })),
   deleteJob: (w: string, name: string) => req<void>(`${ws(w)}/jobs/${encodeURIComponent(name)}`, { method: 'DELETE' }),
 
+  people: () => req<Person[]>('/api/people'),
+  createPerson: (name: string, color?: string) => req<Person>('/api/people', json('POST', { name, color })),
+  updatePerson: (id: string, patch: { name?: string; color?: string }) =>
+    req<Person>(`/api/people/${encodeURIComponent(id)}`, json('PATCH', patch)),
+  deletePerson: (id: string) => req<void>(`/api/people/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  boards: (w: string) => req<Board[]>(`${ws(w)}/boards`),
+  createBoard: (w: string, name: string, opts: { parent?: string; columns?: Column[] } = {}) =>
+    req<Board>(`${ws(w)}/boards`, json('POST', { name, parent: opts.parent || undefined, columns: opts.columns })),
+  board: (w: string, b: string) => req<{ board: Board; cards: Card[] }>(`${ws(w)}/boards/${encodeURIComponent(b)}`),
+  updateBoard: (w: string, b: string, patch: { name?: string; columns?: Column[] }) =>
+    req<Board>(`${ws(w)}/boards/${encodeURIComponent(b)}`, json('PATCH', patch)),
+  deleteBoard: (w: string, b: string) => req<void>(`${ws(w)}/boards/${encodeURIComponent(b)}`, { method: 'DELETE' }),
+  createCard: (w: string, b: string, input: CardPatch & { title: string }) =>
+    req<Card>(`${ws(w)}/boards/${encodeURIComponent(b)}/cards`, json('POST', input)),
+  updateCard: (w: string, b: string, id: string, patch: CardPatch) =>
+    req<Card>(`${ws(w)}/boards/${encodeURIComponent(b)}/cards/${encodeURIComponent(id)}`, json('PATCH', patch)),
+  deleteCard: (w: string, b: string, id: string) =>
+    req<void>(`${ws(w)}/boards/${encodeURIComponent(b)}/cards/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  runCard: (w: string, b: string, id: string) =>
+    req<Card>(`${ws(w)}/boards/${encodeURIComponent(b)}/cards/${encodeURIComponent(id)}/run`, { method: 'POST' }),
+
   eventsUrl: (w: string) => `${ws(w)}/events`,
+
+  opencodeConfig: () => req<{ path: string; exists: boolean; mtime: number; content: string }>('/api/opencode/config'),
+  saveOpencodeConfig: (content: string, baseMtime: number) =>
+    req<{ mtime: number }>('/api/opencode/config', {
+      method: 'PUT',
+      headers: { 'content-type': 'text/plain', 'x-base-mtime': String(baseMtime) },
+      body: content,
+    }),
+  opencodeHealth: () => req<OpencodeHealth>('/api/opencode/health'),
+  restartOpencode: () => req<OpencodeHealth>('/api/opencode/restart', { method: 'POST' }),
 }
 
 export function dirname(p: string): string {

@@ -1,13 +1,18 @@
 import { mkdir, readdir, realpath, stat } from 'node:fs/promises'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export interface Workspace {
   name: string
   path: string
 }
 
+// Local dev fallback: <repo>/data/workspaces (same as scripts/dev-opencode.sh).
+// Docker sets WORKSPACES_ROOT=/workspace explicitly.
+const DEV_ROOT = fileURLToPath(new URL('../../../data/workspaces', import.meta.url))
+
 export function workspacesRoot(): string {
-  return path.resolve(process.env.WORKSPACES_ROOT || '/workspace')
+  return path.resolve(process.env.WORKSPACES_ROOT || DEV_ROOT)
 }
 
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._ -]*$/

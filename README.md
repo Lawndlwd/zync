@@ -9,6 +9,10 @@ An Obsidian-like workspace over real folders on your server, with **opencode** a
   current workspace, so skills, MCP servers, plugins, agents and sessions all work. Switching to
   Files and back keeps the conversation (the iframe is never unmounted). Tick **Split chat** to
   keep chat open beside your files.
+- **Boards**: kanban boards per workspace. Assign cards to people, including the built-in `@me` and
+  `@ai`. An `@ai` card with a run time is done by the AI at that time: it moves to In progress, then
+  to Review with a summary. You can also manage boards from chat. See
+  [docs/architecture.md](docs/architecture.md).
 - **Jobs**: ask the AI in chat to do something at a time or on a schedule. The `schedule-job` skill
   makes it ask clarifying questions, then it creates a job file. At the scheduled time a new
   unattended session runs the task in that workspace, the run is logged, and you get a push
@@ -46,26 +50,28 @@ Runs are appended to `<name>.runs.jsonl` next to the job. Each run is a normal o
 titled `[job] <name> · <time>`: open it from **Jobs → Show history → Open session**.
 
 Jobs run with the `job` agent. It edits files and runs commands without asking, never asks
-questions (nobody is there to answer), and can't leave the workspace. Runs are aborted after
+questions (nobody is there to answer), and is told to stay in its workspace. Its file tools are
+confined to the workspace, but its shell commands aren't. Runs are aborted after
 `JOB_TIMEOUT_MIN`.
 
 ## Deploy on Dokploy
 
-1. DNS: point `app.<domain>` and `chat.<domain>` at the Dokploy server.
+1. DNS: point `ai-app.<domain>` and `ai.<domain>` at the Dokploy server.
 2. On the server, create the workspaces folder:
    `mkdir -p /srv/zync/workspaces && chown -R 1000:1000 /srv/zync/workspaces`.
 3. Dokploy → **Create Service → Compose**, source = this git repo, compose path `docker-compose.yml`.
 4. **Environment**: copy `.env.example` and fill in `DOMAIN`, `BASIC_AUTH_USERS`,
    `WORKSPACES_HOST_DIR`, a provider key and `NTFY_TOPIC`.
    - Generate the auth value with `htpasswd -nbB admin 'password'` and **double every `$`**.
-5. Deploy. Don't add domains in Dokploy's Domains tab: routing and auth are Traefik labels in the
-   compose file, because Dokploy can't attach basic auth to compose domains.
-6. Open `https://app.<domain>` and log in. Also open `https://chat.<domain>` once in the same browser
-   so the embedded chat is authenticated too.
+5. Dokploy → **Domains**: add `ai-app.<domain>` → service `api`, port `3001`, and `ai.<domain>` →
+   service `opencode`, port `4096` (HTTPS on). Dokploy adds the Traefik routing itself.
+6. Deploy, then open `https://ai-app.<domain>`.
 
-Provider logins done in the chat UI's settings persist in the `opencode-data` volume. To use a full
-custom opencode config (providers, extra MCP servers), mount it at `/config/opencode.json` in the
-`opencode` service; zync merges its own pieces into it.
+The AI server config starts from `opencode/opencode.json` in this repo: on the first start of a fresh
+`opencode-config` volume it is copied there and zync merges in its own pieces (zync-jobs MCP, job agent,
+skills). From then on edit it in the app (Settings → AI server) and press Restart; the repo file is only
+the seed. Keep secrets out of it — reference them as `{env:NAME}` and set NAME in Dokploy → Environment.
+Provider logins done in the chat UI persist in the `opencode-data` volume.
 
 > **Security:** the chat (and every job) can run any shell command on the mounted folders. Keep
 > basic auth on, and use a long password. The containers refuse to start without

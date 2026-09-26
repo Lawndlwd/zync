@@ -53,3 +53,7 @@ Offer `run_job_now` if they want to test it immediately.
 - "Did it run?" / "what happened?" → `list_runs`. Each run has a `sessionId` whose full transcript is
   in the session list.
 - Delete → confirm with the user first, then `delete_job`.
+
+Jobs named `card-…` belong to kanban cards. Manage them through the card (`kanban` skill), not
+with `update_job` or `delete_job`. For a one-off task the user tracks on a board, prefer an `ai`
+card over a job.

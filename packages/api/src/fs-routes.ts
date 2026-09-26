@@ -1,7 +1,7 @@
 import { copyFile, mkdir, open, readdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { safeResolve } from '@zync/jobs'
+import { safeResolve, syncCardFile } from '@zync/jobs'
 import express, { type Request, Router } from 'express'
 import multer from 'multer'
 import { wsOf } from './workspace-param.js'
@@ -63,6 +63,38 @@ export function fsRoutes(): Router {
     res.json({ path: rel, entries })
   })
 
+  // Every visible file in the workspace, newest first. `total` feeds the sidebar count.
+  r.get('/recent', async (req, res) => {
+    const ws = await wsOf(req)
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100)
+    const files: TreeEntry[] = []
+    const walk = async (dir: string, depth: number): Promise<void> => {
+      if (depth > 8) return
+      const dirents = await readdir(dir, { withFileTypes: true }).catch(() => [])
+      for (const d of dirents) {
+        if (HIDDEN.has(d.name) || d.name.startsWith('.')) continue
+        const full = path.join(dir, d.name)
+        if (d.isDirectory()) {
+          await walk(full, depth + 1)
+          continue
+        }
+        if (!d.isFile()) continue
+        const s = await stat(full).catch(() => null)
+        if (!s) continue
+        files.push({
+          name: d.name,
+          path: path.relative(ws.path, full).split(path.sep).join('/'),
+          type: 'file',
+          size: s.size,
+          mtime: s.mtimeMs,
+        })
+      }
+    }
+    await walk(ws.path, 0)
+    files.sort((a, b) => b.mtime - a.mtime)
+    res.json({ total: files.length, entries: files.slice(0, limit) })
+  })
+
   r.get('/file/*path', async (req, res) => {
     const ws = await wsOf(req)
     const file = await safeResolve(ws.path, relPath(req))
@@ -85,6 +117,8 @@ export function fsRoutes(): Router {
     const file = await safeResolve(ws.path, relPath(req))
     await mkdir(path.dirname(file), { recursive: true })
     await writeFile(file, typeof req.body === 'string' ? req.body : '')
+    // A card's frontmatter (assignee, runAt…) drives its AI job; keep them in step.
+    await syncCardFile(ws.path, relPath(req)).catch(() => {})
     const s = await stat(file)
     res.json({ path: relPath(req), mtime: s.mtimeMs, size: s.size })
   })

@@ -42,6 +42,8 @@ export const JobMetaSchema = z
     context: z.array(z.string()).default([]),
     notify: z.enum(['always', 'failure', 'never']).default('always'),
     enabled: z.boolean().default(true),
+    // Set on jobs generated from a kanban card ("<board>/<cardId>"); the scheduler moves the card.
+    card: z.string().min(1).optional(),
   })
   .refine((j) => Boolean(j.schedule) !== Boolean(j.at), {
     message: 'set exactly one of "schedule" (cron) or "at" (one-shot date-time)',
@@ -83,6 +85,7 @@ export function serializeJob(job: Job): string {
   if (job.context.length) meta.context = job.context
   meta.notify = job.notify
   meta.enabled = job.enabled
+  if (job.card) meta.card = job.card
   return matter.stringify(`\n${job.instructions}\n`, meta)
 }
 

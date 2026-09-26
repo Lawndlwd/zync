@@ -94,6 +94,11 @@ describe('job files', () => {
 })
 
 describe('buildPrompt', () => {
+  it('pins the workspace directory', () => {
+    const prompt = buildPrompt(validateJob({ ...base, schedule: '* * * * *' }), '/workspace/notes')
+    expect(prompt).toContain('Your workspace is /workspace/notes.')
+  })
+
   it('includes context files and instructions', () => {
     const prompt = buildPrompt(validateJob({ ...base, schedule: '* * * * *', context: ['a.md'] }))
     expect(prompt).toContain('- a.md')

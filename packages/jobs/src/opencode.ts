@@ -92,6 +92,20 @@ export class OpencodeClient {
     return { done: completed || Boolean(error), failed: Boolean(error), text, error }
   }
 
+  /** Server health and version, or null when unreachable. */
+  async healthInfo(): Promise<{ healthy: boolean; version?: string } | null> {
+    try {
+      return await this.call('/global/health', undefined)
+    } catch {
+      return null
+    }
+  }
+
+  /** Dispose every opencode instance so the next request reloads config (models, MCP, plugins…). */
+  async disposeAll(): Promise<void> {
+    await this.call('/global/dispose', undefined, { method: 'POST' })
+  }
+
   async health(): Promise<boolean> {
     try {
       await this.call('/config', undefined)

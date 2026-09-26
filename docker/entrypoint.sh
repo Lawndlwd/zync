@@ -22,9 +22,11 @@ case "$role" in
   opencode)
     require_auth
     config="$HOME/.config/opencode/opencode.json"
-    # Optional user config (providers, models, extra MCP servers) mounted read-only.
-    if [ -f /config/opencode.json ]; then
-      cp /config/opencode.json "$config"
+    # First start of a fresh opencode-config volume: seed it from the repo's opencode/opencode.json.
+    # Afterwards the volume copy is the source of truth (edited from Settings → AI server).
+    if [ ! -f "$config" ]; then
+      mkdir -p "$(dirname "$config")"
+      cp /app/opencode/opencode.json "$config"
     fi
     ZYNC_MCP_PATH=/app/packages/jobs/dist/mcp.js ZYNC_SKILLS_DIR=/app/opencode/skills \
       node /app/opencode/configure.mjs "$config"
