@@ -1,8 +1,7 @@
 # Production stack, deployed by Dokploy (Compose type, source = this git repo).
-# Domains are set in Dokploy's Domains tab (it adds the Traefik routing); nothing publishes host ports.
-#   ai-app.${DOMAIN} → service api, port 3001      (web UI + REST)
-#   ai.${DOMAIN}     → service opencode, port 4096 (opencode web, embedded as an iframe by the app)
-# See README → Deploy on Dokploy.
+# ONE domain, set in Dokploy → Domains: your host → service `api`, port 3001.
+# The api serves the app and forwards the embedded chat to opencode internally, so opencode has no
+# domain and is only reachable inside this compose network. See README → Deploy on Dokploy.
 
 x-common: &common
   build: .
@@ -12,9 +11,8 @@ x-common: &common
     TZ: ${TZ:-UTC}
     WORKSPACES_ROOT: /workspace
     OPENCODE_URL: http://opencode:4096
-    APP_URL: https://ai-app.${DOMAIN}
-    CHAT_URL: https://ai.${DOMAIN}
-    BASIC_AUTH_USERS: ${BASIC_AUTH_USERS:-}
+    # The app's public address (used in notification links), e.g. https://zync.levende.net
+    APP_URL: ${APP_URL:-}
     ALLOW_NO_AUTH: ${ALLOW_NO_AUTH:-0}
   volumes:
     - ${WORKSPACES_HOST_DIR:?set WORKSPACES_HOST_DIR to the host folder holding your workspaces}:/workspace
@@ -34,7 +32,7 @@ services:
       - opencode-config:/opencode-config
     networks: [default, dokploy-network]
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:3001/api/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:3001/zync/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -44,7 +42,7 @@ services:
     command: ["opencode"]
     expose:
       - "4096"
-    networks: [default, dokploy-network]
+    networks: [default]
     environment:
       <<: *env
       # Provider keys: set whichever you use in Dokploy → Environment. Referenced as {env:…}

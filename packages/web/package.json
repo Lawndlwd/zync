@@ -18,7 +18,6 @@
     "@lezer/highlight": "^1.2.4",
     "@milkdown/crepe": "^7.22.2",
     "@tanstack/react-query": "^5.104.0",
-    "codemirror": "^6.0.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^7.18.4",

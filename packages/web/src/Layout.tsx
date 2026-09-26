@@ -115,14 +115,14 @@ export function Layout() {
   useEffect(() => setDrawer(false), [location.pathname])
 
   useEffect(() => {
-    if (!config?.chatUrl) return
+    if (!config) return
     const dir = `${config.workspacesRoot.replace(/\/$/, '')}/${ws}`
     setFrames((f) => {
       if (sessionParam) {
-        const url = chatUrlFor(config.chatUrl as string, dir, sessionParam)
+        const url = chatUrlFor(dir, sessionParam)
         return f[ws] === url ? f : { ...f, [ws]: url }
       }
-      return f[ws] ? f : { ...f, [ws]: chatUrlFor(config.chatUrl as string, dir) }
+      return f[ws] ? f : { ...f, [ws]: chatUrlFor(dir) }
     })
   }, [config, ws, sessionParam])
 
@@ -216,7 +216,6 @@ export function Layout() {
             mode={dock}
             width={`calc(${(pct * 100).toFixed(1)}% - 12px)`}
             frames={frames}
-            chatUrl={config ? config.chatUrl : undefined}
             view={viewOf(ws, lastPath.current.split('?')[0])}
             onOpen={toggleDock}
             onFull={toggleFull}

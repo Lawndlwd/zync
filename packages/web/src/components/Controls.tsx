@@ -1,5 +1,4 @@
 import { type ReactNode, useCallback, useRef, useState } from 'react'
-import { IconCheck } from '../icons'
 import { Popover } from './Popover'
 
 /** On/off switch (`.toggle`). */
@@ -24,29 +23,6 @@ export function Toggle({
       className={`toggle${checked ? ' on' : ''}`}
       onClick={() => onChange(!checked)}
     />
-  )
-}
-
-export function Checkbox({
-  checked,
-  onChange,
-  children,
-}: {
-  checked: boolean
-  onChange: (v: boolean) => void
-  children?: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={checked}
-      className="row g10 checkrow"
-      onClick={() => onChange(!checked)}
-    >
-      <span className={`check${checked ? ' on' : ''}`}>{checked && <IconCheck size={10} sw={2.4} />}</span>
-      {children}
-    </button>
   )
 }
 

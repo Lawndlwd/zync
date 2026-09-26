@@ -29,10 +29,6 @@ export function Card({
   )
 }
 
-export function Kbd({ children }: { children: ReactNode }) {
-  return <span className="kbd">{children}</span>
-}
-
 /** Number + label chip; `bad` switches to the danger pair. */
 export function Chip({ n, label, bad, to }: { n: number; label: string; bad?: boolean; to?: string }) {
   const inner = (

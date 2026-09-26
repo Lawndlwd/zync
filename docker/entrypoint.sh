@@ -3,24 +3,24 @@ set -e
 
 role="${1:-api}"
 
-require_auth() {
-  # opencode can run any shell command on every workspace: never serve it without auth.
-  if [ -z "$BASIC_AUTH_USERS" ] && [ "$ALLOW_NO_AUTH" != "1" ]; then
-    echo "ERROR: BASIC_AUTH_USERS is empty. Set it (see .env.example) or ALLOW_NO_AUTH=1 for local use only." >&2
+require_ack() {
+  # The app (and the AI chat it serves) can run shell commands on every workspace and has no login.
+  if [ "$ALLOW_NO_AUTH" != "1" ]; then
+    echo "ERROR: zync has no login: anyone who can reach it can use your files and the AI." >&2
+    echo "       Put it behind access control (VPN, IP allow-list…), then set ALLOW_NO_AUTH=1." >&2
     exit 1
   fi
 }
 
 case "$role" in
   api)
-    require_auth
+    require_ack
     exec node /app/packages/api/dist/index.js
     ;;
   scheduler)
     exec node /app/packages/jobs/dist/scheduler.js
     ;;
   opencode)
-    require_auth
     config="$HOME/.config/opencode/opencode.json"
     # First start of a fresh opencode-config volume: seed it from the repo's opencode/opencode.json.
     # Afterwards the volume copy is the source of truth (edited from Settings → AI server).
