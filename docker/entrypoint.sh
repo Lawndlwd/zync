@@ -1,6 +1,19 @@
 #!/bin/sh
 set -e
 
+# Mounted folders can be root-owned (Docker creates a missing host folder as root), and then the app
+# can't create workspaces ("EACCES: permission denied, mkdir '/workspace/…'"). Started as root, hand
+# them to `node` — only entries that aren't already its own, so restarts stay fast — then re-run this
+# script as `node`.
+if [ "$(id -u)" = 0 ]; then
+  for dir in "${WORKSPACES_ROOT:-/workspace}" /opencode-config /home/node/.config/opencode /home/node/.local/share/opencode; do
+    if [ -d "$dir" ]; then
+      find "$dir" -xdev \! -user node -exec chown node:node {} + 2>/dev/null || true
+    fi
+  done
+  exec gosu node "$0" "$@"
+fi
+
 role="${1:-api}"
 
 require_ack() {
