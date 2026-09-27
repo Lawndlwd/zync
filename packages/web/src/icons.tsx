@@ -52,6 +52,14 @@ export const IconGrid = stroked(
   16,
   1.4,
 )
+export const IconCalendar = stroked(
+  <>
+    <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" />
+    <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" />
+  </>,
+  16,
+  1.4,
+)
 export const IconFile = stroked(<path d="M4 1.8h5.2L12.5 5v9.2H4zM9 1.8v3.4h3.5" />, 16, 1.4)
 export const IconBoard = stroked(
   <>
@@ -87,6 +95,16 @@ export const IconSettings = stroked(
   16,
   1.4,
 )
+export const IconMemory = stroked(
+  <>
+    <path d="M5.5 2.5a2.5 2.5 0 00-2.4 3.2A2.6 2.6 0 002.5 10a2.5 2.5 0 003 2.9A2 2 0 008 13.5V3.2A2 2 0 005.5 2.5z" />
+    <path d="M10.5 2.5a2.5 2.5 0 012.4 3.2 2.6 2.6 0 01.6 4.3 2.5 2.5 0 01-3 2.9A2 2 0 018 13.5" />
+  </>,
+  16,
+  1.4,
+)
+export const IconTrash = stroked(<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 9h5.8l.6-9M7 7v4.5M9 7v4.5" />, 14, 1.4)
+export const IconPin = stroked(<path d="M6 2.5h4M7 2.5v4L4.5 9h7L9 6.5v-4M8 9v4.5" />, 12, 1.5)
 export const IconPlus = stroked(<path d="M8 3v10M3 8h10" />, 14, 1.5)
 export const IconFolder = stroked(
   <path d="M1.8 4.2c0-.6.4-1 1-1h3.4l1.4 1.6h5.6c.6 0 1 .4 1 1v6.4c0 .6-.4 1-1 1H2.8c-.6 0-1-.4-1-1z" />,

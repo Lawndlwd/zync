@@ -1,4 +1,4 @@
-import { deleteJob, listJobs, nextRuns, readJob, readRuns, requestRun, writeJob } from '@zync/jobs'
+import { deleteJob, listJobs, nextRuns, readJob, readRuns, requestRun, validateJob, writeJob } from '@zync/jobs'
 import express, { Router } from 'express'
 import { wsOf } from './workspace-param.js'
 
@@ -36,8 +36,15 @@ export function jobsRoutes(): Router {
     const ws = await wsOf(req)
     const job = await readJob(ws.path, req.params.name)
     if (typeof req.body?.enabled === 'boolean') job.enabled = req.body.enabled
-    await writeJob(ws.path, job, { overwrite: true })
-    res.json(job)
+    // Moving a one-shot job on the calendar. Recurring jobs keep their cron.
+    if (typeof req.body?.at === 'string') {
+      if (job.schedule)
+        throw Object.assign(new Error('Recurring jobs are moved by editing their schedule'), { status: 400 })
+      job.at = req.body.at
+    }
+    const next = validateJob(job)
+    await writeJob(ws.path, next, { overwrite: true })
+    res.json(next)
   })
 
   r.delete('/:name', async (req, res) => {

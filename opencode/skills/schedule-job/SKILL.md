@@ -1,6 +1,6 @@
 ---
 name: schedule-job
-description: Schedule work for the AI to do later or on a recurring basis ("do X on Monday at 15:14", "every morning summarize…", "remind/run/check … at …"). Use whenever the user asks for a task at a specific time or on a schedule, or wants to list, change, run or delete scheduled jobs.
+description: 'Schedule work for the AI to do later or on a recurring basis ("do X on Monday at 15:14", "every morning summarize…", "remind/run/check … at …"). Use whenever the user asks for a task at a specific time or on a schedule, or wants to list, change, run or delete scheduled jobs.'
 ---
 
 # Scheduling AI jobs

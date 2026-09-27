@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // Merge zync's pieces into an opencode config file without clobbering user settings:
 //   - the zync-jobs MCP server (schedule jobs from chat)
-//   - our skills folder (schedule-job skill)
+//   - our skills (schedule-job, kanban, calendar…), copied into <config dir>/skills/ so every skill,
+//     agent and command lives in one folder the app can manage (the OpenCode page). A skill is copied
+//     once: after that the copy is yours to edit or delete (the page can reset it to zync's version).
 //   - a "job" agent used for unattended scheduled runs
+//   - the zync plugin (packages/jobs/dist/opencode-plugin.js): the AI's memory, see packages/jobs/src/memory.ts
 //
 // Usage: node opencode/configure.mjs <config-file>
-// Env:   ZYNC_MCP_PATH, ZYNC_SKILLS_DIR, WORKSPACES_ROOT, TZ, NTFY_* are forwarded to the MCP server.
+// Env:   ZYNC_MCP_PATH, ZYNC_PLUGIN_PATH, ZYNC_SKILLS_DIR, WORKSPACES_ROOT, TZ, NTFY_* are forwarded to the MCP server.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -19,6 +22,7 @@ if (!target) {
 }
 
 const mcpPath = process.env.ZYNC_MCP_PATH || path.resolve(here, '../packages/jobs/dist/mcp.js')
+const pluginPath = process.env.ZYNC_PLUGIN_PATH || path.join(path.dirname(mcpPath), 'opencode-plugin.js')
 const skillsDir = process.env.ZYNC_SKILLS_DIR || path.resolve(here, 'skills')
 
 let config = {}
@@ -43,8 +47,36 @@ config.mcp['zync-jobs'] = {
   enabled: true,
 }
 
-config.skills ??= {}
-config.skills.paths = [...new Set([...(config.skills.paths || []), skillsDir])]
+// One entry for our plugin; an old one (another install path) is replaced, the user's own are kept.
+const pluginUrl = `file://${pluginPath}`
+const plugins = (config.plugin ?? []).filter((p) => !String(Array.isArray(p) ? p[0] : p).endsWith('/opencode-plugin.js'))
+config.plugin = [...plugins, pluginUrl]
+
+// Older versions pointed opencode at the app's skills folder; the skills are now copied instead.
+if (config.skills?.paths) {
+  config.skills.paths = config.skills.paths.filter((p) => p !== skillsDir)
+  if (!config.skills.paths.length) delete config.skills.paths
+  if (!Object.keys(config.skills).length) delete config.skills
+}
+
+const ownSkills = path.join(path.dirname(target), 'skills')
+const seededFile = path.join(ownSkills, '.zync-seeded')
+let seeded = []
+try {
+  seeded = JSON.parse(readFileSync(seededFile, 'utf8'))
+} catch {}
+const copied = []
+for (const d of existsSync(skillsDir) ? readdirSync(skillsDir, { withFileTypes: true }) : []) {
+  if (!d.isDirectory() || seeded.includes(d.name)) continue
+  const to = path.join(ownSkills, d.name)
+  if (!existsSync(to)) {
+    cpSync(path.join(skillsDir, d.name), to, { recursive: true })
+    copied.push(d.name)
+  }
+  seeded.push(d.name)
+}
+mkdirSync(ownSkills, { recursive: true })
+writeFileSync(seededFile, `${JSON.stringify(seeded)}\n`)
 
 config.agent ??= {}
 config.agent.job ??= {
@@ -63,4 +95,4 @@ config.agent.job ??= {
 
 mkdirSync(path.dirname(target), { recursive: true })
 writeFileSync(target, `${JSON.stringify(config, null, 2)}\n`)
-console.log(`[configure] wrote ${target} (mcp: ${mcpPath}, skills: ${skillsDir})`)
+console.log(`[configure] wrote ${target} (mcp: ${mcpPath}, plugin: ${pluginPath}${copied.length ? `, added skills: ${copied.join(', ')}` : ''})`)

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import type { Board, Card, CardPatch, Person } from '../api'
 import { Button, IconButton } from '../components/Button'
@@ -27,6 +27,8 @@ export function CardPanel({
   onClose,
   onStep,
   error,
+  top,
+  createLabel = 'Create card',
 }: {
   ws: string
   board: Board
@@ -41,6 +43,9 @@ export function CardPanel({
   onClose: () => void
   onStep?: (dir: -1 | 1) => void
   error: string
+  /** Shown above the page (e.g. the calendar's "Event / Card" switch). */
+  top?: ReactNode
+  createLabel?: string
 }) {
   const creating = !card
   const [draft, setDraft] = useState<Draft>(() => initialDraft ?? emptyDraft(board))
@@ -116,6 +121,7 @@ export function CardPanel({
       </div>
 
       <div className="panel-body">
+        {top}
         <CardDocument
           ws={ws}
           board={board}
@@ -157,7 +163,7 @@ export function CardPanel({
                 disabled={!draft.title.trim()}
                 onClick={() => void create()}
               >
-                Create card
+                {createLabel}
               </Button>
             </span>
           </>

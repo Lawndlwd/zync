@@ -29,6 +29,9 @@ importers:
       express:
         specifier: ^5.2.1
         version: 5.2.1
+      gray-matter:
+        specifier: ^4.0.3
+        version: 4.0.3
       multer:
         specifier: ^2.4.0
         version: 2.4.0
@@ -109,6 +112,9 @@ importers:
       '@milkdown/crepe':
         specifier: ^7.22.2
         version: 7.22.2(prosemirror-model@1.25.12)(prosemirror-state@1.4.4)(prosemirror-view@1.42.6)(typescript@6.0.3)
+      '@milkdown/kit':
+        specifier: ^7.22.2
+        version: 7.22.2(@codemirror/language@6.12.4)(@codemirror/state@6.7.6)(@codemirror/view@6.43.13)(typescript@6.0.3)
       '@tanstack/react-query':
         specifier: ^5.104.0
         version: 5.104.0(react@19.3.0)

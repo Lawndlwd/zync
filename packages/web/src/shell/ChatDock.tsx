@@ -1,20 +1,34 @@
-import { type RefObject, useState } from 'react'
+import { type RefObject, useEffect, useRef, useState } from 'react'
 import {
   IconBoard,
+  IconCalendar,
   IconClock,
   IconCollapseDock,
   IconExpand,
   IconFile,
   IconGrid,
+  IconMemory,
   IconPeople,
   IconPopout,
   IconSettings,
   IconSpark,
 } from '../icons'
+import { lastChatSession, rememberChatSession, sessionFromPath } from './chatSession'
 import type { DockMode } from './context'
 
 export interface ViewContext {
-  kind: 'overview' | 'file' | 'board' | 'jobs' | 'people' | 'boards' | 'files' | 'settings'
+  kind:
+    | 'overview'
+    | 'file'
+    | 'board'
+    | 'jobs'
+    | 'calendar'
+    | 'opencode'
+    | 'people'
+    | 'memory'
+    | 'boards'
+    | 'files'
+    | 'settings'
   label: string
 }
 
@@ -25,7 +39,10 @@ const CTX_ICON = {
   board: <IconBoard size={11} />,
   boards: <IconBoard size={11} />,
   jobs: <IconClock size={11} />,
+  calendar: <IconCalendar size={11} />,
+  opencode: <IconSpark size={11} />,
   people: <IconPeople size={11} />,
+  memory: <IconMemory size={11} />,
   settings: <IconSettings size={11} />,
 }
 
@@ -57,6 +74,33 @@ export function ChatDock({
   const ctxKey = view ? `${view.kind}:${view.label}` : null
   const showCtx = view && hiddenCtx !== ctxKey
   const src = frames[ws]
+  const frameBox = useRef<HTMLDivElement>(null)
+
+  // Settings changed one of the chat's preferences: reload it so opencode reads them again.
+  useEffect(() => {
+    const reload = () => {
+      for (const f of frameBox.current?.querySelectorAll('iframe') ?? []) f.contentWindow?.location.reload()
+    }
+    window.addEventListener('zync:chat-reload', reload)
+    return () => window.removeEventListener('zync:chat-reload', reload)
+  }, [])
+
+  // Remember which conversation each workspace's chat is showing, so a reload reopens it.
+  useEffect(() => {
+    const track = () => {
+      for (const f of frameBox.current?.querySelectorAll<HTMLIFrameElement>('iframe[data-ws]') ?? []) {
+        try {
+          const id = sessionFromPath(f.contentWindow?.location.pathname ?? '')
+          const name = f.dataset.ws as string
+          if (id && id !== lastChatSession(name)) rememberChatSession(name, id)
+        } catch {
+          // not loaded yet
+        }
+      }
+    }
+    const t = window.setInterval(track, 1500)
+    return () => clearInterval(t)
+  }, [])
 
   return (
     <>
@@ -100,10 +144,11 @@ export function ChatDock({
             <IconCollapseDock />
           </button>
         </div>
-        <div className="frame">
+        <div className="frame" ref={frameBox}>
           {Object.entries(frames).map(([name, url]) => (
             <iframe
               key={name}
+              data-ws={name}
               title={`AI chat – ${name}`}
               src={url}
               allow="clipboard-read; clipboard-write; microphone"

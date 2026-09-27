@@ -1,6 +1,6 @@
 ---
 name: kanban
-description: Manage kanban boards and cards: create tasks, move them between columns, assign them to people (@me, @ai, or others), set due dates, and have the AI do a card at a given time ("put X on the board", "assign this to the AI for Friday 9:00", "what's in review?", "move the report card to done"). Use whenever the user talks about boards, cards, tasks, a todo list or who is doing what.
+description: 'Manage kanban boards and cards: create tasks, move them between columns, assign them to people (@me, @ai, or others), set due dates, and have the AI do a card at a given time ("put X on the board", "assign this to the AI for Friday 9:00", "what''s in review?", "move the report card to done"). Use whenever the user talks about boards, cards, tasks, a todo list or who is doing what.'
 ---
 
 # Kanban boards
@@ -14,7 +14,8 @@ inside the folder is a card. The file name is the title, and the frontmatter hol
 title: Write the report
 status: todo            # column id
 assignee: me            # person id: me, ai, or a created person
-due: 2026-10-01
+due: 2026-10-01T14:00   # date, or date-time to put it on the calendar
+duration: 90            # minutes on the calendar (default 60)
 labels: [q3]
 runAt: 2026-09-30T09:00 # ai cards only
 context: [notes/]       # ai cards only

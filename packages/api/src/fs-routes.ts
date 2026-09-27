@@ -4,6 +4,8 @@ import path from 'node:path'
 import { safeResolve, syncCardFile } from '@zync/jobs'
 import express, { type Request, Router } from 'express'
 import multer from 'multer'
+import { listFiles, searchWorkspace } from './search.js'
+import { applyOrder, readOrder, renameInOrder, setOrder } from './tree-order.js'
 import { wsOf } from './workspace-param.js'
 
 const HIDDEN = new Set(['.git', 'node_modules', '.DS_Store'])
@@ -36,7 +38,12 @@ async function isBinary(file: string, size: number): Promise<boolean> {
 
 export function fsRoutes(): Router {
   const r = Router({ mergeParams: true })
-  const upload = multer({ dest: path.join(tmpdir(), 'zync-uploads'), limits: { fileSize: 200 * 1024 * 1024 } })
+  // preservePath: a folder upload names each file by its path inside the folder.
+  const upload = multer({
+    dest: path.join(tmpdir(), 'zync-uploads'),
+    preservePath: true,
+    limits: { fileSize: 200 * 1024 * 1024 },
+  })
 
   // One directory level; the UI expands folders lazily.
   r.get('/tree', async (req, res) => {
@@ -60,39 +67,39 @@ export function fsRoutes(): Router {
       })
     }
     entries.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1))
-    res.json({ path: rel, entries })
+    const key = path.relative(ws.path, dir).split(path.sep).join('/')
+    res.json({ path: rel, entries: applyOrder(entries, (await readOrder(ws.path))[key]) })
+  })
+
+  // The sidebar order of one folder (drag and drop), see tree-order.ts.
+  r.put('/order', express.json(), async (req, res) => {
+    const ws = await wsOf(req)
+    const dir = await safeResolve(ws.path, String(req.body?.dir || ''))
+    const names = Array.isArray(req.body?.names) ? req.body.names : []
+    await setOrder(ws.path, path.relative(ws.path, dir).split(path.sep).join('/'), names)
+    res.status(204).end()
   })
 
   // Every visible file in the workspace, newest first. `total` feeds the sidebar count.
   r.get('/recent', async (req, res) => {
     const ws = await wsOf(req)
     const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100)
-    const files: TreeEntry[] = []
-    const walk = async (dir: string, depth: number): Promise<void> => {
-      if (depth > 8) return
-      const dirents = await readdir(dir, { withFileTypes: true }).catch(() => [])
-      for (const d of dirents) {
-        if (HIDDEN.has(d.name) || d.name.startsWith('.')) continue
-        const full = path.join(dir, d.name)
-        if (d.isDirectory()) {
-          await walk(full, depth + 1)
-          continue
-        }
-        if (!d.isFile()) continue
-        const s = await stat(full).catch(() => null)
-        if (!s) continue
-        files.push({
-          name: d.name,
-          path: path.relative(ws.path, full).split(path.sep).join('/'),
-          type: 'file',
-          size: s.size,
-          mtime: s.mtimeMs,
-        })
-      }
-    }
-    await walk(ws.path, 0)
-    files.sort((a, b) => b.mtime - a.mtime)
-    res.json({ total: files.length, entries: files.slice(0, limit) })
+    const files = (await listFiles(ws.path)).sort((a, b) => b.mtime - a.mtime)
+    res.json({ total: files.length, entries: files.slice(0, limit).map((f) => ({ ...f, type: 'file' })) })
+  })
+
+  // Every file, newest first — for the editor's @-mention / [[link picker.
+  r.get('/files', async (req, res) => {
+    const ws = await wsOf(req)
+    const files = (await listFiles(ws.path)).sort((a, b) => b.mtime - a.mtime)
+    res.json({ entries: files.map((f) => ({ ...f, type: 'file' })) })
+  })
+
+  // Full-text search (⌘K): accent/case-insensitive, phrase first, with matching lines.
+  r.get('/search', async (req, res) => {
+    const ws = await wsOf(req)
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50)
+    res.json({ results: await searchWorkspace(ws.path, String(req.query.q || ''), limit) })
   })
 
   r.get('/file/*path', async (req, res) => {
@@ -161,6 +168,8 @@ export function fsRoutes(): Router {
     }
     await mkdir(path.dirname(to), { recursive: true })
     await rename(from, to)
+    const rel = (p: string) => path.relative(ws.path, p).split(path.sep).join('/')
+    await renameInOrder(ws.path, rel(from), rel(to))
     res.json({ from: req.body.from, to: req.body.to })
   })
 
@@ -173,8 +182,14 @@ export function fsRoutes(): Router {
       const saved: string[] = []
       for (const f of files) {
         // multer decodes multipart filenames as latin1
-        const name = path.basename(Buffer.from(f.originalname, 'latin1').toString('utf8'))
+        const name = Buffer.from(f.originalname, 'latin1')
+          .toString('utf8')
+          .split(/[/\\]+/)
+          .filter((s) => s && s !== '.' && s !== '..')
+          .join('/')
+        if (!name) continue
         const target = await safeResolve(ws.path, path.join(path.relative(ws.path, dir), name))
+        await mkdir(path.dirname(target), { recursive: true })
         // copy instead of rename: the temp dir is usually on another filesystem than the workspace mount
         await copyFile(f.path, target)
         saved.push(path.relative(ws.path, target).split(path.sep).join('/'))

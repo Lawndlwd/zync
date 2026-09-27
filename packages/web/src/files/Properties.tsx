@@ -13,8 +13,8 @@ import { IconChevDown, IconChevRight } from '../icons'
 // (dates → calendar, lists → chips, booleans → switch, card status/assignee → pickers).
 
 const DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/
-const LIST_KEYS = new Set(['labels', 'context', 'tags'])
-const DATE_KEYS = new Set(['due', 'runAt', 'run_at', 'date'])
+const LIST_KEYS = new Set(['labels', 'context', 'tags', 'people'])
+const DATE_KEYS = new Set(['due', 'runAt', 'run_at', 'date', 'start', 'end'])
 
 export function Properties({
   source,
@@ -138,6 +138,7 @@ function Value({
         ariaLabel={name}
         variant={name === 'context' ? 'tag' : 'label'}
         values={values}
+        suggestions={name === 'people' ? people.map((p) => p.id) : undefined}
         onChange={onChange}
         addLabel={name === 'context' ? '+ file or folder' : '+ add'}
       />
@@ -160,7 +161,8 @@ function Value({
       <DatePicker
         compact
         ariaLabel={name}
-        withTime={text.includes('T') || name === 'runAt' || name === 'run_at'}
+        withTime={name === 'runAt' || name === 'run_at'}
+        optionalTime
         value={text || undefined}
         onChange={onChange}
       />

@@ -2,12 +2,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { type DragEvent, useCallback, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { api, type Board, type Card, type CardPatch, type Column, type Person } from '../api'
-import { Button, IconButton, TextButton } from '../components/Button'
+import { Button, ButtonLink, IconButton, TextButton } from '../components/Button'
 import { useConfirm, useToast } from '../components/Dialog'
 import { TextArea, TextInput, TitleInput } from '../components/Field'
 import { Popover } from '../components/Popover'
 import { IconCross, IconPlus } from '../icons'
-import { wsUrl } from '../shell/context'
+import { fileUrl, useShell, wsUrl } from '../shell/context'
+import { usePaneId } from '../shell/paneId'
 import { PersonAvatar } from '../ui'
 import { CardPanel, type Draft } from './CardPanel'
 import { KanbanCard } from './KanbanCard'
@@ -25,6 +26,8 @@ export function BoardView() {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const confirm = useConfirm()
+  const shell = useShell()
+  const paneId = usePaneId()
   const toast = useToast()
   const [search, setSearch] = useSearchParams()
   const people = usePeople()
@@ -106,6 +109,11 @@ export function BoardView() {
     )
 
   const { board, cards } = data
+  // Cards open in another split side show as selected here.
+  const shownBeside = (file: string) => {
+    const url = fileUrl(ws, `${board.path}/${file}`)
+    return shell.sides.some((side) => side.id !== paneId && side.path.split('?')[0] === url)
+  }
   const last = doneColumn(board)
   const visible = cards.filter((c) => !who || (who === '-' ? !c.assignee : c.assignee === who))
   const ordered = board.columns.flatMap((col) => visible.filter((c) => statusOf(board, c) === col.id))
@@ -152,6 +160,7 @@ export function BoardView() {
         status: d.status,
         assignee: d.assignee || undefined,
         due: d.due || undefined,
+        duration: d.duration,
         labels: d.labels,
         description: d.description || undefined,
         runAt: d.assignee === 'ai' ? d.runAt || undefined : undefined,
@@ -233,7 +242,7 @@ export function BoardView() {
                   {inReview > 0 && ` · ${inReview} by AI in review`}
                 </span>
               </div>
-              <div className="row g8">
+              <div className="row g8 wrap">
                 <AssigneeFilter
                   who={who}
                   ids={assignees}
@@ -242,6 +251,9 @@ export function BoardView() {
                 />
                 <span style={{ width: 1, height: 24, borderLeft: '1px dashed var(--line)', margin: '0 4px' }} />
                 <Button onClick={() => setAddingColumn(true)}>[+] Column</Button>
+                <ButtonLink to={fileUrl(ws, `${board.path}/.board.json`)} title="Edit the board’s config file">
+                  {'{ }'} .board.json
+                </ButtonLink>
                 <Button
                   variant="danger"
                   onClick={async () => {
@@ -330,9 +342,16 @@ export function BoardView() {
                               card={card}
                               people={people}
                               done={col.id === last}
-                              selected={card.file === openId}
+                              selected={card.file === openId || shownBeside(card.file)}
                               dragging={dragging === card.file}
-                              onOpen={() => setParams({ new: null, card: card.file === openId ? null : card.file })}
+                              onOpen={() => {
+                                // Split view: the card opens as a page in the other side, the board keeps its space.
+                                if (shell.openInOther(paneId, fileUrl(ws, `${board.path}/${card.file}`))) {
+                                  setParams({ new: null, card: null })
+                                  return
+                                }
+                                setParams({ new: null, card: card.file === openId ? null : card.file })
+                              }}
                               onAccept={() => void patchCard(card.file, { status: last })}
                               onRetry={() => void run(() => api.runCard(ws, boardId, card.file))}
                               onDragStart={(e) => {

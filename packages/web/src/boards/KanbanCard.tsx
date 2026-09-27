@@ -153,7 +153,11 @@ export function KanbanCard({
           </span>
         ) : (
           <span className="due">
-            {done ? 'Done' : due ? `${card.assignee === 'ai' ? 'Due ' : ''}${dayLabel(due)}` : 'No date'}
+            {done
+              ? 'Done'
+              : due
+                ? `${card.assignee === 'ai' ? 'Due ' : ''}${dayLabel(due)}${card.due?.includes('T') ? ` · ${hhmm(due)}` : ''}`
+                : 'No date'}
           </span>
         )}
         {state === 'running' && ai?.sessionId ? (

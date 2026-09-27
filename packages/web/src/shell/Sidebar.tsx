@@ -1,6 +1,16 @@
 import type { ReactNode } from 'react'
-import { NavLink, useLocation } from 'react-router'
-import { IconBoard, IconClock, IconFile, IconGrid, IconPeople, IconSettings } from '../icons'
+import { NavLink } from 'react-router'
+import {
+  IconBoard,
+  IconCalendar,
+  IconClock,
+  IconFile,
+  IconGrid,
+  IconMemory,
+  IconPeople,
+  IconSettings,
+  IconSpark,
+} from '../icons'
 import type { WorkspaceData } from '../workspaceData'
 import { type Creating, wsUrl } from './context'
 import { SideTree } from './SideTree'
@@ -22,9 +32,7 @@ export function Sidebar({
   creating: Creating | null
   setCreating: (c: Creating | null) => void
 }) {
-  const { pathname } = useLocation()
   const failed = data.jobs.filter((j) => j.lastRun?.status === 'failed' || j.lastRun?.status === 'timeout').length
-  const onFiles = pathname.startsWith(`${wsUrl(ws)}/files`)
 
   return (
     <aside
@@ -38,6 +46,7 @@ export function Sidebar({
         <Item to={wsUrl(ws, 'overview')} icon={<IconGrid />} label="Overview" />
         <Item to={wsUrl(ws, 'files')} icon={<IconFile />} label="Files" count={data.fileCount || undefined} />
         <Item to={wsUrl(ws, 'boards')} icon={<IconBoard />} label="Boards" count={data.boards.length || undefined} />
+        <Item to={wsUrl(ws, 'calendar')} icon={<IconCalendar />} label="Calendar" />
         <Item
           to={wsUrl(ws, 'jobs')}
           icon={<IconClock />}
@@ -46,9 +55,11 @@ export function Sidebar({
           bad={failed > 0}
         />
       </nav>
-      <SideTree ws={ws} data={data} toolbar={onFiles} creating={creating} setCreating={setCreating} />
+      <SideTree ws={ws} data={data} creating={creating} setCreating={setCreating} />
       <div className="side-foot">
         <nav className="nav" aria-label="Account">
+          <Item to={wsUrl(ws, 'opencode')} icon={<IconSpark size={16} />} label="OpenCode" />
+          <Item to={wsUrl(ws, 'memory')} icon={<IconMemory />} label="Memory" />
           <Item to={wsUrl(ws, 'people')} icon={<IconPeople />} label="People" count={data.people.length || undefined} />
           <Item to={wsUrl(ws, 'settings')} icon={<IconSettings />} label="Settings" />
         </nav>

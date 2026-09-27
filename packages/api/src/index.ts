@@ -16,6 +16,7 @@ const app = createApp({
   // Docker mounts opencode's config volume into the api container; dev uses scripts/dev-opencode.sh's file.
   opencodeConfigPath:
     process.env.ZYNC_OPENCODE_CONFIG || path.resolve(here, '../../../data/opencode/config/opencode/opencode.json'),
+  opencodeSkillsDir: process.env.ZYNC_SKILLS_DIR || path.resolve(here, '../../../opencode/skills'),
 })
 
 const server = app.listen(port, () => {

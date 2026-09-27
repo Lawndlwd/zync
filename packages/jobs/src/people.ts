@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
 import { workspacesRoot } from './workspaces.js'
@@ -104,4 +104,6 @@ export async function deletePerson(id: string, root = workspacesRoot()): Promise
     root,
     stored.filter((p) => p.id !== id),
   )
+  // Their memory note (see memory.ts).
+  await rm(path.join(root, '.zync', 'people', `${id}.md`), { force: true })
 }

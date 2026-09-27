@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run opencode web locally exactly like the Docker image: one config file, seeded once from
+# Run the opencode server locally exactly like the Docker image: one config file, seeded once from
 # opencode/opencode.json, with zync's MCP server + skills merged in. Your personal
 # ~/.config/opencode is not read or touched (XDG_CONFIG_HOME points inside data/).
 # Usage: pnpm dev:opencode   (after `pnpm build` so packages/jobs/dist exists)

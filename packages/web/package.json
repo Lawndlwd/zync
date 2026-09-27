@@ -17,6 +17,7 @@
     "@codemirror/view": "^6.43.13",
     "@lezer/highlight": "^1.2.4",
     "@milkdown/crepe": "^7.22.2",
+    "@milkdown/kit": "^7.22.2",
     "@tanstack/react-query": "^5.104.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

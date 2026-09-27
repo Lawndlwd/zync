@@ -13,6 +13,11 @@ An Obsidian-like workspace over real folders on your server, with **opencode** a
   `@ai`. An `@ai` card with a run time is done by the AI at that time: it moves to In progress, then
   to Review with a summary. A card is just a markdown file in the board's folder. You can also
   manage boards from chat.
+- **Memory**: the AI remembers you across chats and jobs. Every person has a notes page (who they
+  are, how to work with them; `@me` is you, `@ai` is how the AI should work), and memories are
+  small markdown pages (rules, preferences, habits, facts), global or per workspace. The AI reads
+  them on every message and saves what it learns ("remember…", "from now on…"); you read and edit
+  everything on the **Memory** page. Done by zync's opencode plugin, no external service.
 - **Jobs**: ask the AI in chat to do something at a time or on a schedule. The `schedule-job` skill
   makes it ask clarifying questions, then it creates a job file. At the scheduled time a new
   unattended session runs the task in that workspace, the run is logged, and you get a push
@@ -108,8 +113,8 @@ app's Settings edits), merges in zync's pieces, and never reads or touches `~/.c
 | --- | --- |
 | `packages/web` | React UI (zync design): overview, files, boards, jobs, people, settings, chat dock |
 | `packages/api` | Express: files/boards/jobs/settings API under `/zync/api`, live file events, serves the web build and forwards the chat to opencode |
-| `packages/jobs` | Job files, scheduler service, `zync-jobs` MCP server, opencode HTTP client, ntfy |
-| `opencode/` | `opencode.json` (config seed), `configure.mjs` (merges MCP, skills and the `job` agent into it) and the skills |
+| `packages/jobs` | Job files, scheduler service, `zync-jobs` MCP server, opencode memory plugin, opencode HTTP client, ntfy |
+| `opencode/` | `opencode.json` (config seed), `configure.mjs` (merges MCP, skills, the memory plugin and the `job` agent into it) and the skills |
 | `docker/`, `Dockerfile`, `docker-compose*.yml` | One image, three roles: `api`, `opencode`, `scheduler` |
 
 `pnpm test` runs the vitest suites (job parsing and validation, path safety, file and jobs routes).

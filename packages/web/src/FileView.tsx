@@ -1,19 +1,20 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { lazy, type ReactNode, Suspense, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { api, type Board, basename, type CardPatch, dirname, type FileData } from './api'
 import { CardDocument } from './boards/CardDocument'
 import { boardUrl, statusOf, usePeople } from './boards/shared'
-import { Button, ButtonLink } from './components/Button'
+import { ButtonLink } from './components/Button'
 import { useToast } from './components/Dialog'
 import { TextArea } from './components/Field'
+import { FolderView } from './files/FolderView'
 import { Properties } from './files/Properties'
-import { IconBoard, IconCheck, IconFile, IconPlus, IconSpin } from './icons'
-import { fileUrl, useShell } from './shell/context'
-import { Card } from './ui'
+import { IconBoard, IconCheck, IconSpin } from './icons'
+import { fileUrl } from './shell/context'
 import { ago } from './workspaceData'
 
 const MarkdownEditor = lazy(() => import('./MarkdownEditor').then((m) => ({ default: m.MarkdownEditor })))
+const CodeEditor = lazy(() => import('./components/CodeEditor').then((m) => ({ default: m.CodeEditor })))
 
 const IMAGE = /\.(png|jpe?g|gif|webp|svg|avif|bmp|ico)$/i
 const PDF = /\.pdf$/i
@@ -21,8 +22,9 @@ const MEDIA = /\.(mp4|webm|mov|mp3|wav|ogg)$/i
 
 export function FileView() {
   const { ws = '', '*': splat = '' } = useParams()
+  const [search] = useSearchParams()
   const path = decodeURIComponent(splat)
-  if (!path) return <FilesHome ws={ws} />
+  if (!path) return <FolderView ws={ws} dir={search.get('dir') ?? ''} />
   const raw = api.rawUrl(ws, path)
   if (IMAGE.test(path))
     return (
@@ -296,8 +298,45 @@ function TextFile({ ws, path }: { ws: string; path: string }) {
               Download
             </a>
           </div>
+        ) : path.toLowerCase().endsWith('.json') ? (
+          <div className="doc col g12" style={{ maxWidth: 1100 }}>
+            <div className="code-wrap file-code">
+              <Suspense fallback={<div className="skel" style={{ height: 420 }} />}>
+                <CodeEditor
+                  key={loaded.mtime}
+                  value={loaded.content ?? ''}
+                  ariaLabel={path}
+                  onChange={(v) => {
+                    // Never autosave broken JSON: a half-typed .board.json would hide the board.
+                    try {
+                      JSON.parse(v)
+                      onChange(v)
+                    } catch {
+                      clearTimeout(timer.current)
+                      pending.current = null
+                      setState('dirty')
+                    }
+                  }}
+                  onSave={() => void flush()}
+                />
+              </Suspense>
+            </div>
+            {path.endsWith('.board.json') && (
+              <p className="small muted" style={{ margin: 0 }}>
+                The board’s columns:{' '}
+                <span className="mono-s">{'{ "columns": [{ "id": "todo", "name": "To do" }, …] }'}</span>. Ids are
+                lowercase; cards refer to them in <span className="mono-s">status</span>.
+              </p>
+            )}
+          </div>
         ) : path.toLowerCase().endsWith('.md') ? (
-          <MarkdownFile key={loaded.mtime} content={loaded.content ?? ''} onChange={onChange} />
+          <MarkdownFile
+            key={loaded.mtime}
+            ws={ws}
+            dir={dirname(path)}
+            content={loaded.content ?? ''}
+            onChange={onChange}
+          />
         ) : (
           <div className="doc col g12" style={{ maxWidth: 1100 }}>
             <TextArea
@@ -335,7 +374,17 @@ const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/
  * The WYSIWYG editor doesn't understand YAML frontmatter, so it is edited as a property sheet above
  * the body and the two are re-joined on save. Board cards are markdown files whose fields live there.
  */
-function MarkdownFile({ content, onChange }: { content: string; onChange: (content: string) => void }) {
+export function MarkdownFile({
+  ws,
+  dir,
+  content,
+  onChange,
+}: {
+  ws: string
+  dir: string
+  content: string
+  onChange: (content: string) => void
+}) {
   const people = usePeople()
   const match = content.match(FRONTMATTER)
   const front = useRef(match ? match[1] : null)
@@ -359,6 +408,8 @@ function MarkdownFile({ content, onChange }: { content: string; onChange: (conte
       )}
       <Suspense fallback={<div className="skel" style={{ height: 200 }} />}>
         <MarkdownEditor
+          ws={ws}
+          dir={dir}
           value={body.current}
           onChange={(md) => {
             body.current = md
@@ -367,60 +418,9 @@ function MarkdownFile({ content, onChange }: { content: string; onChange: (conte
         />
       </Suspense>
       <p className="muted" style={{ fontSize: 14, margin: 0 }}>
-        Type <span className="kbd">/</span> for blocks · changes save automatically
+        Type <span className="kbd">/</span> for blocks · <span className="kbd">@</span> to mention or link a page ·
+        changes save automatically
       </p>
-    </div>
-  )
-}
-
-/** /files with nothing selected: recent files and a way to start. */
-function FilesHome({ ws }: { ws: string }) {
-  const shell = useShell()
-  const { data } = useQuery({ queryKey: ['recent', ws], queryFn: () => api.recent(ws, 100) })
-  return (
-    <div className="page col g24">
-      <div className="col g16">
-        <span className="mono muted">{ws} / files</span>
-        <div className="row between wrap g16" style={{ alignItems: 'flex-end' }}>
-          <div className="col g12">
-            <h1 className="display">Files</h1>
-            <p className="lede">
-              Everything in this workspace is a plain file — <b>{data?.total ?? 0} files</b>. Pick one in the tree or
-              start a page.
-            </p>
-          </div>
-          <span className="row g8">
-            <Button variant="soft" onClick={() => shell.startCreate({ dir: '', kind: 'folder' })}>
-              [+] Folder
-            </Button>
-            <Button variant="primary" onClick={() => shell.startCreate({ dir: '', kind: 'page' })}>
-              <IconPlus size={12} sw={1.8} />
-              New page
-            </Button>
-          </span>
-        </div>
-      </div>
-      <Card title="Recently edited" meta={`${Math.min(20, data?.entries.length ?? 0)} of ${data?.total ?? 0}`}>
-        <div className="col">
-          {!data?.entries.length && <span className="lr small muted">No files yet.</span>}
-          {data?.entries.slice(0, 20).map((f) => {
-            const i = f.path.lastIndexOf('/')
-            return (
-              <Link key={f.path} to={fileUrl(ws, f.path)} className="lr row-link">
-                <IconFile size={15} sw={1.3} />
-                <span className="grow trunc">
-                  {i > 0 && <span className="muted">{f.path.slice(0, i + 1)}</span>}
-                  {f.name}
-                </span>
-                <span className="mono-s muted" style={{ width: 96 }}>
-                  {ago(new Date(f.mtime))}
-                </span>
-                <span className="link">[Open ↗]</span>
-              </Link>
-            )
-          })}
-        </div>
-      </Card>
     </div>
   )
 }

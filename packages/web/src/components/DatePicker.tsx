@@ -62,6 +62,7 @@ export function DatePicker({
   value,
   onChange,
   withTime,
+  optionalTime,
   placeholder = 'No date',
   compact,
   ariaLabel = 'Date',
@@ -71,6 +72,8 @@ export function DatePicker({
   value: string | undefined
   onChange: (v: string | null) => void
   withTime?: boolean
+  /** A date that may also carry a time: offers [+ Time] / [All day] and keeps whichever the value has. */
+  optionalTime?: boolean
   placeholder?: string
   compact?: boolean
   ariaLabel?: string
@@ -82,6 +85,7 @@ export function DatePicker({
   const close = useCallback(() => setOpen(false), [])
   const { date, time } = parse(value)
   const label = formatDateValue(value)
+  const timed = withTime || (optionalTime && !!value?.includes('T'))
 
   return (
     <>
@@ -101,10 +105,13 @@ export function DatePicker({
         <Calendar
           date={date}
           time={time}
-          withTime={withTime}
-          onPick={(d, t) => {
-            onChange(withTime ? `${ymd(d)}T${t}` : ymd(d))
-            if (!withTime) {
+          withTime={timed}
+          optionalTime={optionalTime && !withTime}
+          onAllDay={() => onChange(ymd(date ?? new Date()))}
+          onPick={(d, t, setTime) => {
+            const useTime = timed || setTime
+            onChange(useTime ? `${ymd(d)}T${t}` : ymd(d))
+            if (!useTime) {
               close()
               btn.current?.focus()
             }
@@ -127,6 +134,8 @@ function Calendar({
   date,
   time,
   withTime,
+  optionalTime,
+  onAllDay,
   onPick,
   onClear,
   onDone,
@@ -134,7 +143,11 @@ function Calendar({
   date: Date | null
   time: string
   withTime?: boolean
-  onPick: (d: Date, time: string) => void
+  /** Show the time row even without a time: typing or picking one adds it, [All day] removes it. */
+  optionalTime?: boolean
+  onAllDay: () => void
+  /** `setTime`: the user chose a time, so the value gets one. */
+  onPick: (d: Date, time: string, setTime?: boolean) => void
   onClear: () => void
   onDone: () => void
 }) {
@@ -161,6 +174,11 @@ function Calendar({
     else if (e.key === 'PageDown') month(1)
   }
   const commitTime = (v: string) => {
+    if (optionalTime && !v.trim()) {
+      setTErr(false)
+      if (withTime) onAllDay()
+      return
+    }
     const m = v.trim().match(/^(\d{1,2})[:h.]?(\d{2})?$/)
     const h = m ? Number(m[1]) : Number.NaN
     const min = m?.[2] ? Number(m[2]) : 0
@@ -171,7 +189,7 @@ function Calendar({
     const next = `${pad2(h)}:${pad2(min)}`
     setT(next)
     setTErr(false)
-    onPick(date ?? cursor, next)
+    onPick(date ?? cursor, next, true)
   }
 
   return (
@@ -219,27 +237,30 @@ function Calendar({
           )
         })}
       </div>
-      {withTime && (
+      {(withTime || optionalTime) && (
         <div className="col g6" style={{ borderTop: '1px dashed var(--line)', paddingTop: 10 }}>
           <div className="row g6">
             <span className="flabel" style={{ width: 40 }}>
               Time
             </span>
             <input
-              key={t}
+              key={`${t}:${withTime}`}
               className={`input monoin compact${tErr ? ' err' : ''}`}
               style={{ width: 76, height: 30 }}
-              defaultValue={t}
+              defaultValue={withTime ? t : ''}
+              placeholder={withTime ? undefined : 'all day'}
               aria-label="Time (HH:MM)"
               aria-invalid={tErr || undefined}
               onBlur={(e) => commitTime(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && commitTime((e.target as HTMLInputElement).value)}
             />
+          </div>
+          <div className="row g6 wrap">
             {TIMES.map((x) => (
               <button
                 key={x}
                 type="button"
-                className={`pill dp-time${x === t ? ' on' : ''}`}
+                className={`pill dp-time${withTime && x === t ? ' on' : ''}`}
                 onClick={() => commitTime(x)}
               >
                 {x}
@@ -248,11 +269,12 @@ function Calendar({
           </div>
         </div>
       )}
-      <div className="row g12" style={{ borderTop: '1px dashed var(--line)', paddingTop: 10 }}>
+      <div className="row wrap" style={{ borderTop: '1px dashed var(--line)', paddingTop: 10, gap: '6px 12px' }}>
         <TextButton onClick={() => onPick(today, t)}>[Today]</TextButton>
         <TextButton onClick={() => onPick(addDays(today, 1), t)}>[Tomorrow]</TextButton>
         <TextButton onClick={() => onPick(addDays(startOfWeek(today), 7), t)}>[Next Mon]</TextButton>
         <span className="grow" />
+        {optionalTime && withTime && <TextButton onClick={onAllDay}>[All day]</TextButton>}
         {date && (
           <TextButton className="muted" onClick={onClear}>
             [Clear]

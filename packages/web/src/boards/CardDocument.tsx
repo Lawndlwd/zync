@@ -19,6 +19,7 @@ export interface Draft {
   status: string
   assignee?: string
   due?: string
+  duration?: number
   labels: string[]
   description: string
   runAt?: string
@@ -92,6 +93,7 @@ export function CardDocument({
         status: statusOf(board, card),
         assignee: card.assignee,
         due: card.due,
+        duration: card.duration,
         labels: card.labels,
         description: card.description,
         runAt: card.runAt,
@@ -220,10 +222,23 @@ export function CardDocument({
             <span className="k">due</span>
             <DatePicker
               compact
+              optionalTime
               ariaLabel="due"
               value={v.due}
               onChange={(due) => set({ due: due ?? undefined }, { due })}
             />
+            {v.due?.includes('T') && (
+              <>
+                <span className="k">duration</span>
+                <Select
+                  compact
+                  ariaLabel="duration"
+                  value={String(v.duration ?? 60)}
+                  options={durationOptions(v.duration)}
+                  onChange={(d) => set({ duration: Number(d) }, { duration: Number(d) === 60 ? null : Number(d) })}
+                />
+              </>
+            )}
             <span className="k" style={{ alignSelf: 'start', paddingTop: 3 }}>
               labels
             </span>
@@ -320,6 +335,8 @@ export function CardDocument({
         <Suspense fallback={<div className="skel" style={{ height: 160 }} />}>
           <MarkdownEditor
             key={`${card?.file ?? 'new'}:${bodyKey}`}
+            ws={ws}
+            dir={board.path}
             value={v.description}
             onChange={(md) => {
               if (!card) {
@@ -335,8 +352,20 @@ export function CardDocument({
         </Suspense>
       </div>
       <p className="muted" style={{ fontSize: 14, margin: 0 }}>
-        Type <span className="kbd">/</span> for blocks · this is the card’s file — changes save automatically
+        Type <span className="kbd">/</span> for blocks · <span className="kbd">@</span> to mention or link · this is the
+        card’s file — changes save automatically
       </p>
     </div>
   )
+}
+
+const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240, 480]
+
+/** "1h 30m" */
+export const formatMinutes = (m: number) => (m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}`)
+
+/** Preset lengths, plus the current one when it was set elsewhere (the calendar, the AI). */
+function durationOptions(current?: number) {
+  const all = current && !DURATIONS.includes(current) ? [...DURATIONS, current].sort((a, b) => a - b) : DURATIONS
+  return all.map((m) => ({ value: String(m), label: formatMinutes(m), text: formatMinutes(m) }))
 }

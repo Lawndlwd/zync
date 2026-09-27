@@ -3,9 +3,11 @@ import path from 'node:path'
 import { createWorkspace, defaultTimezone, errorMessage, listWorkspaces, type OpencodeClient } from '@zync/jobs'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { boardsRoutes, peopleRoutes } from './boards-routes.js'
+import { calendarRoutes } from './calendar-routes.js'
 import { eventsHandler } from './events.js'
 import { fsRoutes } from './fs-routes.js'
 import { jobsRoutes } from './jobs-routes.js'
+import { globalMemoryRoutes, personNotesRoutes, workspaceMemoryRoutes } from './memory-routes.js'
 import { opencodeProxy } from './opencode-proxy.js'
 import { opencodeRoutes, type RestartTiming } from './opencode-routes.js'
 
@@ -27,6 +29,8 @@ export interface AppOptions {
   opencodeConfigPath?: string
   opencodeClient?: OpencodeClient
   restartTiming?: RestartTiming
+  /** zync's own opencode skills (opencode/skills), copied into the config folder at start-up. */
+  opencodeSkillsDir?: string
 }
 
 export function createApp(opts: AppOptions) {
@@ -51,12 +55,19 @@ export function createApp(opts: AppOptions) {
   })
 
   app.use(`${API}/people`, peopleRoutes(opts.workspacesRoot))
+  app.use(`${API}/people`, personNotesRoutes(opts.workspacesRoot))
+  app.use(`${API}/memory`, globalMemoryRoutes(opts.workspacesRoot))
+  app.use(`${API}/ws/:ws/memory`, workspaceMemoryRoutes(opts.workspacesRoot))
   app.use(`${API}/ws/:ws/boards`, boardsRoutes())
+  app.use(`${API}/ws/:ws/calendar`, calendarRoutes())
   app.use(`${API}/ws/:ws`, fsRoutes())
   app.use(`${API}/ws/:ws/jobs`, jobsRoutes())
   app.get(`${API}/ws/:ws/events`, eventsHandler)
   if (opts.opencodeConfigPath)
-    app.use(`${API}/opencode`, opencodeRoutes(opts.opencodeConfigPath, opts.opencodeClient, opts.restartTiming))
+    app.use(
+      `${API}/opencode`,
+      opencodeRoutes(opts.opencodeConfigPath, opts.opencodeClient, opts.restartTiming, opts.opencodeSkillsDir),
+    )
 
   app.use(API, (_req, res) => {
     res.status(404).json({ error: 'Not found' })

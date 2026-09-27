@@ -83,6 +83,8 @@ const FIELDS = {
   status: z.string().regex(ID_RE),
   assignee: z.string().regex(ID_RE),
   due: dateString(DUE_RE, 'due must look like 2026-09-28 or 2026-09-28T15:14'),
+  /** Minutes the card takes on the calendar (from `due`, or `runAt` for the AI). Unset = 1 hour. */
+  duration: z.number().int().min(5).max(1440),
   labels: z.array(z.string().trim().min(1).max(30)),
   runAt: dateString(DATE_TIME_RE, 'runAt must be a local date-time like 2026-09-28T15:14'),
   context: z.array(z.string()),
@@ -98,6 +100,7 @@ export interface Card {
   status?: string
   assignee?: string
   due?: string
+  duration?: number
   labels: string[]
   runAt?: string
   context: string[]
@@ -115,6 +118,7 @@ export interface CardPatch {
   order?: number
   assignee?: string | null
   due?: string | null
+  duration?: number | null
   labels?: string[]
   runAt?: string | null
   context?: string[]
@@ -499,11 +503,11 @@ export async function syncCardJob(wsPath: string, board: Board, card: Card, opts
   return card
 }
 
-/** Local "now" as YYYY-MM-DDTHH:MM in the scheduler's timezone. */
-function localNow(): string {
+/** A moment as local wall-clock YYYY-MM-DDTHH:MM in `timeZone` (default: the scheduler's). */
+export function localStamp(date = new Date(), timeZone = defaultTimezone()): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-CA', {
-      timeZone: defaultTimezone(),
+      timeZone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -511,7 +515,7 @@ function localNow(): string {
       minute: '2-digit',
       hourCycle: 'h23',
     })
-      .formatToParts(new Date())
+      .formatToParts(date)
       .map((p) => [p.type, p.value]),
   )
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
@@ -525,7 +529,7 @@ export async function runCardNow(wsPath: string, boardPath: string, file: string
   const board = await readBoardMeta(wsPath, boardPath)
   let card = applyPatch(await readCard(wsPath, board.path, file), { assignee: AI_ASSIGNEE, runAt: null })
   if (card.ai?.state === 'running') throw badRequest('This card is already running')
-  card = await syncCardJob(wsPath, board, card, { at: localNow() })
+  card = await syncCardJob(wsPath, board, card, { at: localStamp() })
   await requestRun(wsPath, cardJobName(cardRef(board.path, card.file)))
   card = { ...card, ai: { state: 'scheduled' } }
   await writeCard(wsPath, board.path, card)

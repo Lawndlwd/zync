@@ -1,10 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Outlet, useLocation, useNavigate, useNavigationType, useParams, useSearchParams } from 'react-router'
 import { api, basename, chatUrlFor, dirname } from './api'
 import { ChatDock, Divider, type ViewContext } from './shell/ChatDock'
 import { CommandPalette } from './shell/CommandPalette'
+import { applyChatDefaults, reloadChat } from './shell/chatAppearance'
+import { lastChatSession, rememberChatSession, sessionExists } from './shell/chatSession'
 import { type Creating, isTyping, type Shell, ShellContext, usePref, useTheme, writePref, wsUrl } from './shell/context'
+import { PaneDivider, PaneHeader, SplitPane, usePaneSizes } from './shell/Pane'
+import { panesFromSearch, splitPath, withoutPanes, withPanes } from './shell/paneUrl'
 import { Sidebar } from './shell/Sidebar'
 import { TopBar } from './shell/TopBar'
 import { useWorkspaceData } from './workspaceData'
@@ -21,6 +25,7 @@ function useWorkspaceEvents(ws: string) {
       for (const p of pending) {
         qc.invalidateQueries({ queryKey: ['tree', ws, dirname(p)] })
         qc.invalidateQueries({ queryKey: ['file', ws, p] })
+        if (p.startsWith('.zync/memory/')) qc.invalidateQueries({ queryKey: ['memory'] })
         if (p.startsWith('.opencode/jobs/')) {
           qc.invalidateQueries({ queryKey: ['jobs', ws] })
           qc.invalidateQueries({ queryKey: ['runs', ws] })
@@ -30,6 +35,8 @@ function useWorkspaceEvents(ws: string) {
         // the file editor can all write them). Only boards currently on screen refetch.
         if (p.endsWith('.md') || p.endsWith('.board.json')) qc.invalidateQueries({ queryKey: ['board', ws] })
         if (p.endsWith('.board.json')) qc.invalidateQueries({ queryKey: ['boards', ws] })
+        // Events, cards and jobs (and their runs) all show on the calendar.
+        if (p.endsWith('.md') || p.startsWith('.opencode/jobs/')) qc.invalidateQueries({ queryKey: ['calendar', ws] })
       }
       if (visible) qc.invalidateQueries({ queryKey: ['recent', ws] })
       pending.clear()
@@ -48,6 +55,15 @@ function useWorkspaceEvents(ws: string) {
   }, [ws, qc])
 }
 
+interface Pane {
+  id: string
+  path: string
+}
+
+const MAX_PANES = 2
+let paneSeq = 0
+const newPaneId = () => `pane-${Date.now()}-${paneSeq++}`
+
 function viewOf(ws: string, pathname: string): ViewContext | null {
   const rest = pathname.slice(wsUrl(ws).length + 1)
   const [section, ...tail] = rest.split('/')
@@ -61,8 +77,14 @@ function viewOf(ws: string, pathname: string): ViewContext | null {
       return sub ? { kind: 'board', label: basename(sub) } : { kind: 'boards', label: 'Boards' }
     case 'jobs':
       return { kind: 'jobs', label: 'Jobs' }
+    case 'calendar':
+      return { kind: 'calendar', label: 'Calendar' }
+    case 'opencode':
+      return { kind: 'opencode', label: sub ? basename(sub) : 'OpenCode' }
     case 'people':
       return { kind: 'people', label: 'People' }
+    case 'memory':
+      return { kind: 'memory', label: 'Memory' }
     case 'settings':
       return { kind: 'settings', label: 'Settings' }
     default:
@@ -111,20 +133,35 @@ export function Layout() {
   if (!isChat) lastPath.current = location.pathname + location.search
 
   useWorkspaceEvents(ws)
+  // The chat's own light/dark (and a first theme) follow zync's — see shell/chatAppearance.
+  useEffect(() => {
+    if (applyChatDefaults(theme)) reloadChat()
+  }, [theme])
   useEffect(() => writePref('zync:lastWorkspace', ws), [ws])
   useEffect(() => setDrawer(false), [location.pathname])
 
   useEffect(() => {
     if (!config) return
     const dir = `${config.workspacesRoot.replace(/\/$/, '')}/${ws}`
-    setFrames((f) => {
-      if (sessionParam) {
-        const url = chatUrlFor(dir, sessionParam)
-        return f[ws] === url ? f : { ...f, [ws]: url }
-      }
-      return f[ws] ? f : { ...f, [ws]: chatUrlFor(dir) }
+    if (sessionParam) {
+      const url = chatUrlFor(dir, sessionParam)
+      setFrames((f) => (f[ws] === url ? f : { ...f, [ws]: url }))
+      return
+    }
+    if (frames[ws]) return
+    // First time the chat opens for this workspace: resume the last conversation if it still exists.
+    let cancelled = false
+    const saved = lastChatSession(ws)
+    void (saved ? sessionExists(dir, saved) : Promise.resolve(false)).then((ok) => {
+      if (cancelled) return
+      if (saved && !ok) rememberChatSession(ws, null)
+      const url = chatUrlFor(dir, ok && saved ? saved : undefined)
+      setFrames((f) => (f[ws] ? f : { ...f, [ws]: url }))
     })
-  }, [config, ws, sessionParam])
+    return () => {
+      cancelled = true
+    }
+  }, [config, ws, sessionParam, frames])
 
   const toggleFull = useCallback(() => {
     if (isChat) navigate(lastPath.current)
@@ -148,12 +185,166 @@ export function Layout() {
     [narrow, iconsMode],
   )
 
-  const shell: Shell = useMemo(
-    () => ({ ws, dock, toggleDock, toggleFull, openPalette: () => setPalette(true), startCreate, theme, setTheme }),
-    [ws, dock, toggleDock, toggleFull, startCreate, theme, setTheme],
+  // Split panes beside the main view (up to 2). The layout owns them and mirrors them into the URL
+  // (?p1=…&p2=…, see shell/paneUrl), so a split can be shared, bookmarked and differ per tab.
+  const navType = useNavigationType()
+  const [panes, setPanesState] = useState<Pane[]>(() =>
+    panesFromSearch(ws, location.search).map((path) => ({ id: newPaneId(), path })),
+  )
+  const panesRef = useRef(panes)
+  panesRef.current = panes
+  const locRef = useRef(location)
+  locRef.current = location
+
+  /** Change the panes and write them into the current URL (push = a Back-able step). */
+  const commit = useCallback(
+    (next: Pane[], opts: { push?: boolean; to?: string } = {}) => {
+      panesRef.current = next
+      setPanesState(next)
+      const loc = locRef.current
+      const target = opts.to ? splitPath(opts.to) : { pathname: loc.pathname, search: loc.search }
+      navigate(
+        {
+          pathname: target.pathname,
+          search: withPanes(
+            ws,
+            target.search,
+            next.map((p) => p.path),
+          ),
+        },
+        { replace: !opts.push },
+      )
+    },
+    [navigate, ws],
   )
 
-  // ⌘K palette · ⌘J dock · ⌘⇧J full chat · ⌘\ sidebar · G then O/F/B/J · Esc leaves full chat.
+  // Keep URL and panes in step. A link in the main view builds a URL without the pane parameters:
+  // put them back. Back/Forward (POP) or a pasted link: the URL wins.
+  useEffect(() => {
+    const url = panesFromSearch(ws, location.search)
+    const cur = panesRef.current.filter((p) => p.path.startsWith(`/w/${encodeURIComponent(ws)}/`))
+    const same = url.length === cur.length && url.every((u, i) => u === cur[i].path)
+    if (same) {
+      if (cur.length !== panesRef.current.length) setPanesState(cur)
+      return
+    }
+    if (navType !== 'POP' && url.length === 0 && cur.length) {
+      navigate(
+        {
+          pathname: location.pathname,
+          search: withPanes(
+            ws,
+            location.search,
+            cur.map((p) => p.path),
+          ),
+        },
+        { replace: true },
+      )
+      return
+    }
+    // Reuse ids for panes that are still there, so they don't remount.
+    const next = url.map((path) => cur.find((p) => p.path === path) ?? { id: newPaneId(), path })
+    panesRef.current = next
+    setPanesState(next)
+  }, [location.search, location.pathname, navType, ws, navigate])
+
+  const openBeside = useCallback(
+    (path: string) => {
+      const id = newPaneId()
+      commit([...panesRef.current.filter((p) => p.path !== path), { id, path }].slice(-MAX_PANES), { push: true })
+      setActive(id)
+    },
+    [commit],
+  )
+  const setPanePath = useCallback(
+    (id: string, path: string) => {
+      const ps = panesRef.current
+      // Nothing changed: no URL write, no re-render.
+      if (!ps.some((p) => p.id === id && p.path !== path)) return
+      commit(ps.map((p) => (p.id === id ? { ...p, path } : p)))
+    },
+    [commit],
+  )
+  // The selected side: sidebar and ⌘K open things there. 'main' = the main view.
+  const [active, setActive] = useState<string>('main')
+  const paneNav = useRef<Record<string, (to: string) => void>>({})
+  const registerNav = useCallback((id: string, go: ((to: string) => void) | null) => {
+    if (go) paneNav.current[id] = go
+    else delete paneNav.current[id]
+  }, [])
+  const activePane = panes.find((p) => p.id === active)
+  useEffect(() => {
+    if (active !== 'main' && !panes.some((p) => p.id === active)) setActive('main')
+  }, [panes, active])
+  const open = useCallback(
+    (path: string) => {
+      const go = activePane && paneNav.current[activePane.id]
+      if (go) go(path)
+      else navigate(path)
+    },
+    [activePane, navigate],
+  )
+  const activePath = activePane ? activePane.path : location.pathname + location.search
+  const sides = useMemo(
+    () => [{ id: 'main', path: location.pathname + withoutPanes(location.search) }, ...panes],
+    [location.pathname, location.search, panes],
+  )
+  const openInOther = useCallback(
+    (fromId: string, path: string) => {
+      if (!panes.length) return false
+      const target = sides.find((s) => s.id !== fromId)
+      if (!target) return false
+      if (target.id === 'main') navigate(path)
+      else paneNav.current[target.id]?.(path)
+      return true
+    },
+    [panes.length, sides, navigate],
+  )
+  const panesBox = useRef<HTMLDivElement>(null)
+  const [paneSizes, setPaneSizes] = usePaneSizes(1 + panes.length)
+  const grow = (i: number) => ({ flexGrow: paneSizes[i] ?? 1 })
+  const closePane = (id: string) => commit(panesRef.current.filter((p) => p.id !== id))
+  const closeAll = () => commit([])
+  const makeMain = (id: string) => {
+    const pane = panes.find((p) => p.id === id)
+    if (!pane) return
+    // Swap: the pane's view becomes the main one, the main view moves into the pane.
+    const mainPath = location.pathname + withoutPanes(location.search)
+    setActive('main')
+    commit(
+      panes.map((p) => (p.id === id ? { id: newPaneId(), path: mainPath } : p)),
+      { push: true, to: pane.path },
+    )
+  }
+  const escapeToMain = useCallback(
+    (id: string, path: string) =>
+      commit(
+        panesRef.current.filter((p) => p.id !== id),
+        { push: true, to: path },
+      ),
+    [commit],
+  )
+
+  const shell: Shell = useMemo(
+    () => ({
+      ws,
+      dock,
+      toggleDock,
+      toggleFull,
+      openPalette: () => setPalette(true),
+      startCreate,
+      openBeside,
+      open,
+      activePath,
+      sides,
+      openInOther,
+      theme,
+      setTheme,
+    }),
+    [ws, dock, toggleDock, toggleFull, startCreate, openBeside, open, activePath, sides, openInOther, theme, setTheme],
+  )
+
+  // ⌘K palette · ⌘J dock · ⌘⇧J full chat · ⌘\ sidebar · G then O/F/B/C/J · Esc leaves full chat.
   const gAt = useRef(0)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -174,7 +365,7 @@ export function Layout() {
       } else if (!mod && !e.altKey && !isTyping(e.target) && !palette) {
         if (k === 'g') gAt.current = Date.now()
         else if (Date.now() - gAt.current < 1200) {
-          const to = { o: 'overview', f: 'files', b: 'boards', j: 'jobs' }[k]
+          const to = { o: 'overview', f: 'files', b: 'boards', c: 'calendar', j: 'jobs' }[k]
           gAt.current = 0
           if (to) navigate(wsUrl(ws, to))
         }
@@ -202,9 +393,62 @@ export function Layout() {
             setCreating={setCreating}
           />
           {dock !== 'full' && (
-            <main className="main guides">
-              <div className="main-scroll">
-                <Outlet />
+            <main
+              className="main guides"
+              onClickCapture={(e) => {
+                // ⌥-click any in-app link to open it beside the current view.
+                const a = (e.target as HTMLElement).closest('a[href]')
+                const href = a?.getAttribute('href')
+                if (e.altKey && href?.startsWith('/w/')) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  openBeside(href)
+                }
+              }}
+            >
+              <div ref={panesBox} className={`panes${panes.length ? ' split' : ''}`}>
+                <section
+                  className={`pane primary${panes.length && active === 'main' ? ' active' : ''}`}
+                  style={grow(0)}
+                  aria-label="Main view"
+                  onPointerDownCapture={() => setActive('main')}
+                  onFocusCapture={() => setActive('main')}
+                >
+                  {panes.length > 0 && (
+                    <PaneHeader title={viewOf(ws, location.pathname)?.label ?? ''} active={active === 'main'}>
+                      <button type="button" className="link muted" onClick={closeAll}>
+                        [Close split]
+                      </button>
+                    </PaneHeader>
+                  )}
+                  <div className="pane-scroll">
+                    <Outlet />
+                  </div>
+                </section>
+                {panes.map((p, i) => [
+                  <PaneDivider
+                    key={`d-${p.id}`}
+                    index={i}
+                    sizes={paneSizes}
+                    setSizes={setPaneSizes}
+                    container={panesBox}
+                    setDragging={setDragging}
+                  />,
+                  <SplitPane
+                    key={p.id}
+                    id={p.id}
+                    style={grow(i + 1)}
+                    path={p.path}
+                    title={viewOf(ws, p.path.split('?')[0])?.label ?? ''}
+                    onPath={(path) => setPanePath(p.id, path)}
+                    onEscape={(path) => escapeToMain(p.id, path)}
+                    onMakeMain={() => makeMain(p.id)}
+                    onClose={() => closePane(p.id)}
+                    active={active === p.id}
+                    onSelect={() => setActive(p.id)}
+                    register={(go) => registerNav(p.id, go)}
+                  />,
+                ])}
               </div>
             </main>
           )}

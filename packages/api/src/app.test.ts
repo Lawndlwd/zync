@@ -49,6 +49,12 @@ describe('files', () => {
     expect(res.body.entries.map((e: any) => e.path)).toEqual(['z.txt'])
   })
 
+  it('lists every file for the link picker', async () => {
+    await writeFile(path.join(root, 'alpha/z.txt'), 'z')
+    const res = await request(app).get('/zync/api/ws/alpha/files').expect(200)
+    expect(res.body.entries.map((e: any) => e.path).sort()).toEqual(['notes/a.md', 'z.txt'])
+  })
+
   it('reads, writes (creating parents), deletes', async () => {
     const r = await request(app).get('/zync/api/ws/alpha/file/notes/a.md').expect(200)
     expect(r.body).toMatchObject({ content: '# A', binary: false })
@@ -84,6 +90,44 @@ describe('files', () => {
       .attach('files', Buffer.from('data'), 'file one.txt')
       .expect(201)
     expect(r.body.saved).toEqual(['uploads/file one.txt'])
+  })
+
+  it('keeps a custom order, following renames and moves', async () => {
+    await writeFile(path.join(root, 'alpha/b.md'), '')
+    await writeFile(path.join(root, 'alpha/c.md'), '')
+    const names = async (p = '') =>
+      (await request(app).get(`/zync/api/ws/alpha/tree?path=${p}`)).body.entries.map((e: any) => e.name)
+    expect(await names()).toEqual(['notes', 'b.md', 'c.md'])
+    await request(app)
+      .put('/zync/api/ws/alpha/order')
+      .send({ dir: '', names: ['c.md', 'notes', 'b.md'] })
+      .expect(204)
+    expect(await names()).toEqual(['c.md', 'notes', 'b.md'])
+    await writeFile(path.join(root, 'alpha/a.md'), '')
+    expect(await names()).toEqual(['c.md', 'notes', 'b.md', 'a.md'])
+    await request(app).post('/zync/api/ws/alpha/move').send({ from: 'c.md', to: 'z.md' }).expect(200)
+    expect(await names()).toEqual(['z.md', 'notes', 'b.md', 'a.md'])
+    await request(app)
+      .put('/zync/api/ws/alpha/order')
+      .send({ dir: 'notes', names: ['a.md'] })
+      .expect(204)
+    await request(app).post('/zync/api/ws/alpha/move').send({ from: 'notes', to: 'docs' }).expect(200)
+    expect(JSON.parse(await readFile(path.join(root, 'alpha/.zync/order.json'), 'utf8'))).toEqual({
+      '': ['z.md', 'docs', 'b.md'],
+      docs: ['a.md'],
+    })
+    await request(app).put('/zync/api/ws/alpha/order').send({ dir: '../x', names: [] }).expect(400)
+  })
+
+  it('uploads a folder, keeping its subfolders and nothing outside the target', async () => {
+    const r = await request(app)
+      .post('/zync/api/ws/alpha/upload?dir=in')
+      .attach('files', Buffer.from('a'), { filepath: 'photos/2026/a.jpg' })
+      .attach('files', Buffer.from('b'), { filepath: 'photos/b.txt' })
+      .attach('files', Buffer.from('x'), { filepath: '../../escape.txt' })
+      .expect(201)
+    expect(r.body.saved).toEqual(['in/photos/2026/a.jpg', 'in/photos/b.txt', 'in/escape.txt'])
+    expect(await readFile(path.join(root, 'alpha/in/photos/2026/a.jpg'), 'utf8')).toBe('a')
   })
 
   it('blocks traversal, symlink escape and root deletion', async () => {
@@ -185,6 +229,36 @@ describe('boards', () => {
   })
 })
 
+describe('calendar', () => {
+  it('creates, lists, moves and deletes events', async () => {
+    const base = '/zync/api/ws/alpha/calendar'
+    const e = await request(app).post(`${base}/events`).send({ title: 'Sync', start: '2026-09-28T14:00' }).expect(201)
+    expect(e.body.file).toBe('Sync.md')
+    await request(app).post(`${base}/events`).send({ title: 'Bad', start: 'tomorrow' }).expect(400)
+    await request(app)
+      .patch(`${base}/events/Sync.md`)
+      .send({ start: '2026-09-29T09:00', end: '2026-09-29T10:30' })
+      .expect(200)
+    const list = await request(app).get(`${base}?from=2026-09-28&to=2026-10-05`).expect(200)
+    expect(list.body).toMatchObject([
+      { kind: 'event', title: 'Sync', start: '2026-09-29T09:00', end: '2026-09-29T10:30' },
+    ])
+    await request(app).get(`${base}?from=x&to=y`).expect(400)
+    await request(app).delete(`${base}/events/Sync.md`).expect(204)
+    await request(app).get(`${base}/events/Sync.md`).expect(404)
+  })
+
+  it('moves one-shot jobs but not recurring ones', async () => {
+    const dir = path.join(root, 'alpha/.opencode/jobs')
+    await mkdir(dir, { recursive: true })
+    await writeFile(path.join(dir, 'once.md'), '---\nname: once\nat: 2026-10-01T12:00\n---\ngo\n')
+    await writeFile(path.join(dir, 'daily.md'), "---\nname: daily\nschedule: '0 9 * * *'\n---\ngo\n")
+    const r = await request(app).patch('/zync/api/ws/alpha/jobs/once').send({ at: '2026-10-02T08:30' }).expect(200)
+    expect(r.body.at).toBe('2026-10-02T08:30')
+    await request(app).patch('/zync/api/ws/alpha/jobs/daily').send({ at: '2026-10-02T08:30' }).expect(400)
+  })
+})
+
 describe('people', () => {
   it('lists builtins, creates and deletes people', async () => {
     expect((await request(app).get('/zync/api/people')).body.map((p: any) => p.id)).toEqual(['me', 'ai'])
@@ -242,6 +316,62 @@ describe('opencode config', () => {
       .set('x-base-mtime', String(saved.mtime))
       .send('{}')
       .expect(200)
+  })
+
+  it('manages agents, commands and skills next to opencode.json', async () => {
+    const file = path.join(root, 'oc', 'opencode.json')
+    const builtin = path.join(root, 'builtin-skills')
+    await mkdir(path.join(builtin, 'kanban'), { recursive: true })
+    await writeFile(path.join(builtin, 'kanban', 'SKILL.md'), '---\nname: kanban\ndescription: Boards\n---\nOriginal\n')
+    await mkdir(path.join(root, 'oc', 'skills', 'kanban'), { recursive: true })
+    await writeFile(
+      path.join(root, 'oc', 'skills', 'kanban', 'SKILL.md'),
+      '---\nname: kanban\ndescription: Boards\n---\nOriginal\n',
+    )
+    const a = createApp({
+      workspacesRoot: root,
+      opencodeConfigPath: file,
+      opencodeClient: fake as any,
+      opencodeSkillsDir: builtin,
+    })
+    const base = '/zync/api/opencode'
+
+    await request(a).post(`${base}/library`).send({ kind: 'agent', name: 'reviewer' }).expect(201)
+    await request(a).post(`${base}/library`).send({ kind: 'command', name: 'Bad Name' }).expect(400)
+    const skill = (await request(a).post(`${base}/library`).send({ kind: 'skill', name: 'notes' }).expect(201)).body
+    expect(skill.path).toBe('skills/notes/SKILL.md')
+    await request(a).post(`${base}/library`).send({ kind: 'skill', name: 'notes' }).expect(409)
+
+    const lib = (await request(a).get(`${base}/library`).expect(200)).body.items
+    expect(lib.map((i: any) => [i.kind, i.name, !!i.builtin, !!i.modified])).toEqual([
+      ['agent', 'reviewer', false, false],
+      ['skill', 'kanban', true, false],
+      ['skill', 'notes', false, false],
+    ])
+
+    const f = (await request(a).get(`${base}/files/skills/kanban/SKILL.md`).expect(200)).body
+    await request(a)
+      .put(`${base}/files/skills/kanban/SKILL.md`)
+      .set('content-type', 'text/plain')
+      .set('x-base-mtime', String(f.mtime))
+      .send('---\nname: kanban\ndescription: Mine\n---\nChanged\n')
+      .expect(200)
+    await request(a)
+      .put(`${base}/files/skills/kanban/SKILL.md`)
+      .set('content-type', 'text/plain')
+      .set('x-base-mtime', String(f.mtime - 60_000))
+      .send('x')
+      .expect(409)
+    const changed = (await request(a).get(`${base}/library`)).body.items.find((i: any) => i.name === 'kanban')
+    expect(changed).toMatchObject({ modified: true, description: 'Mine' })
+    await request(a).post(`${base}/skills/kanban/reset`).expect(204)
+    expect(await readFile(path.join(root, 'oc', 'skills', 'kanban', 'SKILL.md'), 'utf8')).toContain('Original')
+
+    await request(a).get(`${base}/files/opencode.json`).expect(400)
+    await request(a).get(`${base}/files/skills/../../etc/passwd`).expect(400)
+    await request(a).delete(`${base}/files/skills/notes`).expect(204)
+    await request(a).delete(`${base}/files/agents/reviewer.md`).expect(204)
+    expect((await request(a).get(`${base}/library`)).body.items.map((i: any) => i.name)).toEqual(['kanban'])
   })
 
   const timing = { pollMs: 5, downMs: 100, upMs: 200 }
@@ -307,5 +437,35 @@ describe('opencode proxy', () => {
     } finally {
       upstream.close()
     }
+  })
+})
+
+describe('memory', () => {
+  it('creates, edits and deletes global and workspace memories', async () => {
+    await request(app).post('/zync/api/memory').send({ title: 'Tone', body: 'Terse.', type: 'preference' }).expect(201)
+    await request(app).post('/zync/api/memory').send({ title: '' }).expect(400)
+    await request(app).post('/zync/api/memory').send({ title: 'x', type: 'nope' }).expect(400)
+    const ws = await request(app).post('/zync/api/ws/alpha/memory').send({ title: 'Deploy', pinned: true }).expect(201)
+    expect(ws.body).toMatchObject({ scope: 'workspace', file: 'Deploy.md', pinned: true })
+    expect(await readFile(path.join(root, 'alpha/.zync/memory/Deploy.md'), 'utf8')).toContain('pinned: true')
+
+    const edited = await request(app).patch('/zync/api/memory/Tone.md').send({ title: 'Answer tone', body: 'Short.' })
+    expect(edited.body).toMatchObject({ file: 'Answer tone.md', body: 'Short.', type: 'preference' })
+    expect((await request(app).get('/zync/api/memory')).body.map((m: any) => m.title)).toEqual(['Answer tone'])
+
+    const prompt = await request(app).get('/zync/api/ws/alpha/memory/prompt').expect(200)
+    expect(prompt.body.text).toContain('### Deploy [workspace]')
+    expect(prompt.body.text).toContain('- Answer tone [global · preference]')
+
+    await request(app).delete('/zync/api/memory/Answer%20tone.md').expect(204)
+    await request(app).delete('/zync/api/memory/Answer%20tone.md').expect(404)
+    await request(app).get('/zync/api/ws/nope/memory').expect(404)
+  })
+
+  it("reads and writes a person's notes", async () => {
+    expect((await request(app).get('/zync/api/people/me/notes')).body).toEqual({ notes: '' })
+    await request(app).put('/zync/api/people/me/notes').send({ notes: 'Dev in Paris' }).expect(200)
+    expect((await request(app).get('/zync/api/people/me/notes')).body).toEqual({ notes: 'Dev in Paris' })
+    await request(app).put('/zync/api/people/ghost/notes').send({ notes: 'x' }).expect(404)
   })
 })
