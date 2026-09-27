@@ -1,31 +1,17 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { MEMORY_TYPES, type Memory, type MemoryPatch, type MemoryScope, type MemoryType } from '../api'
-import { Button, IconButton } from '../components/Button'
-import { Toggle } from '../components/Controls'
-import { TextInput, TitleInput } from '../components/Field'
+import { Suspense, useState } from 'react'
+
+import { Button } from '../components/Button'
+import { IconButton } from '../components/IconButton'
+import { LazyMarkdownEditor } from '../components/LazyMarkdownEditor'
 import { Select } from '../components/Select'
+import { TextInput } from '../components/TextInput'
+import { TitleInput } from '../components/TitleInput'
+import { Toggle } from '../components/Toggle'
+import { usePanelEscape } from '../hooks/usePanelEscape'
 import { IconChevDown, IconChevRight, IconCross, IconTrash } from '../icons'
+import { type Memory, MEMORY_TYPES, type MemoryDraft, type MemoryPatch } from '../types/memory'
+import { scopeName, TYPE_INFO } from './helpers'
 import { LiveMarkdown } from './LiveMarkdown'
-
-const MarkdownEditor = lazy(() => import('../MarkdownEditor').then((m) => ({ default: m.MarkdownEditor })))
-
-export const TYPE_INFO: Record<MemoryType, { label: string; hint: string }> = {
-  rule: { label: 'Rule', hint: 'An instruction to follow' },
-  preference: { label: 'Preference', hint: 'What you like' },
-  habit: { label: 'Habit', hint: 'How you usually work' },
-  fact: { label: 'Fact', hint: 'Context worth knowing' },
-}
-
-export const scopeName = (scope: MemoryScope, ws: string) => (scope === 'global' ? 'Everywhere' : `Only in ${ws}`)
-
-export interface MemoryDraft {
-  scope: MemoryScope
-  title: string
-  type: MemoryType
-  description: string
-  pinned: boolean
-  body: string
-}
 
 /**
  * A memory is a markdown page (`.zync/memory/<title>.md`): the title is the file name, the
@@ -57,11 +43,6 @@ export function MemoryPanel({
   )
   const [busy, setBusy] = useState(false)
   const [propsOpen, setPropsOpen] = useState(true)
-  const titleRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (creating) titleRef.current?.focus()
-  }, [creating])
 
   const create = async () => {
     if (!draft.title.trim() || busy) return
@@ -73,17 +54,7 @@ export function MemoryPanel({
     }
   }
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) onClose()
-      if (creating && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        void create()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  })
+  usePanelEscape(onClose, creating ? { onSubmit: () => void create() } : {})
 
   const v = memory
     ? {
@@ -121,7 +92,7 @@ export function MemoryPanel({
         <div className="doc card-doc in-panel col g20">
           <div className="col g6">
             <TitleInput
-              ref={titleRef}
+              autoFocus={creating}
               key={`${memory?.file ?? 'new'}:${memory?.title ?? ''}`}
               className="doc-title"
               defaultValue={v.title}
@@ -135,7 +106,7 @@ export function MemoryPanel({
               onKeyDown={(e) => {
                 if (e.key !== 'Enter') return
                 e.preventDefault()
-                if (memory) (e.target as HTMLInputElement).blur()
+                if (memory) e.currentTarget.blur()
                 else void create()
               }}
             />
@@ -186,7 +157,7 @@ export function MemoryPanel({
                       void onPatch({ description: description || null })
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                    if (e.key === 'Enter') e.currentTarget.blur()
                   }}
                 />
                 <span className="k">scope</span>
@@ -226,7 +197,7 @@ export function MemoryPanel({
             />
           ) : (
             <Suspense fallback={<div className="skel" style={{ height: 160 }} />}>
-              <MarkdownEditor ws={ws} value={draft.body} onChange={(body) => setDraft((d) => ({ ...d, body }))} />
+              <LazyMarkdownEditor ws={ws} value={draft.body} onChange={(body) => setDraft((d) => ({ ...d, body }))} />
             </Suspense>
           )}
           <p className="muted" style={{ fontSize: 14, margin: 0 }}>

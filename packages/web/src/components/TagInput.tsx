@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
+
 import { IconFile, IconFolder } from '../icons'
 import { Popover } from './Popover'
+
+const NO_SUGGESTIONS: string[] = []
 
 /**
  * Chips with an inline "+ add" (labels on cards, context files for AI tasks). Enter or comma adds,
@@ -10,7 +13,7 @@ export function TagInput({
   values,
   onChange,
   variant = 'label',
-  suggestions = [],
+  suggestions = NO_SUGGESTIONS,
   addLabel = '+ add',
   placeholder = 'Type and press Enter',
   ariaLabel,

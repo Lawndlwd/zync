@@ -4,7 +4,6 @@ import {
   deleteMemory,
   globalMemoryDir,
   listMemories,
-  type MemoryPatch,
   type MemoryScope,
   readPersonNotes,
   updateMemory,
@@ -12,18 +11,9 @@ import {
   writePersonNotes,
 } from '@zync/jobs'
 import express, { type Request, Router } from 'express'
-import { wsOf } from './workspace-param.js'
 
-function patchOf(body: any): MemoryPatch {
-  const b = body ?? {}
-  return {
-    title: typeof b.title === 'string' ? b.title : undefined,
-    type: b.type,
-    description: b.description,
-    pinned: typeof b.pinned === 'boolean' ? b.pinned : undefined,
-    body: typeof b.body === 'string' ? b.body : undefined,
-  }
-}
+import { MemoryBody, MemoryPatchBody, PersonNotesBody } from './body.js'
+import { wsOf } from './workspace-param.js'
 
 /** The AI's memory: `/memory` (global) and `/ws/:ws/memory` (one workspace). `:file` is `<title>.md`. */
 function memoryRouter(scope: MemoryScope, dirOf: (req: Request) => Promise<string>): Router {
@@ -35,13 +25,11 @@ function memoryRouter(scope: MemoryScope, dirOf: (req: Request) => Promise<strin
   })
 
   r.post('/', async (req, res) => {
-    const title = String(req.body?.title || '').trim()
-    if (!title) throw Object.assign(new Error('A memory needs a title'), { status: 400 })
-    res.status(201).json(await createMemory(await dirOf(req), scope, { ...patchOf(req.body), title }))
+    res.status(201).json(await createMemory(await dirOf(req), scope, MemoryBody.parse(req.body)))
   })
 
   r.patch('/:file', async (req, res) => {
-    res.json(await updateMemory(await dirOf(req), scope, req.params.file, patchOf(req.body)))
+    res.json(await updateMemory(await dirOf(req), scope, req.params.file, MemoryPatchBody.parse(req.body)))
   })
 
   r.delete('/:file', async (req, res) => {
@@ -75,7 +63,7 @@ export function personNotesRoutes(root: string): Router {
     res.json({ notes: await readPersonNotes(req.params.id, root) })
   })
   r.put('/:id/notes', async (req, res) => {
-    res.json({ notes: await writePersonNotes(req.params.id, String(req.body?.notes ?? ''), root) })
+    res.json({ notes: await writePersonNotes(req.params.id, PersonNotesBody.parse(req.body).notes, root) })
   })
   return r
 }

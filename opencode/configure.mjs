@@ -49,7 +49,9 @@ config.mcp['zync-jobs'] = {
 
 // One entry for our plugin; an old one (another install path) is replaced, the user's own are kept.
 const pluginUrl = `file://${pluginPath}`
-const plugins = (config.plugin ?? []).filter((p) => !String(Array.isArray(p) ? p[0] : p).endsWith('/opencode-plugin.js'))
+const plugins = (config.plugin ?? []).filter(
+  (p) => !String(Array.isArray(p) ? p[0] : p).endsWith('/opencode-plugin.js'),
+)
 config.plugin = [...plugins, pluginUrl]
 
 // Older versions pointed opencode at the app's skills folder; the skills are now copied instead.
@@ -95,4 +97,6 @@ config.agent.job ??= {
 
 mkdirSync(path.dirname(target), { recursive: true })
 writeFileSync(target, `${JSON.stringify(config, null, 2)}\n`)
-console.log(`[configure] wrote ${target} (mcp: ${mcpPath}, plugin: ${pluginPath}${copied.length ? `, added skills: ${copied.join(', ')}` : ''})`)
+console.log(
+  `[configure] wrote ${target} (mcp: ${mcpPath}, plugin: ${pluginPath}${copied.length ? `, added skills: ${copied.join(', ')}` : ''})`,
+)

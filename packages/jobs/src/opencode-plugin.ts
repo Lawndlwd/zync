@@ -1,25 +1,25 @@
 import path from 'node:path'
+
 import { z } from 'zod'
+
+import { errorMessage } from './errors.js'
 import {
   buildMemoryPrompt,
   deleteMemory,
-  findPerson,
   globalMemoryDir,
   MEMORY_TYPES,
   type MemoryContext,
   type MemoryScope,
   memoryFile,
   readMemory,
-  readPersonNotes,
   saveMemory,
   searchMemory,
   workspaceMemoryDir,
-  writePersonNotes,
-} from './memory.js'
-import { createPerson } from './people.js'
+} from './memory/index.js'
+import { createPerson, findPerson, readPersonNotes, writePersonNotes } from './people/index.js'
 import { workspacesRoot } from './workspaces.js'
 
-// zync's opencode plugin: the AI's memory (see memory.ts). configure.mjs adds it to the opencode
+// zync's opencode plugin: the AI's memory (see memory/). configure.mjs adds it to the opencode
 // config as file://…/dist/opencode-plugin.js. It
 //   - adds the memory block (people notes, pinned memories, index) to every system prompt,
 //   - nudges the AI to save when the user says "remember…", "from now on…",
@@ -27,21 +27,42 @@ import { workspacesRoot } from './workspaces.js'
 // opencode treats every exported function as a plugin, so this module exports only ZyncMemory.
 // The types below are the parts of @opencode-ai/plugin we use (that package drags in a UI stack).
 
-interface ToolContext {
+type ToolContext = {
   sessionID: string
   directory: string
 }
-interface ToolDef {
+type ToolDef = {
   description: string
   args: z.ZodRawShape
-  execute(args: any, ctx: ToolContext): Promise<string>
+  execute: (args: unknown, ctx: ToolContext) => Promise<string>
 }
-interface Part {
+
+/** A tool whose `execute` gets its args typed (and checked) by its own schema. Errors come back as
+ * text: the model reads them and can correct itself. */
+function tool<S extends z.ZodRawShape>(def: {
+  description: string
+  args: S
+  execute: (args: z.infer<z.ZodObject<S>>, ctx: ToolContext) => Promise<string>
+}): ToolDef {
+  const schema = z.object(def.args)
+  return {
+    description: def.description,
+    args: def.args,
+    execute: async (args, ctx) => {
+      try {
+        return await def.execute(schema.parse(args), ctx)
+      } catch (err) {
+        return `Error: ${errorMessage(err)}`
+      }
+    },
+  }
+}
+type Part = {
   type: string
   text?: string
   synthetic?: boolean
 }
-interface Hooks {
+type Hooks = {
   tool?: Record<string, ToolDef>
   'chat.message'?: (input: { sessionID: string }, output: { parts: Part[] }) => Promise<void>
   'experimental.chat.system.transform'?: (input: { sessionID?: string }, output: { system: string[] }) => Promise<void>
@@ -51,7 +72,7 @@ interface Hooks {
 function workspaceOf(directory: string, root: string): string | undefined {
   const rel = path.relative(root, path.resolve(directory))
   if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return undefined
-  const name = rel.split(path.sep)[0]
+  const name = rel.split(path.sep)[0] ?? ''
   return name.startsWith('.') ? undefined : path.join(root, name)
 }
 
@@ -66,14 +87,6 @@ export async function ZyncMemory({ directory }: { directory: string }): Promise<
     const ws = workspaceOf(dir, root)
     if (!ws) throw new Error('No current workspace here: use scope "global".')
     return workspaceMemoryDir(ws)
-  }
-  /** Tools report errors as text: the model reads them and can correct itself. */
-  const safely = (fn: (args: any, ctx: ToolContext) => Promise<string>) => async (args: any, ctx: ToolContext) => {
-    try {
-      return await fn(args, ctx)
-    } catch (err) {
-      return `Error: ${(err as Error).message}`
-    }
   }
   const scopeArg = z
     .enum(['workspace', 'global'])
@@ -103,7 +116,7 @@ export async function ZyncMemory({ directory }: { directory: string }): Promise<
     },
 
     tool: {
-      memory_save: {
+      memory_save: tool({
         description:
           'Save something to your persistent memory, or update it: saving with an existing title replaces that memory. ' +
           'Use for durable knowledge: rules and corrections from the user, preferences, habits (how they usually do things), project facts. ' +
@@ -123,7 +136,7 @@ export async function ZyncMemory({ directory }: { directory: string }): Promise<
             .optional()
             .describe('Keep the full text in every prompt. Only for short, always-relevant rules.'),
         },
-        execute: safely(async (a, ctx) => {
+        execute: async (a, ctx) => {
           const { memory, created } = await saveMemory(dirOf(a.scope, ctx.directory), a.scope, {
             title: a.title,
             body: a.content,
@@ -132,13 +145,13 @@ export async function ZyncMemory({ directory }: { directory: string }): Promise<
             pinned: a.pinned,
           })
           return `${created ? 'Saved' : 'Updated'} memory "${memory.title}" (${memory.scope}).`
-        }),
-      },
+        },
+      }),
 
-      memory_read: {
+      memory_read: tool({
         description: 'Read a memory in full, by title (from the memory index in your instructions).',
         args: { title: z.string(), scope: scopeArg.optional().describe('Omit to look in the workspace, then global.') },
-        execute: safely(async (a, ctx) => {
+        execute: async (a, ctx) => {
           const scopes: MemoryScope[] = a.scope ? [a.scope] : ['workspace', 'global']
           for (const scope of scopes) {
             let dir: string
@@ -158,41 +171,41 @@ export async function ZyncMemory({ directory }: { directory: string }): Promise<
               ].join('\n')
           }
           return `No memory titled "${a.title}".`
-        }),
-      },
+        },
+      }),
 
-      memory_search: {
+      memory_search: tool({
         description: 'Search your memories and people notes by words.',
         args: { query: z.string() },
-        execute: safely(async (a, ctx) => {
+        execute: async (a, ctx) => {
           const hits = await searchMemory(a.query, ctxOf(ctx.directory))
           if (!hits.length) return 'Nothing found.'
           return hits
             .map((h) => `## ${h.kind === 'person' ? `person ${h.title}` : `${h.title} [${h.scope}]`}\n${h.snippet}`)
             .join('\n\n')
-        }),
-      },
+        },
+      }),
 
-      memory_delete: {
+      memory_delete: tool({
         description: 'Delete a memory that is wrong or no longer useful.',
         args: { title: z.string(), scope: scopeArg },
-        execute: safely(async (a, ctx) => {
+        execute: async (a, ctx) => {
           await deleteMemory(dirOf(a.scope, ctx.directory), memoryFile(a.title))
           return `Deleted memory "${a.title}".`
-        }),
-      },
+        },
+      }),
 
-      person_read: {
+      person_read: tool({
         description: 'Read your full note about a person (the user is "me").',
         args: { person: z.string().describe('Person id ("me", "sofia") or name.') },
-        execute: safely(async (a) => {
+        execute: async (a) => {
           const p = await findPerson(a.person, root)
           if (!p) return `Unknown person "${a.person}".`
           return (await readPersonNotes(p.id, root)) || `No notes about ${p.name} yet.`
-        }),
-      },
+        },
+      }),
 
-      person_note: {
+      person_note: tool({
         description:
           'Write what you know about a person: who they are, their role, how to work with them, their preferences. ' +
           'The user is "me"; "ai" is the note about how you should work. Replaces the note: person_read it first and send the full, merged note. ' +
@@ -201,7 +214,7 @@ export async function ZyncMemory({ directory }: { directory: string }): Promise<
           person: z.string().describe('Person id ("me", "sofia") or name.'),
           note: z.string().describe('The complete note, in markdown.'),
         },
-        execute: safely(async (a) => {
+        execute: async (a) => {
           let p = await findPerson(a.person, root)
           let added = ''
           if (!p) {
@@ -210,8 +223,8 @@ export async function ZyncMemory({ directory }: { directory: string }): Promise<
           }
           await writePersonNotes(p.id, a.note, root)
           return `Saved the note about ${p.name} (@${p.id}).${added}`
-        }),
-      },
+        },
+      }),
     },
   }
 }

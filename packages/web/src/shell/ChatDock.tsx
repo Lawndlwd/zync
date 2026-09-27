@@ -1,4 +1,7 @@
-import { type RefObject, useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+
+import { useEventListener } from '../hooks/useEventListener'
+import { useInterval } from '../hooks/useInterval'
 import {
   IconBoard,
   IconCalendar,
@@ -13,24 +16,8 @@ import {
   IconSettings,
   IconSpark,
 } from '../icons'
+import type { DockMode, ViewContext } from '../types/shell'
 import { lastChatSession, rememberChatSession, sessionFromPath } from './chatSession'
-import type { DockMode } from './context'
-
-export interface ViewContext {
-  kind:
-    | 'overview'
-    | 'file'
-    | 'board'
-    | 'jobs'
-    | 'calendar'
-    | 'opencode'
-    | 'people'
-    | 'memory'
-    | 'boards'
-    | 'files'
-    | 'settings'
-  label: string
-}
 
 const CTX_ICON = {
   overview: <IconGrid size={11} />,
@@ -77,30 +64,26 @@ export function ChatDock({
   const frameBox = useRef<HTMLDivElement>(null)
 
   // Settings changed one of the chat's preferences: reload it so opencode reads them again.
-  useEffect(() => {
-    const reload = () => {
-      for (const f of frameBox.current?.querySelectorAll('iframe') ?? []) f.contentWindow?.location.reload()
-    }
-    window.addEventListener('zync:chat-reload', reload)
-    return () => window.removeEventListener('zync:chat-reload', reload)
-  }, [])
+  useEventListener('zync:chat-reload', () => {
+    for (const f of frameBox.current?.querySelectorAll('iframe') ?? []) f.contentWindow?.location.reload()
+  })
 
-  // Remember which conversation each workspace's chat is showing, so a reload reopens it.
-  useEffect(() => {
-    const track = () => {
+  // Remember which conversation each workspace's chat is showing, so a reload reopens it. Paused
+  // while the dock is hidden: the conversation can't change then.
+  useInterval(
+    () => {
       for (const f of frameBox.current?.querySelectorAll<HTMLIFrameElement>('iframe[data-ws]') ?? []) {
         try {
           const id = sessionFromPath(f.contentWindow?.location.pathname ?? '')
-          const name = f.dataset.ws as string
-          if (id && id !== lastChatSession(name)) rememberChatSession(name, id)
+          const name = f.dataset.ws
+          if (id && name && id !== lastChatSession(name)) rememberChatSession(name, id)
         } catch {
           // not loaded yet
         }
       }
-    }
-    const t = window.setInterval(track, 1500)
-    return () => clearInterval(t)
-  }, [])
+    },
+    mode === 'rail' ? null : 1500,
+  )
 
   return (
     <>
@@ -147,6 +130,8 @@ export function ChatDock({
         <div className="frame" ref={frameBox}>
           {Object.entries(frames).map(([name, url]) => (
             <iframe
+              // oxlint-disable-next-line react/iframe-missing-sandbox -- opencode's web UI is same-origin and trusted; needs scripts + same-origin for localStorage
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               key={name}
               data-ws={name}
               title={`AI chat – ${name}`}
@@ -201,54 +186,5 @@ export function ChatDock({
         </aside>
       )}
     </>
-  )
-}
-
-/** Drag handle between Main and the split dock (30–60% of the app width). */
-export function Divider({
-  appRef,
-  pct,
-  setPct,
-  setDragging,
-}: {
-  appRef: RefObject<HTMLDivElement | null>
-  pct: number
-  setPct: (p: number) => void
-  setDragging: (d: boolean) => void
-}) {
-  const clamp = (p: number) => Math.min(0.6, Math.max(0.3, p))
-  return (
-    <div
-      className="divider"
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Resize chat panel"
-      aria-valuemin={30}
-      aria-valuemax={60}
-      aria-valuenow={Math.round(pct * 100)}
-      tabIndex={0}
-      onDoubleClick={() => setPct(0.45)}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft') setPct(clamp(pct + 0.02))
-        if (e.key === 'ArrowRight') setPct(clamp(pct - 0.02))
-      }}
-      onPointerDown={(e) => {
-        const app = appRef.current
-        if (!app) return
-        e.preventDefault()
-        const rect = app.getBoundingClientRect()
-        setDragging(true)
-        const move = (ev: PointerEvent) => setPct(clamp((rect.right - ev.clientX) / rect.width))
-        const up = () => {
-          setDragging(false)
-          window.removeEventListener('pointermove', move)
-          window.removeEventListener('pointerup', up)
-        }
-        window.addEventListener('pointermove', move)
-        window.addEventListener('pointerup', up)
-      }}
-    >
-      <i />
-    </div>
   )
 }

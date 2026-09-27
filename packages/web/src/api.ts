@@ -1,228 +1,55 @@
-export interface SearchResult {
-  name: string
-  path: string
-  size: number
-  mtime: number
-  score: number
-  /** Matching lines, best first (1-based line numbers). */
-  snippets: { line: number; text: string }[]
-}
+import type {
+  AuthenticationResponseJSON,
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON,
+} from '@simplewebauthn/browser'
 
-export interface OpencodeHealth {
-  url: string
-  healthy: boolean
-  version?: string
-}
+import { encodePath } from './helpers/paths'
+import type { AuthSession, AuthStatus, Passkey } from './types/auth'
+import type { Board, Card, CardPatch, Column } from './types/boards'
+import type { CalendarEvent, CalendarItem, EventPatch } from './types/calendar'
+import type { FileData, SearchResult, TreeEntry } from './types/files'
+import type { JobRow, RunRecord } from './types/jobs'
+import type { Memory, MemoryPatch, MemoryScope } from './types/memory'
+import type { LibraryItem, LibraryKind, OpencodeHealth } from './types/opencode'
+import type { Person } from './types/people'
+import type { AppConfig, Workspace } from './types/workspace'
 
-export interface Workspace {
-  name: string
-  path: string
-}
-
-export interface AppConfig {
-  workspacesRoot: string
-  timezone: string
-}
-
-export interface TreeEntry {
-  name: string
-  path: string
-  type: 'dir' | 'file'
-  size: number
-  mtime: number
-}
-
-export interface FileData {
-  path: string
-  size: number
-  mtime: number
-  binary: boolean
-  content: string | null
-}
-
-export interface RunRecord {
-  ts: string
-  sessionId?: string
-  status: 'ok' | 'failed' | 'timeout' | 'skipped'
-  durationMs?: number
-  summary: string
-  trigger: 'schedule' | 'manual'
-}
-
-export interface JobRow {
-  name: string
-  error?: string
-  job?: {
-    name: string
-    schedule?: string
-    at?: string
-    /** Workspace-relative card file when the job belongs to a board card. */
-    card?: string
-    timezone?: string
-    agent?: string
-    model?: string
-    context: string[]
-    notify: string
-    enabled: boolean
-    instructions: string
+/** A non-2xx answer from the API: `status`, and the JSON body (e.g. a 409's current mtime). */
+export class ApiError extends Error {
+  readonly status: number
+  readonly body: unknown
+  constructor(status: number, message: string, body: unknown) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.body = body
   }
-  nextRuns: string[]
-  lastRun: RunRecord | null
 }
 
-export interface Person {
-  id: string
-  name: string
-  color?: string
-  builtin?: boolean
+const errorText = (body: unknown): string | undefined =>
+  typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string' && body.error
+    ? body.error
+    : undefined
+
+const AUTH = '/zync/api/auth'
+
+/** Signed out (or the session ended): go to the sign-in page, then come back here. */
+function signInAgain() {
+  const { pathname, search } = window.location
+  if (pathname !== '/login') window.location.assign(`/login?next=${encodeURIComponent(pathname + search)}`)
 }
-
-export type MemoryScope = 'global' | 'workspace'
-export const MEMORY_TYPES = ['rule', 'preference', 'habit', 'fact'] as const
-export type MemoryType = (typeof MEMORY_TYPES)[number]
-
-/** Something the AI remembers: a markdown file in `.zync/memory/` (global or in the workspace). */
-export interface Memory {
-  file: string
-  title: string
-  scope: MemoryScope
-  type?: MemoryType
-  description?: string
-  pinned: boolean
-  updated: string
-  body: string
-}
-
-export interface MemoryPatch {
-  title?: string
-  type?: MemoryType | null
-  description?: string | null
-  pinned?: boolean
-  body?: string
-}
-
-export interface Column {
-  id: string
-  name: string
-}
-
-export interface Board {
-  /** Workspace-relative folder path. */
-  path: string
-  name: string
-  columns: Column[]
-}
-
-export interface Card {
-  /** File name inside the board folder. */
-  file: string
-  title: string
-  /** Column id; unset means the first column. */
-  status?: string
-  order?: number
-  assignee?: string
-  due?: string
-  /** Minutes on the calendar; unset = 60. */
-  duration?: number
-  labels: string[]
-  runAt?: string
-  context: string[]
-  ai?: { state: 'scheduled' | 'running' | 'done' | 'failed'; sessionId?: string; finishedAt?: string; summary?: string }
-  description: string
-  extra: Record<string, unknown>
-}
-
-/** `null` clears a field. */
-export type CardPatch = Partial<{
-  title: string
-  status: string
-  order: number
-  assignee: string | null
-  due: string | null
-  duration: number | null
-  labels: string[]
-  runAt: string | null
-  context: string[]
-  description: string
-}>
-
-export type LibraryKind = 'agent' | 'command' | 'skill'
-
-/** An agent, command or skill in opencode's config folder. */
-export interface LibraryItem {
-  kind: LibraryKind
-  name: string
-  /** Markdown file relative to the config folder, e.g. "skills/kanban/SKILL.md". */
-  path: string
-  description?: string
-  builtin?: boolean
-  modified?: boolean
-  files?: string[]
-  mtime: number
-  error?: string
-}
-
-export type CalendarKind = 'event' | 'card' | 'card-ai' | 'job' | 'run'
-
-/** Anything with a time, as the calendar shows it. Times are local wall-clock strings. */
-export interface CalendarItem {
-  id: string
-  kind: CalendarKind
-  title: string
-  /** "YYYY-MM-DD" when all-day, else "YYYY-MM-DDTHH:MM". */
-  start: string
-  /** Inclusive last day when all-day, else the end time. */
-  end: string
-  allDay: boolean
-  /** Workspace-relative file (events, cards) or job name (jobs, runs). */
-  ref: string
-  board?: string
-  file?: string
-  assignee?: string
-  people?: string[]
-  status?: string
-  ai?: string
-  recurring?: boolean
-  editable: boolean
-}
-
-export type Weekday = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat'
-
-/** A recurring event's rule (the event's `repeat` frontmatter). */
-export interface Repeat {
-  every: 'day' | 'week' | 'month' | 'year'
-  interval?: number
-  days?: Weekday[]
-  until?: string
-  except?: string[]
-}
-
-export interface CalendarEvent {
-  file: string
-  title: string
-  start: string
-  end?: string
-  people: string[]
-  repeat?: Repeat
-  description: string
-}
-
-export type EventPatch = Partial<{
-  title: string
-  start: string
-  end: string | null
-  people: string[]
-  repeat: Repeat | null
-  description: string
-}>
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init)
+  if (res.status === 401 && !url.startsWith(`${AUTH}/`)) signInAgain()
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || `${res.status} ${res.statusText}`)
+    const body: unknown = await res.json().catch(() => ({}))
+    throw new ApiError(res.status, errorText(body) ?? `${res.status} ${res.statusText}`, body)
   }
-  if (res.status === 204) return undefined as T
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- 204 No Content: only req<void> callers hit this path
+  if (res.status === 204) return undefined as unknown as T
   return res.json()
 }
 
@@ -232,11 +59,30 @@ const json = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 })
 
-const enc = (p: string) => p.split('/').map(encodeURIComponent).join('/')
 const ws = (name: string) => `/zync/api/ws/${encodeURIComponent(name)}`
 const memoryBase = (scope: MemoryScope, w: string) => (scope === 'global' ? '/zync/api/memory' : `${ws(w)}/memory`)
 
 export const api = {
+  authStatus: () => req<AuthStatus>(`${AUTH}/status`),
+  setupOptions: (code: string) =>
+    req<PublicKeyCredentialCreationOptionsJSON>(`${AUTH}/setup/options`, json('POST', { code })),
+  setupVerify: (response: RegistrationResponseJSON, name: string) =>
+    req<{ recoveryCodes: string[] }>(`${AUTH}/setup/verify`, json('POST', { response, name })),
+  loginOptions: () => req<PublicKeyCredentialRequestOptionsJSON>(`${AUTH}/login/options`, json('POST', {})),
+  loginVerify: (response: AuthenticationResponseJSON) =>
+    req<{ ok: true }>(`${AUTH}/login/verify`, json('POST', { response })),
+  recoverySignIn: (code: string) => req<{ ok: true }>(`${AUTH}/recovery`, json('POST', { code })),
+  logout: () => req<void>(`${AUTH}/logout`, json('POST', {})),
+  passkeys: () => req<Passkey[]>(`${AUTH}/passkeys`),
+  passkeyOptions: () => req<PublicKeyCredentialCreationOptionsJSON>(`${AUTH}/passkeys/options`, json('POST', {})),
+  addPasskey: (response: RegistrationResponseJSON, name: string) =>
+    req<Passkey>(`${AUTH}/passkeys/verify`, json('POST', { response, name })),
+  removePasskey: (id: string) => req<void>(`${AUTH}/passkeys/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  authSessions: () => req<AuthSession[]>(`${AUTH}/sessions`),
+  revokeSession: (id: string) => req<void>(`${AUTH}/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  revokeOtherSessions: () => req<{ revoked: number }>(`${AUTH}/sessions/revoke-others`, json('POST', {})),
+  newRecoveryCodes: () => req<{ recoveryCodes: string[] }>(`${AUTH}/recovery-codes`, json('POST', {})),
+
   config: () => req<AppConfig>('/zync/api/config'),
   workspaces: () => req<Workspace[]>('/zync/api/workspaces'),
   createWorkspace: (name: string) => req<Workspace>('/zync/api/workspaces', json('POST', { name })),
@@ -246,20 +92,21 @@ export const api = {
       `${ws(w)}/tree?path=${encodeURIComponent(path)}${hidden ? '&hidden=1' : ''}`,
     ),
   files: (w: string) => req<{ entries: TreeEntry[] }>(`${ws(w)}/files`),
-  search: (w: string, q: string) =>
-    req<{ results: SearchResult[] }>(`${ws(w)}/search?q=${encodeURIComponent(q)}&limit=20`),
+  search: (w: string, q: string, signal?: AbortSignal) =>
+    req<{ results: SearchResult[] }>(`${ws(w)}/search?q=${encodeURIComponent(q)}&limit=20`, { signal }),
   recent: (w: string, limit = 10) => req<{ total: number; entries: TreeEntry[] }>(`${ws(w)}/recent?limit=${limit}`),
-  file: (w: string, path: string) => req<FileData>(`${ws(w)}/file/${enc(path)}`),
-  rawUrl: (w: string, path: string) => `${ws(w)}/file/${enc(path)}?raw=1`,
+  file: (w: string, path: string) => req<FileData>(`${ws(w)}/file/${encodePath(path)}`),
+  rawUrl: (w: string, path: string) => `${ws(w)}/file/${encodePath(path)}?raw=1`,
   save: (w: string, path: string, content: string) =>
-    req<{ mtime: number }>(`${ws(w)}/file/${enc(path)}`, {
+    req<{ mtime: number }>(`${ws(w)}/file/${encodePath(path)}`, {
       method: 'PUT',
       headers: { 'content-type': 'text/plain' },
       body: content,
     }),
-  remove: (w: string, path: string) => req<void>(`${ws(w)}/file/${enc(path)}`, { method: 'DELETE' }),
-  mkdir: (w: string, path: string) => req(`${ws(w)}/folder`, json('POST', { path })),
-  move: (w: string, from: string, to: string) => req(`${ws(w)}/move`, json('POST', { from, to })),
+  remove: (w: string, path: string) => req<void>(`${ws(w)}/file/${encodePath(path)}`, { method: 'DELETE' }),
+  mkdir: (w: string, path: string) => req<{ path: string }>(`${ws(w)}/folder`, json('POST', { path })),
+  move: (w: string, from: string, to: string) =>
+    req<{ from: string; to: string }>(`${ws(w)}/move`, json('POST', { from, to })),
   /** Sidebar order of one folder's entries (names). */
   setOrder: (w: string, dir: string, names: string[]) => req<void>(`${ws(w)}/order`, json('PUT', { dir, names })),
   upload: (w: string, dir: string, files: FileList | File[]) => {
@@ -271,15 +118,17 @@ export const api = {
 
   jobs: (w: string) => req<JobRow[]>(`${ws(w)}/jobs`),
   runs: (w: string, name: string) => req<RunRecord[]>(`${ws(w)}/jobs/${encodeURIComponent(name)}/runs`),
-  runJob: (w: string, name: string) => req(`${ws(w)}/jobs/${encodeURIComponent(name)}/run`, { method: 'POST' }),
+  runJob: (w: string, name: string) =>
+    req<{ queued: string }>(`${ws(w)}/jobs/${encodeURIComponent(name)}/run`, { method: 'POST' }),
   setJobEnabled: (w: string, name: string, enabled: boolean) =>
-    req(`${ws(w)}/jobs/${encodeURIComponent(name)}`, json('PATCH', { enabled })),
+    req<NonNullable<JobRow['job']>>(`${ws(w)}/jobs/${encodeURIComponent(name)}`, json('PATCH', { enabled })),
   deleteJob: (w: string, name: string) => req<void>(`${ws(w)}/jobs/${encodeURIComponent(name)}`, { method: 'DELETE' }),
 
   setJobAt: (w: string, name: string, at: string) =>
-    req(`${ws(w)}/jobs/${encodeURIComponent(name)}`, json('PATCH', { at })),
+    req<NonNullable<JobRow['job']>>(`${ws(w)}/jobs/${encodeURIComponent(name)}`, json('PATCH', { at })),
 
-  calendar: (w: string, from: string, to: string) => req<CalendarItem[]>(`${ws(w)}/calendar?from=${from}&to=${to}`),
+  calendar: (w: string, from: string, to: string, signal?: AbortSignal) =>
+    req<CalendarItem[]>(`${ws(w)}/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal }),
   createEvent: (w: string, input: EventPatch & { title: string; start: string }) =>
     req<CalendarEvent>(`${ws(w)}/calendar/events`, json('POST', input)),
   event: (w: string, file: string) => req<CalendarEvent>(`${ws(w)}/calendar/events/${encodeURIComponent(file)}`),
@@ -338,42 +187,16 @@ export const api = {
   createLibraryItem: (kind: LibraryKind, name: string, description?: string) =>
     req<{ path: string }>('/zync/api/opencode/library', json('POST', { kind, name, description })),
   libraryFile: (path: string) =>
-    req<{ path: string; mtime: number; content: string }>(`/zync/api/opencode/files/${enc(path)}`),
+    req<{ path: string; mtime: number; content: string }>(`/zync/api/opencode/files/${encodePath(path)}`),
   saveLibraryFile: (path: string, content: string, baseMtime?: number) =>
-    req<{ mtime: number }>(`/zync/api/opencode/files/${enc(path)}`, {
+    req<{ mtime: number }>(`/zync/api/opencode/files/${encodePath(path)}`, {
       method: 'PUT',
       headers: { 'content-type': 'text/plain', ...(baseMtime ? { 'x-base-mtime': String(baseMtime) } : {}) },
       body: content,
     }),
-  deleteLibraryEntry: (path: string) => req<void>(`/zync/api/opencode/files/${enc(path)}`, { method: 'DELETE' }),
+  deleteLibraryEntry: (path: string) => req<void>(`/zync/api/opencode/files/${encodePath(path)}`, { method: 'DELETE' }),
   resetSkill: (name: string) =>
     req<void>(`/zync/api/opencode/skills/${encodeURIComponent(name)}/reset`, { method: 'POST' }),
   opencodeHealth: () => req<OpencodeHealth>('/zync/api/opencode/health'),
   restartOpencode: () => req<OpencodeHealth>('/zync/api/opencode/restart', { method: 'POST' }),
-}
-
-export function dirname(p: string): string {
-  const i = p.lastIndexOf('/')
-  return i < 0 ? '' : p.slice(0, i)
-}
-
-export function basename(p: string): string {
-  return p.slice(p.lastIndexOf('/') + 1)
-}
-
-export function joinPath(dir: string, name: string): string {
-  return dir ? `${dir}/${name}` : name
-}
-
-/**
- * The chat for a workspace. opencode's web UI is served through this app (see api/opencode-proxy),
- * and addresses a project directory as base64url(path).
- */
-export function chatUrlFor(dir: string, sessionId?: string): string {
-  const bytes = new TextEncoder().encode(dir)
-  let bin = ''
-  for (const b of bytes) bin += String.fromCharCode(b)
-  const encoded = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  const base = `/${encoded}`
-  return sessionId ? `${base}/session/${sessionId}` : base
 }

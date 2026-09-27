@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
-import type { CalendarItem } from '../api'
-import { dayLabel } from '../workspaceData'
-import { colorOf, dayAt, daysBetween, daysOf, lanes, shiftDays, startDrag, type ViewProps, ymd } from './model'
-import { Block } from './TimeGrid'
+
+import { dayLabel, ymd } from '../helpers/dates'
+import type { CalendarItem, ViewProps } from '../types/calendar'
+import { Block } from './Block'
+import { dayAt, startDrag } from './drag'
+import { colorOf, daysBetween, daysOf, lanes, shiftDays } from './helpers'
 
 const LANE = 28
 
-interface Row {
+type Row = {
   id: string
   label: string
   items: CalendarItem[]
@@ -21,10 +23,16 @@ export function Timeline({ items, people, days, selectedId, onOpen, onChange, on
   const [drag, setDrag] = useState<{ id: string; start: string; end: string } | null>(null)
   const keys = days.map(ymd)
   const today = ymd(new Date())
-  const idx = (d: string) => daysBetween(keys[0], d)
+  const idx = (d: string) => daysBetween(keys[0] ?? d, d)
 
   const shown = items.map((i) => (drag?.id === i.id ? { ...i, start: drag.start, end: drag.end } : i))
-  const boards = [...new Set(shown.filter((i) => i.kind === 'card').map((i) => i.board as string))].sort()
+  const boards = [
+    ...new Set(
+      shown
+        .filter((i): i is CalendarItem & { board: string } => i.kind === 'card' && typeof i.board === 'string')
+        .map((i) => i.board),
+    ),
+  ].toSorted()
   const rows: Row[] = [
     { id: 'events', label: 'Events', items: shown.filter((i) => i.kind === 'event') },
     ...boards.map((b) => ({
@@ -93,8 +101,8 @@ export function Timeline({ items, people, days, selectedId, onOpen, onChange, on
                 const covered = daysOf(item)
                 return {
                   item,
-                  a: Math.max(0, idx(covered[0])),
-                  b: Math.min(days.length - 1, idx(covered[covered.length - 1])),
+                  a: Math.max(0, idx(covered[0] ?? '')),
+                  b: Math.min(days.length - 1, idx(covered.at(-1) ?? '')),
                 }
               })
               .filter((p) => p.b >= 0 && p.a < days.length),
@@ -111,7 +119,7 @@ export function Timeline({ items, people, days, selectedId, onOpen, onChange, on
                   <button
                     key={d}
                     type="button"
-                    className={`tl-cell${d === today ? ' today' : ''}${days[i].getDay() === 1 ? ' monday' : ''}`}
+                    className={`tl-cell${d === today ? ' today' : ''}${days[i]?.getDay() === 1 ? ' monday' : ''}`}
                     style={{ gridColumn: i + 1, gridRow: '1 / -1' }}
                     aria-label={`Add on ${d}`}
                     onDoubleClick={() => onCreate(d, d)}
@@ -147,7 +155,7 @@ export function Timeline({ items, people, days, selectedId, onOpen, onChange, on
               return (
                 <div
                   key={d}
-                  className={`tl-cell${d === today ? ' today' : ''}${days[i].getDay() === 1 ? ' monday' : ''}`}
+                  className={`tl-cell${d === today ? ' today' : ''}${days[i]?.getDay() === 1 ? ' monday' : ''}`}
                 >
                   {day.slice(0, 6).map((r) => (
                     <button

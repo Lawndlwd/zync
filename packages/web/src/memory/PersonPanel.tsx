@@ -1,9 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
-import { api, type Person } from '../api'
-import { IconButton } from '../components/Button'
+
+import { api } from '../api'
+import { IconButton } from '../components/IconButton'
+import { PersonAvatar } from '../components/PersonAvatar'
+import { usePanelEscape } from '../hooks/usePanelEscape'
 import { IconCross, IconSpark } from '../icons'
-import { PersonAvatar } from '../ui'
+import type { Person } from '../types/people'
 import { LiveMarkdown } from './LiveMarkdown'
 
 const HINT: Record<string, string> = {
@@ -35,13 +37,7 @@ export function PersonPanel({
     refetchInterval: 4000,
   })
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  usePanelEscape(onClose)
 
   return (
     <aside className="panel card-panel" aria-label={`Notes about ${person.name}`}>

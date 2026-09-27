@@ -1,6 +1,6 @@
 import type { RunRecord } from './runs.js'
 
-export interface NotifyTarget {
+export type NotifyTarget = {
   workspace: string
   job: string
   run: RunRecord

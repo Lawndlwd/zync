@@ -1,14 +1,17 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
+
 import { api } from '../api'
-import { boardUrl } from '../boards/shared'
-import { TextButton } from '../components/Button'
-import { Toggle } from '../components/Controls'
+import { Card } from '../components/Card'
 import { useToast } from '../components/Dialog'
+import { TextButton } from '../components/TextButton'
+import { Toggle } from '../components/Toggle'
+import { errorMessage } from '../helpers/format'
+import { boardUrl, fileUrl, wsUrl } from '../helpers/urls'
+import { useShowHidden } from '../hooks/useShowHidden'
 import { IconBoard, IconCalendar, IconClock, IconFile, IconPeople, IconSpark } from '../icons'
-import { fileUrl, useShowHidden, wsUrl } from '../shell/context'
-import { Card } from '../ui'
+import { ConfigGroup } from './ConfigGroup'
+import { ConfigRow } from './ConfigRow'
 
 const AGENTS_TEMPLATE = `# Instructions for the AI in this workspace
 
@@ -39,17 +42,17 @@ export function ConfigFiles({ ws }: { ws: string }) {
     try {
       await api.save(ws, 'AGENTS.md', AGENTS_TEMPLATE)
       await qc.invalidateQueries({ queryKey: ['tree', ws] })
-      navigate(fileUrl(ws, 'AGENTS.md'))
-    } catch (e) {
-      toast((e as Error).message, 'bad')
+      void navigate(fileUrl(ws, 'AGENTS.md'))
+    } catch (err) {
+      toast(errorMessage(err), 'bad')
     }
   }
 
   return (
     <Card title="Config files" meta={`${ws} · and global`}>
       <div className="col">
-        <Group label="This workspace">
-          <Row
+        <ConfigGroup label="This workspace">
+          <ConfigRow
             icon={<IconFile size={14} />}
             name="AGENTS.md"
             hint="Instructions every chat and job in this workspace follows"
@@ -57,7 +60,7 @@ export function ConfigFiles({ ws }: { ws: string }) {
             action={hasAgents ? undefined : <TextButton onClick={() => void createAgents()}>[+] Create</TextButton>}
           />
           {boards.map((b) => (
-            <Row
+            <ConfigRow
               key={b.path}
               icon={<IconBoard size={14} />}
               name={`${b.path}/.board.json`}
@@ -71,7 +74,7 @@ export function ConfigFiles({ ws }: { ws: string }) {
             />
           ))}
           {ownJobs.map((j) => (
-            <Row
+            <ConfigRow
               key={j.name}
               icon={<IconClock size={14} />}
               name={`.opencode/jobs/${j.name}.md`}
@@ -80,80 +83,32 @@ export function ConfigFiles({ ws }: { ws: string }) {
               to={fileUrl(ws, `.opencode/jobs/${j.name}.md`)}
             />
           ))}
-          <Row
+          <ConfigRow
             icon={<IconCalendar size={14} />}
             name="Calendar/"
             hint="Events: one page per event (start, end, people in the frontmatter)"
             to={hasCalendar ? wsUrl(ws, 'files?dir=Calendar') : wsUrl(ws, 'calendar')}
           />
-        </Group>
-        <Group label="All workspaces">
-          <Row
+        </ConfigGroup>
+        <ConfigGroup label="All workspaces">
+          <ConfigRow
             icon={<IconSpark size={14} />}
             name="opencode.json · agents · commands · skills"
             hint="The AI server’s config and the AI’s agents, commands and skills"
             to={wsUrl(ws, 'opencode')}
           />
-          <Row
+          <ConfigRow
             icon={<IconPeople size={14} />}
             name="People"
             hint="Who cards and events can be assigned to (.zync/people.json in the workspaces root)"
             to={wsUrl(ws, 'people')}
           />
-        </Group>
+        </ConfigGroup>
         <div className="row between g12 cfg-toggle">
           <span className="small muted">Show hidden files (.board.json, .opencode/ …) in the file tree</span>
           <Toggle label="Show hidden files" checked={hidden} onChange={setHidden} />
         </div>
       </div>
     </Card>
-  )
-}
-
-function Group({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="col cfg-group">
-      <span className="mh mono-s muted">{label}</span>
-      {children}
-    </div>
-  )
-}
-
-function Row({
-  icon,
-  name,
-  hint,
-  to,
-  action,
-  bad,
-}: {
-  icon: ReactNode
-  name: string
-  hint: string
-  to?: string
-  action?: ReactNode
-  bad?: boolean
-}) {
-  const body = (
-    <>
-      {icon}
-      <span className="grow col" style={{ minWidth: 0 }}>
-        <span className="oc-name mono-s trunc">{name}</span>
-        <span className={`small trunc ${bad ? 'danger-t' : 'muted'}`}>{hint}</span>
-      </span>
-    </>
-  )
-  return (
-    <div className="row g8 cfg-row">
-      {to ? (
-        <Link to={to} className="oc-row grow">
-          {body}
-          <span className="mono-s muted">Open →</span>
-        </Link>
-      ) : (
-        <div className="oc-row grow">{body}</div>
-      )}
-      {action}
-    </div>
   )
 }

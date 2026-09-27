@@ -1,13 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
-import { api } from '../api'
-import { boardUrl } from '../boards/shared'
-import { IconBoard, IconClock, IconFile, IconPlus, IconSearch, IconSpark, IconSplit } from '../icons'
-import { highlight, matchesAll, queryWords } from '../textMatch'
-import { ago, type WorkspaceData } from '../workspaceData'
-import { fileUrl, useShell, wsUrl } from './context'
+import { type ReactNode, useRef, useState } from 'react'
 
-interface Item {
+import { api } from '../api'
+import { ago } from '../helpers/dates'
+import { dirname } from '../helpers/paths'
+import { highlight, matchesAll, queryWords } from '../helpers/textMatch'
+import { boardUrl, fileUrl, wsUrl } from '../helpers/urls'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { useOpenGuide } from '../hooks/useOpenGuide'
+import { useScrollActiveIntoView } from '../hooks/useScrollActiveIntoView'
+import { IconBoard, IconClock, IconFile, IconPlus, IconSearch, IconSpark, IconSplit } from '../icons'
+import type { WorkspaceData } from '../types/workspace'
+import { useShell } from './ShellContext'
+
+type Item = {
   id: string
   group: 'Pages & cards' | 'In files' | 'Jobs' | 'Actions'
   icon: ReactNode
@@ -23,36 +29,33 @@ interface Item {
 
 export function CommandPalette({ data, onClose }: { data: WorkspaceData; onClose: () => void }) {
   const shell = useShell()
+  const openGuide = useOpenGuide(shell.ws)
   const { ws } = shell
   const [q, setQ] = useState('')
   const [sel, setSel] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
 
   // Full-text search inside files, debounced while typing.
-  const [debounced, setDebounced] = useState('')
-  useEffect(() => {
-    const t = window.setTimeout(() => setDebounced(q.trim()), 180)
-    return () => clearTimeout(t)
-  }, [q])
+  const debounced = useDebouncedValue(q.trim(), 180)
   const inFiles = useQuery({
     queryKey: ['search', ws, debounced],
-    queryFn: () => api.search(ws, debounced),
+    queryFn: ({ signal }) => api.search(ws, debounced, signal),
     enabled: debounced.length >= 2,
     staleTime: 10_000,
     placeholderData: (prev) => prev,
   })
   const hits = debounced.length >= 2 ? (inFiles.data?.results ?? []) : []
 
-  const items = useMemo(() => {
+  const go = (to: string) => () => {
+    onClose()
+    shell.open(to)
+  }
+  const place = (to: string) => ({ to, run: go(to) })
+  const items = (() => {
     const query = q.trim()
     const words = queryWords(query)
     const m = (s: string) => !words.length || matchesAll(s, words)
     const hl = (s: string) => highlight(s, words)
-    const go = (to: string) => () => {
-      onClose()
-      shell.open(to)
-    }
-    const place = (to: string) => ({ to, run: go(to) })
     const out: Item[] = []
     const cardRefs = new Set(data.cards.map((c) => c.ref))
     for (const c of data.cards) {
@@ -82,7 +85,7 @@ export function CommandPalette({ data, onClose }: { data: WorkspaceData; onClose
     const boardPaths = new Set(data.boards.map((b) => b.path))
     for (const h of hits) {
       if (listed.has(h.path)) continue
-      const dir = h.path.includes('/') ? h.path.slice(0, h.path.lastIndexOf('/')) : ''
+      const dir = dirname(h.path)
       const isCard = boardPaths.has(dir) && h.path.endsWith('.md')
       const first = h.snippets[0]
       out.push({
@@ -124,7 +127,7 @@ export function CommandPalette({ data, onClose }: { data: WorkspaceData; onClose
       kbd: '⌘↵',
       run: () => {
         onClose()
-        if (query) navigator.clipboard?.writeText(query).catch(() => {})
+        if (query) navigator.clipboard.writeText(query).catch(() => {})
         if (shell.dock === 'rail') shell.toggleDock()
       },
     })
@@ -164,15 +167,23 @@ export function CommandPalette({ data, onClose }: { data: WorkspaceData; onClose
         shell.toggleDock()
       },
     })
+    if (m('get started guide help tour'))
+      out.push({
+        id: 'guide',
+        group: 'Actions',
+        icon: <IconSpark size={14} />,
+        text: 'Get started guide',
+        run: () => {
+          onClose()
+          openGuide()
+        },
+      })
     return out.slice(0, 60)
-  }, [q, data, ws, onClose, shell, hits])
+  })()
 
-  useEffect(() => setSel(0), [q])
-  useEffect(() => {
-    listRef.current?.querySelector('.mi.on')?.scrollIntoView({ block: 'nearest' })
-  }, [sel])
+  useScrollActiveIntoView(listRef, sel)
 
-  const groups: Item['group'][] = ['Pages & cards', 'In files', 'Jobs', 'Actions']
+  const groups: Array<Item['group']> = ['Pages & cards', 'In files', 'Jobs', 'Actions']
   let idx = -1
 
   return (
@@ -193,7 +204,10 @@ export function CommandPalette({ data, onClose }: { data: WorkspaceData; onClose
             autoFocus
             value={q}
             placeholder="Search pages, cards, jobs… or type a command"
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value)
+              setSel(0)
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Escape') onClose()
               else if (e.key === 'ArrowDown') {

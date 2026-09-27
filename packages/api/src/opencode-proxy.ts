@@ -1,5 +1,6 @@
 import http, { type IncomingMessage } from 'node:http'
 import type { Duplex } from 'node:stream'
+
 import type { Request, Response } from 'express'
 
 // opencode's web UI served through the app's own domain, so opencode never needs a public address.
@@ -25,7 +26,7 @@ export function opencodeProxy(targetUrl: string) {
       for (const h of HOP) delete headers[h]
       res.writeHead(up.statusCode ?? 502, headers)
       // Event streams must reach the browser as they arrive.
-      if (String(up.headers['content-type'] || '').includes('text/event-stream')) res.flushHeaders()
+      if (up.headers['content-type']?.includes('text/event-stream')) res.flushHeaders()
       up.pipe(res)
     })
     upstream.on('error', (err) => {

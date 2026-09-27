@@ -1,16 +1,17 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
-import { api, type TreeEntry } from '../api'
-import { boardUrl } from '../boards/shared'
+
+import { api } from '../api'
 import { Button } from '../components/Button'
-import { IconBoard, IconFile, IconFolder, IconPlus } from '../icons'
-import { fileUrl, useShell, useShowHidden, wsUrl } from '../shell/context'
-import { Card } from '../ui'
-import { ago } from '../workspaceData'
+import { Card } from '../components/Card'
+import { ago } from '../helpers/dates'
+import { fileUrl, folderUrl } from '../helpers/urls'
+import { useShowHidden } from '../hooks/useShowHidden'
+import { IconFile, IconPlus } from '../icons'
+import { useShell } from '../shell/ShellContext'
+import { FolderBox } from './FolderBox'
 
 const RECENT = 5
-
-export const folderUrl = (ws: string, dir: string) => wsUrl(ws, dir ? `files?dir=${encodeURIComponent(dir)}` : 'files')
 
 /**
  * A folder as a page: its subfolders as boxes, then files. At the workspace root the files are the
@@ -25,7 +26,7 @@ export function FolderView({ ws, dir }: { ws: string; dir: string }) {
   const entries = tree.data?.entries ?? []
   const folders = entries.filter((e) => e.type === 'dir')
   const files = dir
-    ? entries.filter((e) => e.type === 'file').sort((a, b) => b.mtime - a.mtime)
+    ? entries.filter((e) => e.type === 'file').toSorted((a, b) => b.mtime - a.mtime)
     : (recent.data?.entries ?? []).slice(0, RECENT)
   const parts = dir ? dir.split('/') : []
   const name = parts.at(-1) ?? 'Files'
@@ -71,7 +72,7 @@ export function FolderView({ ws, dir }: { ws: string; dir: string }) {
             <Button variant="soft" onClick={() => shell.startCreate({ dir, kind: 'folder' })}>
               [+] Folder
             </Button>
-            <Button variant="primary" onClick={() => shell.startCreate({ dir, kind: 'page' })}>
+            <Button variant="primary" data-tour="new-page" onClick={() => shell.startCreate({ dir, kind: 'page' })}>
               <IconPlus size={12} sw={1.8} />
               New page
             </Button>
@@ -79,7 +80,7 @@ export function FolderView({ ws, dir }: { ws: string; dir: string }) {
         </div>
       </div>
 
-      {tree.error && <p className="help err">{(tree.error as Error).message}</p>}
+      {tree.error && <p className="help err">{tree.error.message}</p>}
 
       <Card title="Folders" meta={tree.data ? `${folders.length}` : ''}>
         {!tree.data ? (
@@ -124,38 +125,5 @@ export function FolderView({ ws, dir }: { ws: string; dir: string }) {
         </div>
       </Card>
     </div>
-  )
-}
-
-/** One folder box: name, what's inside, last change. Board folders open the board. */
-function FolderBox({ ws, folder, isBoard }: { ws: string; folder: TreeEntry; isBoard: boolean }) {
-  const [inside] = useQueries({
-    queries: [{ queryKey: ['tree', ws, folder.path], queryFn: () => api.tree(ws, folder.path) }],
-  })
-  const items = inside.data?.entries ?? []
-  const subdirs = items.filter((e) => e.type === 'dir').length
-  const files = items.length - subdirs
-  const latest = items.reduce((m, e) => Math.max(m, e.mtime), folder.mtime)
-  const summary = inside.data
-    ? [
-        subdirs && `${subdirs} ${subdirs === 1 ? 'folder' : 'folders'}`,
-        `${files} ${isBoard ? (files === 1 ? 'card' : 'cards') : files === 1 ? 'file' : 'files'}`,
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : '…'
-
-  return (
-    <Link to={isBoard ? boardUrl(ws, folder.path) : folderUrl(ws, folder.path)} className="folder-box">
-      <span className="row between">
-        {isBoard ? <IconBoard size={18} sw={1.3} /> : <IconFolder size={18} />}
-        {isBoard && <span className="label">Board</span>}
-      </span>
-      <span className="folder-name trunc">{folder.name}</span>
-      <span className="row between mono-s muted">
-        <span className="trunc">{summary}</span>
-        <span>{ago(new Date(latest))}</span>
-      </span>
-    </Link>
   )
 }

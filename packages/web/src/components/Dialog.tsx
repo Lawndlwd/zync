@@ -1,12 +1,13 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+
 import { IconCheck, IconCross } from '../icons'
-import { Button, IconButton } from './Button'
-import { Field, TextInput } from './Field'
+import { ConfirmDialog } from './ConfirmDialog'
+import { IconButton } from './IconButton'
 
 // Confirm dialog + toasts, replacing window.confirm/alert. One provider at the app root.
 
-interface ConfirmOptions {
+export type ConfirmOptions = {
   title: string
   body?: ReactNode
   confirmLabel?: string
@@ -15,13 +16,13 @@ interface ConfirmOptions {
   typeToConfirm?: string
 }
 
-interface Toast {
+type Toast = {
   id: number
   text: ReactNode
   tone: 'ok' | 'bad' | 'quiet'
 }
 
-interface Ctx {
+type Ctx = {
   confirm: (o: ConfirmOptions) => Promise<boolean>
   toast: (text: ReactNode, tone?: Toast['tone']) => void
 }
@@ -45,15 +46,22 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const seq = useRef(0)
 
-  const confirm = useCallback((o: ConfirmOptions) => new Promise<boolean>((resolve) => setReq({ ...o, resolve })), [])
+  const confirm = useCallback(
+    (o: ConfirmOptions) =>
+      new Promise<boolean>((resolve) => {
+        setReq({ ...o, resolve })
+      }),
+    [],
+  )
   const toast = useCallback((text: ReactNode, tone: Toast['tone'] = 'ok') => {
     const id = ++seq.current
     setToasts((t) => [...t, { id, text, tone }])
     window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4200)
   }, [])
+  const ctx = useMemo(() => ({ confirm, toast }), [confirm, toast])
 
   return (
-    <DialogContext.Provider value={{ confirm, toast }}>
+    <DialogContext.Provider value={ctx}>
       {children}
       {req && (
         <ConfirmDialog
@@ -85,71 +93,5 @@ export function DialogProvider({ children }: { children: ReactNode }) {
           document.body,
         )}
     </DialogContext.Provider>
-  )
-}
-
-function ConfirmDialog({
-  title,
-  body,
-  confirmLabel = 'Confirm',
-  destructive,
-  typeToConfirm,
-  onClose,
-}: ConfirmOptions & { onClose: (v: boolean) => void }) {
-  const [typed, setTyped] = useState('')
-  const ok = !typeToConfirm || typed.trim() === typeToConfirm
-  const confirmRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (!typeToConfirm) confirmRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose(false)
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [onClose, typeToConfirm])
-
-  return createPortal(
-    <div className="dialog-wrap" onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}>
-      <form
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="dlg-t"
-        className="dialog"
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (ok) onClose(true)
-        }}
-      >
-        <div className="row between">
-          <span id="dlg-t" className="mono">
-            {title}
-          </span>
-          <IconButton small label="Close" onClick={() => onClose(false)}>
-            <IconCross size={13} sw={1.6} />
-          </IconButton>
-        </div>
-        {body && (
-          <div className="small" style={{ margin: 0 }}>
-            {body}
-          </div>
-        )}
-        {typeToConfirm && (
-          <Field label={`Type “${typeToConfirm}” to confirm`}>
-            <TextInput autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} />
-          </Field>
-        )}
-        <div className="row g8" style={{ justifyContent: 'flex-end' }}>
-          <Button onClick={() => onClose(false)}>Cancel</Button>
-          <Button ref={confirmRef} type="submit" variant={destructive ? 'destroy' : 'primary'} disabled={!ok}>
-            {confirmLabel}
-          </Button>
-        </div>
-      </form>
-    </div>,
-    document.body,
   )
 }

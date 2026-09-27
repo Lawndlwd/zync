@@ -1,26 +1,30 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { createWorkspace, defaultTimezone, errorMessage, listWorkspaces, type OpencodeClient } from '@zync/jobs'
-import express, { type NextFunction, type Request, type Response } from 'express'
-import { boardsRoutes, peopleRoutes } from './boards-routes.js'
+
+import { createWorkspace, defaultTimezone, listWorkspaces, type OpencodeClient } from '@zync/jobs'
+import express from 'express'
+
+import { guard } from './auth/guard.js'
+import { pageCsp, securityHeaders } from './auth/headers.js'
+import { authRoutes } from './auth/routes.js'
+import type { Auth } from './auth/service.js'
+import { boardsRoutes } from './boards-routes.js'
+import { WorkspaceBody } from './body.js'
 import { calendarRoutes } from './calendar-routes.js'
 import { eventsHandler } from './events.js'
 import { fsRoutes } from './fs-routes.js'
 import { jobsRoutes } from './jobs-routes.js'
 import { globalMemoryRoutes, personNotesRoutes, workspaceMemoryRoutes } from './memory-routes.js'
+import { errorHandler } from './middleware/error-handler.js'
 import { opencodeProxy } from './opencode-proxy.js'
 import { opencodeRoutes, type RestartTiming } from './opencode-routes.js'
+import { peopleRoutes } from './people-routes.js'
+import { appFallback } from './spa.js'
 
 /** zync's own REST API. Namespaced so the root stays free for opencode's UI (see opencode-proxy). */
 const API = '/zync/api'
 
-/** Paths the app serves itself; everything else belongs to opencode when the proxy is on. */
-export const isAppPath = (url: string) => {
-  const p = url.split('?')[0]
-  return p === '/' || p.startsWith('/zync/') || p === '/w' || p.startsWith('/w/')
-}
-
-export interface AppOptions {
+export type AppOptions = {
   workspacesRoot: string
   webDist?: string
   /** Forward opencode's web UI and API through this app (internal URL, e.g. http://opencode:4096). */
@@ -31,12 +35,24 @@ export interface AppOptions {
   restartTiming?: RestartTiming
   /** zync's own opencode skills (opencode/skills), copied into the config folder at start-up. */
   opencodeSkillsDir?: string
+  /**
+   * Sign-in and the request guard. Without it every request is let through: only for tests and
+   * `ZYNC_INSECURE_DEV` on localhost (see index.ts).
+   */
+  auth?: Auth
 }
 
 export function createApp(opts: AppOptions) {
   const app = express()
   app.disable('x-powered-by')
   app.set('workspacesRoot', opts.workspacesRoot)
+  const { auth } = opts
+  if (auth) {
+    // First, before any route: nothing is served to a request that doesn't pass the guard.
+    app.use(securityHeaders(auth.cfg.origin.startsWith('https:')))
+    app.use(guard(auth))
+    app.use(`${API}/auth`, authRoutes(auth))
+  }
 
   app.get(`${API}/health`, (_req, res) => {
     res.json({ ok: true })
@@ -51,7 +67,7 @@ export function createApp(opts: AppOptions) {
   })
 
   app.post(`${API}/workspaces`, express.json(), async (req, res) => {
-    res.status(201).json(await createWorkspace(String(req.body?.name || '').trim(), opts.workspacesRoot))
+    res.status(201).json(await createWorkspace(WorkspaceBody.parse(req.body).name, opts.workspacesRoot))
   })
 
   app.use(`${API}/people`, peopleRoutes(opts.workspacesRoot))
@@ -77,31 +93,9 @@ export function createApp(opts: AppOptions) {
   const proxy = opts.opencodeUrl ? opencodeProxy(opts.opencodeUrl) : null
   if (web) app.use('/zync/assets', express.static(path.join(web, 'zync/assets'), { immutable: true, maxAge: '1y' }))
 
-  app.use((req, res, next) => {
-    // opencode's own home page, when navigated to inside the chat frame.
-    const inFrame = req.get('sec-fetch-dest') === 'iframe'
-    const spa = req.path === '/' || req.path === '/w' || req.path.startsWith('/w/')
-    if (web && req.method === 'GET' && spa && !(inFrame && req.path === '/')) {
-      res.sendFile(path.join(web, 'index.html'))
-      return
-    }
-    if (proxy && !(req.path.startsWith('/zync/') || req.path === '/w' || req.path.startsWith('/w/'))) {
-      proxy(req, res)
-      return
-    }
-    next()
-  })
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const invalid = err?.name === 'ZodError'
-    const status =
-      (invalid && 400) ||
-      err.status ||
-      err.statusCode ||
-      (err.code === 'ENOENT' ? 404 : err.code === 'EEXIST' ? 409 : err.code === 'ENOTDIR' ? 400 : 500)
-    if (status >= 500) console.error(err)
-    res.status(status).json({ error: (invalid ? errorMessage(err) : err.message) || 'Internal error' })
-  })
+  const csp = auth && web ? pageCsp(path.join(web, 'index.html')) : undefined
+  app.use(appFallback(web, proxy, csp))
+  app.use(errorHandler)
 
   return app
 }

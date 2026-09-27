@@ -1,25 +1,25 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { type DragEvent, useCallback, useRef, useState } from 'react'
+import { type DragEvent, useCallback, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { api, type Board, type Card, type CardPatch, type Column, type Person } from '../api'
-import { Button, ButtonLink, IconButton, TextButton } from '../components/Button'
+
+import { api } from '../api'
+import { Button } from '../components/Button'
+import { ButtonLink } from '../components/ButtonLink'
 import { useConfirm, useToast } from '../components/Dialog'
-import { TextArea, TextInput, TitleInput } from '../components/Field'
-import { Popover } from '../components/Popover'
-import { IconCross, IconPlus } from '../icons'
-import { fileUrl, useShell, wsUrl } from '../shell/context'
+import { TitleInput } from '../components/TitleInput'
+import { applyLocal, doneColumn, firstColumn, slug, statusOf } from '../helpers/boards'
+import { errorMessage } from '../helpers/format'
+import { boardUrl, fileUrl, wsUrl } from '../helpers/urls'
+import { usePeople } from '../hooks/usePeople'
 import { usePaneId } from '../shell/paneId'
-import { PersonAvatar } from '../ui'
-import { CardPanel, type Draft } from './CardPanel'
+import { useShell } from '../shell/ShellContext'
+import type { Board, Card, CardPatch, Column, Draft, DropTarget } from '../types/boards'
+import { AddColumn } from './AddColumn'
+import { AssigneeFilter } from './AssigneeFilter'
+import { CardPanel } from './CardPanel'
+import { DONE_PREVIEW } from './helpers'
 import { KanbanCard } from './KanbanCard'
-import { applyLocal, boardUrl, doneColumn, slug, statusOf, usePeople } from './shared'
-
-interface DropTarget {
-  column: string
-  index: number
-}
-
-const DONE_PREVIEW = 5
+import { KColumn } from './KColumn'
 
 export function BoardView() {
   const { ws = '', '*': boardId = '' } = useParams()
@@ -32,7 +32,7 @@ export function BoardView() {
   const [search, setSearch] = useSearchParams()
   const people = usePeople()
   const key = ['board', ws, boardId]
-  const { data, error } = useQuery({ queryKey: key, queryFn: () => api.board(ws, boardId), refetchInterval: 15_000 })
+  const { data, error } = useQuery({ queryKey: key, queryFn: () => api.board(ws, boardId) })
   const [dragging, setDragging] = useState<string | null>(null)
   const [drop, setDrop] = useState<DropTarget | null>(null)
   const [err, setErr] = useState('')
@@ -63,9 +63,10 @@ export function BoardView() {
     try {
       setErr('')
       await fn()
-    } catch (e) {
-      setErr((e as Error).message)
-      toast((e as Error).message, 'bad')
+    } catch (caught) {
+      const msg = errorMessage(caught)
+      setErr(msg)
+      toast(msg, 'bad')
     } finally {
       void refresh()
     }
@@ -88,7 +89,7 @@ export function BoardView() {
     return (
       <div className="page col g12">
         <span className="mono muted">{ws} / boards</span>
-        <p className="lede danger-t">{(error as Error).message}</p>
+        <p className="lede danger-t">{error.message}</p>
         <Link to={wsUrl(ws, 'boards')} className="link">
           [← All boards]
         </Link>
@@ -119,7 +120,7 @@ export function BoardView() {
   const ordered = board.columns.flatMap((col) => visible.filter((c) => statusOf(board, c) === col.id))
   const open = cards.find((c) => c.file === openId)
   const inReview = cards.filter((c) => c.status === 'review' && c.ai?.state === 'done').length
-  const assignees = [...new Set(['me', ...(cards.map((c) => c.assignee).filter(Boolean) as string[])])]
+  const assignees = [...new Set(['me', ...cards.map((c) => c.assignee).filter((a): a is string => Boolean(a))])]
 
   const onDrop = (e: DragEvent, column: string) => {
     e.preventDefault()
@@ -131,11 +132,10 @@ export function BoardView() {
     const lane = cards.filter((c) => statusOf(board, c) === column && c.file !== file)
     if (lane.some((c) => c.order === undefined)) {
       // Hand-made cards have no order yet: number the whole lane once.
-      const next = [...lane]
-      next.splice(target.index, 0, { file } as Card)
-      next.forEach((c, i) => {
-        if (c.file === file) void patchCard(file, { status: column, order: i })
-        else if (c.order !== i) void patchCard(c.file, { order: i })
+      void patchCard(file, { status: column, order: target.index })
+      lane.forEach((c, i) => {
+        const order = i < target.index ? i : i + 1
+        if (c.order !== order) void patchCard(c.file, { order })
       })
       return
     }
@@ -145,7 +145,7 @@ export function BoardView() {
       prev === undefined && next === undefined
         ? 0
         : prev === undefined
-          ? (next as number) - 1
+          ? (next ?? 0) - 1
           : next === undefined
             ? prev + 1
             : (prev + next) / 2
@@ -169,8 +169,8 @@ export function BoardView() {
       await refresh()
       setParams({ new: null, card: c.file })
       toast(`Created “${c.title}”`)
-    } catch (e) {
-      setErr((e as Error).message)
+    } catch (caught) {
+      setErr(errorMessage(caught))
     }
   }
 
@@ -183,7 +183,7 @@ export function BoardView() {
     void run(async () => {
       const b = await api.updateBoard(ws, boardId, { name })
       await qc.invalidateQueries({ queryKey: ['boards', ws] })
-      navigate(boardUrl(ws, b.path), { replace: true })
+      void navigate(boardUrl(ws, b.path), { replace: true })
     })
   }
 
@@ -223,7 +223,7 @@ export function BoardView() {
                     aria-label="Board name"
                     onBlur={(e) => rename(e.target.value.trim())}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') rename((e.target as HTMLInputElement).value.trim())
+                      if (e.key === 'Enter') rename(e.currentTarget.value.trim())
                       if (e.key === 'Escape') setRenaming(false)
                     }}
                   />
@@ -273,7 +273,7 @@ export function BoardView() {
                     void run(async () => {
                       await api.deleteBoard(ws, boardId)
                       await qc.invalidateQueries({ queryKey: ['boards', ws] })
-                      navigate(wsUrl(ws, 'boards'))
+                      void navigate(wsUrl(ws, 'boards'))
                     })
                   }}
                 >
@@ -301,7 +301,7 @@ export function BoardView() {
                   onMove={(dir) => {
                     const cols = [...board.columns]
                     const [c] = cols.splice(ci, 1)
-                    cols.splice(ci + dir, 0, c)
+                    if (c) cols.splice(ci + dir, 0, c)
                     void saveColumns(cols)
                   }}
                   onDelete={async () => {
@@ -310,7 +310,7 @@ export function BoardView() {
                       lane.length === 0 ||
                       (await confirm({
                         title: `Delete column “${col.name}”?`,
-                        body: `Its ${laneAll.length} cards move to “${board.columns[ci === 0 ? 1 : 0].name}”. No files are deleted.`,
+                        body: `Its ${laneAll.length} cards move to “${board.columns[ci === 0 ? 1 : 0]?.name}”. No files are deleted.`,
                         confirmLabel: 'Delete column',
                         destructive: true,
                       }))
@@ -322,7 +322,7 @@ export function BoardView() {
                     if (drop?.column !== col.id) setDrop({ column: col.id, index: laneAll.length })
                   }}
                   onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDrop(null)
+                    if (!(e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget))) setDrop(null)
                   }}
                   onDrop={(e) => onDrop(e, col.id)}
                   onQuickAdd={(title) => quickCreate(title, col.id)}
@@ -439,7 +439,7 @@ export function BoardView() {
           people={people}
           draft={{
             title: newTitle,
-            status: board.columns.some((c) => c.id === newIn) ? newIn : board.columns[0].id,
+            status: board.columns.some((c) => c.id === newIn) ? newIn : firstColumn(board),
             assignee: who && who !== '-' ? who : undefined,
             labels: [],
             description: '',
@@ -456,290 +456,6 @@ export function BoardView() {
           error={err}
         />
       )}
-    </div>
-  )
-}
-
-function AssigneeFilter({
-  who,
-  ids,
-  people,
-  onChange,
-}: {
-  who: string
-  ids: string[]
-  people: Person[]
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="row g6" role="group" aria-label="Filter by assignee">
-      <button type="button" className={`pill${who ? '' : ' on'}`} style={{ height: 30 }} onClick={() => onChange('')}>
-        All
-      </button>
-      {ids.map((id) => {
-        const name = people.find((p) => p.id === id)?.name ?? id
-        return (
-          <button
-            key={id}
-            type="button"
-            className={`av-filter${who === id ? ' on' : ''}`}
-            aria-pressed={who === id}
-            aria-label={`Only @${id} (${name})`}
-            title={`Only @${id}`}
-            onClick={() => onChange(who === id ? '' : id)}
-          >
-            <PersonAvatar id={id} people={people} size="l" />
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function KColumn({
-  column,
-  index,
-  board,
-  count,
-  isDrop,
-  collapse,
-  total,
-  onRename,
-  onMove,
-  onDelete,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onQuickAdd,
-  onMore,
-  renderCards,
-}: {
-  column: Column
-  index: number
-  board: Board
-  count: number
-  isDrop: boolean
-  collapse: boolean
-  total: number
-  onRename: (name: string) => void
-  onMove: (dir: -1 | 1) => void
-  onDelete: () => void
-  onDragOver: (e: DragEvent<HTMLElement>) => void
-  onDragLeave: (e: DragEvent<HTMLElement>) => void
-  onDrop: (e: DragEvent<HTMLElement>) => void
-  onQuickAdd: (title: string) => Promise<unknown>
-  onMore: (title: string) => void
-  renderCards: (limit: number) => React.ReactNode
-}) {
-  const [menu, setMenu] = useState(false)
-  const [renaming, setRenaming] = useState(false)
-  const [composing, setComposing] = useState(false)
-  const [expanded, setExpanded] = useState(false)
-  const menuBtn = useRef<HTMLButtonElement>(null)
-  const closeMenu = useCallback(() => setMenu(false), [])
-  const limit = collapse && !expanded ? DONE_PREVIEW : Number.POSITIVE_INFINITY
-
-  const commitRename = (v: string) => {
-    setRenaming(false)
-    if (v.trim() && v.trim() !== column.name) onRename(v.trim())
-  }
-
-  return (
-    <section
-      className={`kcol${isDrop ? ' is-drop' : ''}`}
-      aria-label={column.name}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-    >
-      <div className="kcol-h">
-        {renaming ? (
-          <TextInput
-            compact
-            autoFocus
-            defaultValue={column.name}
-            aria-label="Column name"
-            style={{ height: 28 }}
-            onBlur={(e) => commitRename(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename((e.target as HTMLInputElement).value)
-              if (e.key === 'Escape') setRenaming(false)
-            }}
-          />
-        ) : (
-          <span className="n" onDoubleClick={() => setRenaming(true)} title="Double-click to rename">
-            <b>{count}</b>
-            {column.name}
-          </span>
-        )}
-        <IconButton ref={menuBtn} small label="Column options" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <circle cx="3.5" cy="8" r="1.2" />
-            <circle cx="8" cy="8" r="1.2" />
-            <circle cx="12.5" cy="8" r="1.2" />
-          </svg>
-        </IconButton>
-        <Popover anchor={menuBtn} open={menu} onClose={closeMenu} align="end" role="menu">
-          {[
-            ['Rename', () => setRenaming(true), false],
-            ['Add card', () => setComposing(true), false],
-            ['Move left', () => onMove(-1), index === 0],
-            ['Move right', () => onMove(1), index === board.columns.length - 1],
-          ].map(([label, fn, disabled]) => (
-            <button
-              key={label as string}
-              type="button"
-              role="menuitem"
-              className="mi"
-              disabled={disabled as boolean}
-              onClick={() => {
-                closeMenu()
-                ;(fn as () => void)()
-              }}
-            >
-              {label as string}
-            </button>
-          ))}
-          <span className="sepline" />
-          <button
-            type="button"
-            role="menuitem"
-            className="mi danger-t"
-            disabled={board.columns.length < 2}
-            onClick={() => {
-              closeMenu()
-              onDelete()
-            }}
-          >
-            Delete column
-          </button>
-        </Popover>
-      </div>
-      {renderCards(limit)}
-      {collapse && (
-        <button type="button" className="kadd" onClick={() => setExpanded((x) => !x)}>
-          {expanded ? 'Show less' : `Show ${total - DONE_PREVIEW} more`}
-        </button>
-      )}
-      {composing ? (
-        <Composer onAdd={onQuickAdd} onMore={onMore} onClose={() => setComposing(false)} />
-      ) : (
-        <button type="button" className="kadd" onClick={() => setComposing(true)}>
-          <IconPlus size={12} sw={1.6} />
-          Add card
-        </button>
-      )}
-    </section>
-  )
-}
-
-/** Inline quick-add: Enter adds and stays open for the next; "More fields" opens the full card panel. */
-function Composer({
-  onAdd,
-  onMore,
-  onClose,
-}: {
-  onAdd: (title: string) => Promise<unknown>
-  onMore: (title: string) => void
-  onClose: () => void
-}) {
-  const [title, setTitle] = useState('')
-  const [busy, setBusy] = useState(false)
-  const add = async () => {
-    const t = title.trim()
-    if (!t || busy) return
-    setBusy(true)
-    await onAdd(t)
-    setBusy(false)
-    setTitle('')
-  }
-  return (
-    <div className="kcard composer">
-      <TextArea
-        autoFocus
-        autoGrow={140}
-        rows={2}
-        className="composer-in"
-        placeholder="Card title…"
-        aria-label="New card title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value.replace(/\n/g, ''))}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && e.shiftKey) {
-            e.preventDefault()
-            onMore(title.trim())
-          } else if (e.key === 'Enter') {
-            e.preventDefault()
-            void add()
-          } else if (e.key === 'Escape') {
-            e.stopPropagation()
-            onClose()
-          }
-        }}
-        onBlur={(e) => {
-          if (!title.trim() && !e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) onClose()
-        }}
-      />
-      <div className="row between">
-        <span className="row g10">
-          <Button variant="primary" size="sm" busy={busy} disabled={!title.trim()} onClick={() => void add()}>
-            Add
-          </Button>
-          <TextButton onClick={() => onMore(title.trim())} title="Assignee, due date, labels, AI task… (⇧↵)">
-            [⤢] More fields
-          </TextButton>
-        </span>
-        <IconButton small label="Cancel (Esc)" onClick={onClose}>
-          <IconCross size={12} sw={1.6} />
-        </IconButton>
-      </div>
-    </div>
-  )
-}
-
-function AddColumn({
-  open,
-  setOpen,
-  onAdd,
-}: {
-  open: boolean
-  setOpen: (v: boolean) => void
-  onAdd: (name: string) => void
-}) {
-  const [name, setName] = useState('')
-  if (!open)
-    return (
-      <button type="button" className="kcol kcol-add" onClick={() => setOpen(true)}>
-        <span className="mono">[+] Add column</span>
-      </button>
-    )
-  const commit = () => {
-    if (name.trim()) onAdd(name.trim())
-    setName('')
-    setOpen(false)
-  }
-  return (
-    <div className="kcol" style={{ gap: 10 }}>
-      <TextInput
-        compact
-        autoFocus
-        placeholder="Column name"
-        aria-label="New column name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit()
-          if (e.key === 'Escape') setOpen(false)
-        }}
-      />
-      <div className="row g8">
-        <Button variant="primary" size="sm" disabled={!name.trim()} onClick={commit}>
-          Add column
-        </Button>
-        <Button size="sm" onClick={() => setOpen(false)}>
-          Cancel
-        </Button>
-      </div>
     </div>
   )
 }

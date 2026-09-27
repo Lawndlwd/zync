@@ -14,13 +14,19 @@
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write ."
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "knip": "knip",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm knip"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.9",
+    "knip": "^6.38.0",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2003",
     "turbo": "^2.5.0",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   }
 }

@@ -1,7 +1,7 @@
 # Production stack, deployed by Dokploy (Compose type, source = this git repo).
-# ONE domain, set in Dokploy → Domains: your host → service `api`, port 3001.
-# The api serves the app and forwards the embedded chat to opencode internally, so opencode has no
-# domain and is only reachable inside this compose network. See README → Deploy on Dokploy.
+# Zero trust: nothing here is published. `cloudflared` opens an outbound tunnel to Cloudflare, and
+# Cloudflare Access checks who you are before a request reaches `api` (which checks the Access token
+# again, then your passkey session). No Dokploy domain, no open port. See README → Deploy.
 
 x-common: &common
   build: .
@@ -13,7 +13,6 @@ x-common: &common
     OPENCODE_URL: http://opencode:4096
     # The app's public address (used in notification links), e.g. https://zync.levende.net
     APP_URL: ${APP_URL:-}
-    ALLOW_NO_AUTH: ${ALLOW_NO_AUTH:-0}
   volumes:
     - ${WORKSPACES_HOST_DIR:?set WORKSPACES_HOST_DIR to the host folder holding your workspaces}:/workspace
 
@@ -25,12 +24,26 @@ services:
       - "3001"
     environment:
       <<: *env
+      APP_URL: ${APP_URL:?set APP_URL to the address you open zync at, e.g. https://zync.example.com}
       # Settings → AI server edits opencode's config file through the shared volume.
       ZYNC_OPENCODE_CONFIG: /opencode-config/opencode.json
+      # Passkeys and sessions: a volume only this container mounts — never a workspace the AI can read.
+      ZYNC_AUTH_DIR: /zync-auth
+      # Cloudflare Access (Zero Trust → Access → your application → Overview → AUD tag).
+      CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN:-}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD:-}
+      CF_ACCESS_EMAIL: ${CF_ACCESS_EMAIL:-}
+      # Sign-in alerts (new sign-in, lockouts, passkey changes) go to the same ntfy topic as job runs.
+      NTFY_URL: ${NTFY_URL:-https://ntfy.sh}
+      NTFY_TOPIC: ${NTFY_TOPIC:-}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
     volumes:
       - ${WORKSPACES_HOST_DIR}:/workspace
       - opencode-config:/opencode-config
-    networks: [default, dokploy-network]
+      - zync-auth:/zync-auth
+    # `default`: opencode and the scheduler. `tunnel`: cloudflared. Not on dokploy-network, so other
+    # Dokploy apps can't reach it, and no port is published.
+    networks: [default, tunnel]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3001/zync/api/health"]
       interval: 30s
@@ -72,10 +85,25 @@ services:
     depends_on:
       - opencode
 
+  # The only way in: an outbound tunnel to Cloudflare (Zero Trust → Networks → Tunnels → your
+  # tunnel's token), public hostname → http://api:3001, behind an Access application.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN (Cloudflare Zero Trust tunnel)}
+    # Its own network, shared with `api` only: whatever route is set in the Cloudflare dashboard,
+    # the tunnel can't reach opencode or the scheduler directly.
+    networks: [tunnel]
+    depends_on:
+      - api
+
 volumes:
+  zync-auth:
   opencode-config:
   opencode-data:
 
 networks:
-  dokploy-network:
-    external: true
+  # Not `internal`: cloudflared must reach Cloudflare, and api fetches Access signing keys.
+  tunnel: {}

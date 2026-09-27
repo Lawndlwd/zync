@@ -4,18 +4,20 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "APP_URL=${APP_URL:-http://localhost:5173} tsx watch src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "@simplewebauthn/server": "^14.0.3",
     "@zync/jobs": "workspace:*",
     "chokidar": "^4.0.3",
     "express": "^5.2.1",
-    "gray-matter": "^4.0.3",
-    "multer": "^2.4.0"
+    "jose": "^6.2.12",
+    "multer": "^2.4.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
@@ -24,7 +26,7 @@
     "@types/supertest": "^6.0.3",
     "supertest": "^7.3.0",
     "tsx": "^4.23.15",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   }
 }

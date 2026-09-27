@@ -1,23 +1,16 @@
 import type { DragEvent } from 'react'
 import { Link } from 'react-router'
-import type { Card, Person } from '../api'
-import { TextButton } from '../components/Button'
+
+import { PersonAvatar } from '../components/PersonAvatar'
+import { StatusBadge } from '../components/StatusBadge'
+import { TextButton } from '../components/TextButton'
+import { dayLabel, dueDate, hhmm, shortDayTime } from '../helpers/dates'
+import { stopPropagation } from '../helpers/dom'
+import { firstLine } from '../helpers/format'
+import { sessionUrl } from '../helpers/urls'
 import { IconWarn } from '../icons'
-import { PersonAvatar, StatusBadge } from '../ui'
-import { dayLabel, dueDate, hhmm, sameDay } from '../workspaceData'
-import { sessionUrl } from './shared'
-
-const when = (iso: string) => {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return sameDay(d, new Date()) ? hhmm(d) : `${dayLabel(d).slice(0, 3)} ${hhmm(d)}`
-}
-
-const firstLine = (s?: string) =>
-  s
-    ?.split('\n')
-    .find((l) => l.trim())
-    ?.trim()
+import type { Card } from '../types/boards'
+import type { Person } from '../types/people'
 
 /** A card on the board, in every state the handoff draws: human, @ai scheduled/running/done/failed, overdue, done. */
 export function KanbanCard({
@@ -62,10 +55,6 @@ export function KanbanCard({
   ]
     .filter(Boolean)
     .join(' ')
-  const stop = (fn: () => void) => (e: React.MouseEvent) => {
-    e.stopPropagation()
-    fn()
-  }
 
   return (
     <div
@@ -97,11 +86,11 @@ export function KanbanCard({
           {state === 'running' ? (
             <StatusBadge state="running" />
           ) : state === 'done' ? (
-            <StatusBadge state="ok">Done{ai.finishedAt ? ` · ${when(ai.finishedAt)}` : ''}</StatusBadge>
+            <StatusBadge state="ok">Done{ai.finishedAt ? ` · ${shortDayTime(ai.finishedAt)}` : ''}</StatusBadge>
           ) : state === 'failed' ? (
-            <StatusBadge state="failed">Failed{ai.finishedAt ? ` · ${when(ai.finishedAt)}` : ''}</StatusBadge>
+            <StatusBadge state="failed">Failed{ai.finishedAt ? ` · ${shortDayTime(ai.finishedAt)}` : ''}</StatusBadge>
           ) : card.runAt ? (
-            <StatusBadge state="scheduled">{when(card.runAt)}</StatusBadge>
+            <StatusBadge state="scheduled">{shortDayTime(card.runAt)}</StatusBadge>
           ) : (
             <span className="mono-s muted">No run time</span>
           )}
@@ -130,7 +119,7 @@ export function KanbanCard({
       <div className="kf">
         {state === 'done' && !done ? (
           <span className="row g10">
-            <TextButton onClick={stop(onAccept)}>[✓] Accept</TextButton>
+            <TextButton onClick={stopPropagation(onAccept)}>[✓] Accept</TextButton>
             {ai?.sessionId && (
               <Link to={sessionUrl(ws, ai.sessionId)} className="link" onClick={(e) => e.stopPropagation()}>
                 [↗] Session
@@ -139,14 +128,14 @@ export function KanbanCard({
           </span>
         ) : state === 'failed' && !done ? (
           <span className="row g10">
-            <TextButton onClick={stop(onRetry)}>[↻] Retry</TextButton>
+            <TextButton onClick={stopPropagation(onRetry)}>[↻] Retry</TextButton>
             {ai?.sessionId && (
               <Link to={sessionUrl(ws, ai.sessionId)} className="link" onClick={(e) => e.stopPropagation()}>
                 [↗] Session
               </Link>
             )}
           </span>
-        ) : overdue && due ? (
+        ) : overdue ? (
           <span className="due over">
             <IconWarn />
             Overdue · {dayLabel(due).slice(4)}

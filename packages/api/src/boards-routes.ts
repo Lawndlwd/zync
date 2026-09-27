@@ -1,45 +1,18 @@
 import {
   createBoard,
   createCard,
-  createPerson,
   deleteBoard,
   deleteCard,
-  deletePerson,
   listBoards,
-  listPeople,
   readBoard,
   runCardNow,
   updateBoard,
   updateCard,
-  updatePerson,
 } from '@zync/jobs'
 import express, { Router } from 'express'
+
+import { BoardBody, BoardPatchBody } from './body.js'
 import { wsOf } from './workspace-param.js'
-
-/** Global people list, stored in the workspaces root. */
-export function peopleRoutes(root: string): Router {
-  const r = Router()
-  r.use(express.json())
-
-  r.get('/', async (_req, res) => {
-    res.json(await listPeople(root))
-  })
-
-  r.post('/', async (req, res) => {
-    res.status(201).json(await createPerson({ name: String(req.body?.name || ''), color: req.body?.color }, root))
-  })
-
-  r.patch('/:id', async (req, res) => {
-    res.json(await updatePerson(req.params.id, { name: req.body?.name, color: req.body?.color }, root))
-  })
-
-  r.delete('/:id', async (req, res) => {
-    await deletePerson(req.params.id, root)
-    res.status(204).end()
-  })
-
-  return r
-}
 
 /**
  * `:board` is the board's workspace-relative folder path, URL-encoded as one segment
@@ -56,13 +29,7 @@ export function boardsRoutes(): Router {
 
   r.post('/', async (req, res) => {
     const ws = await wsOf(req)
-    res.status(201).json(
-      await createBoard(ws.path, {
-        name: String(req.body?.name || ''),
-        parent: req.body?.parent,
-        columns: Array.isArray(req.body?.columns) ? req.body.columns : undefined,
-      }),
-    )
+    res.status(201).json(await createBoard(ws.path, BoardBody.parse(req.body)))
   })
 
   r.get('/:board', async (req, res) => {
@@ -72,7 +39,7 @@ export function boardsRoutes(): Router {
 
   r.patch('/:board', async (req, res) => {
     const ws = await wsOf(req)
-    res.json(await updateBoard(ws.path, req.params.board, { name: req.body?.name, columns: req.body?.columns }))
+    res.json(await updateBoard(ws.path, req.params.board, BoardPatchBody.parse(req.body)))
   })
 
   r.delete('/:board', async (req, res) => {

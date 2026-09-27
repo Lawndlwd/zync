@@ -1,10 +1,12 @@
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+
 import request from 'supertest'
 import { describe, expect, it } from 'vitest'
+
 import { createApp } from './app.js'
-import { queryWords, scoreFile } from './search.js'
+import { listFilesCached, queryWords, scoreFile } from './search.js'
 
 describe('scoreFile', () => {
   it('ignores case and accents, and matches word prefixes', () => {
@@ -36,7 +38,7 @@ describe('scoreFile', () => {
   it('returns the matching lines as snippets, phrase line first', () => {
     const hit = scoreFile('weekly report', 'a.md', 'intro\nthe report is weekly\nwe write the weekly report here')
     expect(hit!.snippets.map((s) => s.line)).toEqual([3, 2])
-    expect(hit!.snippets[0].text).toContain('weekly report')
+    expect(hit?.snippets[0]?.text).toContain('weekly report')
   })
 })
 
@@ -53,5 +55,23 @@ describe('search endpoint', () => {
     expect(res.body.results.map((r: any) => r.path)).toEqual(['notes/a.md'])
     expect(res.body.results[0].snippets[0]).toMatchObject({ line: 2, text: 'Le résumé de la réunion' })
     expect((await request(app).get('/zync/api/ws/ws/search').query({ q: 'a' })).body.results).toEqual([])
+  })
+})
+
+describe('listFilesCached', () => {
+  it('reuses the listing while the change counter holds, and walks again when it moves', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'zync-list-'))
+    await writeFile(path.join(root, 'a.md'), 'a')
+    expect((await listFilesCached(root, 1)).map((f) => f.path)).toEqual(['a.md'])
+    await writeFile(path.join(root, 'b.md'), 'b')
+    expect((await listFilesCached(root, 1)).map((f) => f.path)).toEqual(['a.md'])
+    expect((await listFilesCached(root, 2)).map((f) => f.path).toSorted()).toEqual(['a.md', 'b.md'])
+  })
+
+  it('always walks when nobody watches the workspace', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'zync-list-'))
+    expect(await listFilesCached(root, undefined)).toEqual([])
+    await writeFile(path.join(root, 'a.md'), 'a')
+    expect((await listFilesCached(root, undefined)).map((f) => f.path)).toEqual(['a.md'])
   })
 })

@@ -1,62 +1,24 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
-import { api, basename, dirname, joinPath, type TreeEntry } from '../api'
-import { boardUrl } from '../boards/shared'
+import { useQueryClient } from '@tanstack/react-query'
+import { useRef, useState } from 'react'
+
+import { api } from '../api'
 import { useConfirm } from '../components/Dialog'
 import { Popover } from '../components/Popover'
-import { folderUrl } from '../files/FolderView'
-import { IconBoard, IconChevDown, IconChevRight, IconChevUp, IconFile, IconFolder, IconSpin } from '../icons'
-import { useDismiss } from '../ui'
-import type { WorkspaceData } from '../workspaceData'
-import { type Creating, fileUrl, useShell, useShowHidden, wsUrl } from './context'
+import { errorMessage, plural } from '../helpers/format'
+import { basename, decodePath, dirname, joinPath } from '../helpers/paths'
+import { boardUrl, fileUrl, folderUrl, wsUrl } from '../helpers/urls'
+import { useDismiss } from '../hooks/useDismiss'
+import { IconChevUp } from '../icons'
+import type { TreeEntry } from '../types/files'
+import type { Creating, TreeCtx } from '../types/shell'
+import type { WorkspaceData } from '../types/workspace'
+import { draggedPaths, topLevel } from './helpers'
+import { splitPath } from './paneUrl'
+import { useShell } from './ShellContext'
+import { TreeDir } from './TreeDir'
 
 // The workspace folder tree in the sidebar. Same folders everywhere: board folders open the board,
 // files open the editor. Right-click (or F2 / Delete on a focused row) to rename, delete, create.
-
-interface Ctx {
-  ws: string
-  current: string
-  currentBoard: string
-  currentDir: string
-  boards: Set<string>
-  cardCount: Map<string, number>
-  cardAi: Map<string, 'running' | 'done' | undefined>
-  creating: Creating | null
-  renaming: string | null
-  /** Open the entry; `beside` puts it in a split pane next to the current view. */
-  open: (e: TreeEntry, beside?: boolean) => void
-  selectDir: (dir: string) => void
-  menu: (e: TreeEntry, x: number, y: number) => void
-  create: (name: string) => void
-  cancelCreate: () => void
-  rename: (e: TreeEntry, name: string) => void
-  cancelRename: () => void
-  startRename: (e: TreeEntry) => void
-  remove: (e: TreeEntry) => void
-  moveInto: (froms: string[], dir: string) => void
-  /** Drop `froms` just before or after `target` (moving them to target's folder first if needed). */
-  place: (froms: string[], target: TreeEntry, where: 'before' | 'after', siblings: TreeEntry[]) => void
-  /** Multi-select: ⌘/Ctrl-click toggles, Shift-click selects the range from the last one. */
-  selected: Set<string>
-  select: (path: string, mode: 'toggle' | 'range' | 'only') => void
-  clearSelection: () => void
-  removeMany: (paths: string[]) => void
-}
-
-/** Drop paths inside another selected folder: acting on the folder covers them. */
-const topLevel = (paths: string[]) => paths.filter((p) => !paths.some((q) => q !== p && p.startsWith(`${q}/`)))
-
-/** The paths being dragged: the whole selection when the dragged item is part of it. */
-const draggedPaths = (dt: DataTransfer): string[] => {
-  try {
-    const many = JSON.parse(dt.getData('text/zync-paths') || '[]')
-    if (Array.isArray(many) && many.length) return many
-  } catch {}
-  const one = dt.getData('text/zync-path')
-  return one ? [one] : []
-}
-
-type DropZone = 'before' | 'after' | 'into'
 
 export function SideTree({
   ws,
@@ -72,52 +34,55 @@ export function SideTree({
   const qc = useQueryClient()
   const confirm = useConfirm()
   const shell = useShell()
-  const [pathname, search = ''] = shell.activePath.split('?')
+  const { pathname, search } = splitPath(shell.activePath)
   const uploadRef = useRef<HTMLInputElement>(null)
   const folderUploadRef = useRef<HTMLInputElement>(null)
   const uploadBtn = useRef<HTMLButtonElement>(null)
   const [uploadMenu, setUploadMenu] = useState(false)
-  const closeUploadMenu = useCallback(() => setUploadMenu(false), [])
+  const closeUploadMenu = () => setUploadMenu(false)
   const [targetDir, setTargetDir] = useState('')
   const [renaming, setRenaming] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [collapseKey, setCollapseKey] = useState(0)
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
-  const anchor = useRef<string | null>(null)
+  // Where a shift-click range starts.
+  const [anchor, setAnchor] = useState<string | null>(null)
   const treeRef = useRef<HTMLDivElement>(null)
   // A new workspace or a collapse starts over.
-  useEffect(() => {
+  const resetKey = `${ws}\n${collapseKey}`
+  const [selectionFor, setSelectionFor] = useState(resetKey)
+  if (selectionFor !== resetKey) {
+    setSelectionFor(resetKey)
     setSelected(new Set())
-    anchor.current = null
-  }, [ws, collapseKey])
+    setAnchor(null)
+  }
   /** Items as shown, top to bottom (only expanded folders' children). */
   const visiblePaths = () =>
     [...(treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"][data-path]') ?? [])].map(
-      (el) => el.dataset.path as string,
+      (el) => el.dataset.path ?? '',
     )
   const [menu, setMenu] = useState<{ entry: TreeEntry; x: number; y: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const closeMenu = useCallback(() => setMenu(null), [])
+  const closeMenu = () => setMenu(null)
   useDismiss(menuRef, !!menu, closeMenu)
 
   const filesPrefix = `${wsUrl(ws)}/files/`
   const boardsPrefix = `${wsUrl(ws)}/boards/`
-  const decode = (p: string) => p.split('/').map(decodeURIComponent).join('/')
-  const current = pathname.startsWith(filesPrefix) ? decode(pathname.slice(filesPrefix.length)) : ''
-  const currentBoard = pathname.startsWith(boardsPrefix) ? decode(pathname.slice(boardsPrefix.length)) : ''
+  const current = pathname.startsWith(filesPrefix) ? decodePath(pathname.slice(filesPrefix.length)) : ''
+  const currentBoard = pathname.startsWith(boardsPrefix) ? decodePath(pathname.slice(boardsPrefix.length)) : ''
   const currentDir =
     pathname === `${wsUrl(ws)}/files` ? (new URLSearchParams(search ? `?${search}` : '').get('dir') ?? '') : ''
 
   const refresh = (dir: string) => {
-    qc.invalidateQueries({ queryKey: ['tree', ws, dir] })
-    qc.invalidateQueries({ queryKey: ['recent', ws] })
+    void qc.invalidateQueries({ queryKey: ['tree', ws, dir] })
+    void qc.invalidateQueries({ queryKey: ['recent', ws] })
   }
   const run = async (fn: () => Promise<unknown>) => {
     setError('')
     try {
       await fn()
-    } catch (e) {
-      setError((e as Error).message)
+    } catch (err) {
+      setError(errorMessage(err))
     }
   }
 
@@ -130,7 +95,7 @@ export function SideTree({
   }
 
   const boardSet = new Set(data.boards.map((b) => b.path))
-  const ctx: Ctx = {
+  const ctx: TreeCtx = {
     ws,
     current,
     currentBoard,
@@ -149,7 +114,7 @@ export function SideTree({
     selectDir: setTargetDir,
     menu: (entry, x, y) => setMenu({ entry, x, y }),
     create: (raw) =>
-      run(async () => {
+      void run(async () => {
         const c = creating
         setCreating(null)
         const name = raw.trim()
@@ -168,7 +133,7 @@ export function SideTree({
     startRename: (e) => setRenaming(e.path),
     cancelRename: () => setRenaming(null),
     rename: (entry, raw) =>
-      run(async () => {
+      void run(async () => {
         setRenaming(null)
         const name = raw.trim()
         if (!name || name === entry.name) return
@@ -178,7 +143,7 @@ export function SideTree({
         if (current === entry.path) shell.open(fileUrl(ws, to))
       }),
     remove: (entry) =>
-      run(async () => {
+      void run(async () => {
         const ok = await confirm({
           title: `Delete ${entry.name}?`,
           body: (
@@ -196,7 +161,7 @@ export function SideTree({
         if (current === entry.path || current.startsWith(`${entry.path}/`)) shell.open(wsUrl(ws, 'files'))
       }),
     moveInto: (froms, dir) =>
-      run(async () => {
+      void run(async () => {
         for (const from of topLevel(froms)) {
           const to = joinPath(dir, basename(from))
           if (to === from || dir === from || dir.startsWith(`${from}/`)) continue
@@ -208,7 +173,7 @@ export function SideTree({
         setSelected(new Set())
       }),
     place: (froms, target, where, siblings) =>
-      run(async () => {
+      void run(async () => {
         const dir = dirname(target.path)
         const moving = topLevel(froms).filter((f) => f !== target.path && dir !== f && !dir.startsWith(`${f}/`))
         if (!moving.length) return
@@ -225,7 +190,7 @@ export function SideTree({
         qc.setQueriesData<{ path: string; entries: TreeEntry[] }>({ queryKey: ['tree', ws, dir] }, (old) => {
           if (!old) return old
           const rank = new Map(names.map((n, i) => [n, i]))
-          const entries = [...old.entries].sort(
+          const entries = [...old.entries].toSorted(
             (a, b) => (rank.get(a.name) ?? names.length) - (rank.get(b.name) ?? names.length),
           )
           return { ...old, entries }
@@ -236,15 +201,15 @@ export function SideTree({
       }),
     selected,
     select: (path, mode) => {
-      if (mode === 'range' && anchor.current) {
+      if (mode === 'range' && anchor) {
         const all = visiblePaths()
-        const [a, b] = [all.indexOf(anchor.current), all.indexOf(path)].sort((x, y) => x - y)
+        const [a = -1, b = -1] = [all.indexOf(anchor), all.indexOf(path)].toSorted((x, y) => x - y)
         if (a >= 0) {
           setSelected(new Set(all.slice(a, b + 1)))
           return
         }
       }
-      anchor.current = path
+      setAnchor(path)
       setSelected((old) => {
         if (mode === 'only') return new Set([path])
         const next = new Set(old)
@@ -254,15 +219,15 @@ export function SideTree({
       })
     },
     clearSelection: () => {
-      anchor.current = null
+      setAnchor(null)
       setSelected(new Set())
     },
     removeMany: (paths) =>
-      run(async () => {
+      void run(async () => {
         const items = topLevel(paths)
         if (!items.length) return
         const ok = await confirm({
-          title: `Delete ${items.length} item${items.length === 1 ? '' : 's'}?`,
+          title: `Delete ${plural(items.length, 'item')}?`,
           body: (
             <>
               {items.slice(0, 6).map((p) => (
@@ -286,7 +251,7 @@ export function SideTree({
           refresh(dirname(p))
         }
         setSelected(new Set())
-        anchor.current = null
+        setAnchor(null)
         if (items.some((p) => current === p || current.startsWith(`${p}/`))) shell.open(wsUrl(ws, 'files'))
         if (failed.length) throw new Error(`Could not delete: ${failed.join(', ')}`)
       }),
@@ -353,15 +318,15 @@ export function SideTree({
             </button>
           </div>
         </Popover>
-        {[uploadRef, folderUploadRef].map((ref) => (
+        {(['files', 'folder'] as const).map((kind) => (
           <input
-            key={ref === uploadRef ? 'files' : 'folder'}
-            ref={ref}
+            key={kind}
+            ref={kind === 'files' ? uploadRef : folderUploadRef}
             type="file"
             multiple
             hidden
             // A folder picker: each file keeps its path inside the chosen folder.
-            {...(ref === folderUploadRef ? { webkitdirectory: '' } : {})}
+            {...(kind === 'folder' ? { webkitdirectory: '' } : {})}
             onChange={(e) =>
               run(async () => {
                 if (e.target.files?.length) await api.upload(ws, targetDir, e.target.files)
@@ -384,6 +349,7 @@ export function SideTree({
         aria-multiselectable="true"
         ref={treeRef}
         key={collapseKey}
+        tabIndex={-1}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault()
@@ -391,7 +357,7 @@ export function SideTree({
           if (froms.length) ctx.moveInto(froms, '')
         }}
       >
-        <Dir path="" depth={0} ctx={ctx} />
+        <TreeDir path="" depth={0} ctx={ctx} />
       </div>
       {menu && (
         <div ref={menuRef} className="menu pop fixed" style={{ top: menu.y, left: menu.x }} role="menu">
@@ -458,240 +424,6 @@ export function SideTree({
           </button>
         </div>
       )}
-    </>
-  )
-}
-
-function depthProps(depth: number): { cls: string; style?: CSSProperties } {
-  if (depth === 0) return { cls: '' }
-  if (depth <= 2) return { cls: ` d${depth}` }
-  return { cls: '', style: { paddingLeft: 22 + 18 * (depth - 1) } }
-}
-
-function Dir({ path, depth, ctx }: { path: string; depth: number; ctx: Ctx }) {
-  const [hidden] = useShowHidden()
-  const { data, error } = useQuery({
-    queryKey: ['tree', ctx.ws, path, hidden],
-    queryFn: () => api.tree(ctx.ws, path, hidden),
-  })
-  const creatingHere = ctx.creating?.dir === path
-  if (error)
-    return (
-      <div className="help err" style={{ padding: '0 10px' }}>
-        {(error as Error).message}
-      </div>
-    )
-  return (
-    <>
-      {creatingHere && <NameInput depth={depth} ctx={ctx} />}
-      {data?.entries.map((e) => (
-        <Node key={e.path} entry={e} depth={depth} ctx={ctx} siblings={data.entries} />
-      ))}
-      {data && !data.entries.length && depth === 0 && !creatingHere && (
-        <span className="ti muted">Empty workspace</span>
-      )}
-    </>
-  )
-}
-
-function NameInput({ depth, ctx, entry }: { depth: number; ctx: Ctx; entry?: TreeEntry }) {
-  const { cls, style } = depthProps(depth)
-  const [v, setV] = useState(entry?.name ?? '')
-  const done = useRef(false)
-  const label = entry ? 'Rename' : ctx.creating?.kind === 'folder' ? 'New folder name' : 'New page name'
-  const commit = () => {
-    if (done.current) return
-    done.current = true
-    if (entry) ctx.rename(entry, v)
-    else ctx.create(v)
-  }
-  const cancel = () => {
-    if (done.current) return
-    done.current = true
-    if (entry) ctx.cancelRename()
-    else ctx.cancelCreate()
-  }
-  return (
-    <div className={`ti${cls} creating`} style={style}>
-      <input
-        aria-label={label}
-        autoFocus
-        value={v}
-        placeholder={ctx.creating?.kind === 'folder' ? 'folder' : 'Untitled.md'}
-        onFocus={(e) => {
-          const dot = e.target.value.lastIndexOf('.')
-          e.target.setSelectionRange(0, dot > 0 ? dot : e.target.value.length)
-        }}
-        onChange={(e) => setV(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit()
-          if (e.key === 'Escape') cancel()
-        }}
-        onBlur={() => (v.trim() && !entry ? commit() : cancel())}
-      />
-    </div>
-  )
-}
-
-function Node({ entry, depth, ctx, siblings }: { entry: TreeEntry; depth: number; ctx: Ctx; siblings: TreeEntry[] }) {
-  const isDir = entry.type === 'dir'
-  const isBoard = isDir && ctx.boards.has(entry.path)
-  const within = (p: string) => p === entry.path || p.startsWith(`${entry.path}/`)
-  const [open, setOpen] = useState(() => within(ctx.current) || within(ctx.currentBoard) || within(ctx.currentDir))
-  const [over, setOver] = useState<DropZone | null>(null)
-  const isSelected = ctx.selected.has(entry.path)
-  const creatingInside = !!ctx.creating && within(ctx.creating.dir)
-  useEffect(() => {
-    if (creatingInside) setOpen(true)
-  }, [creatingInside])
-
-  if (ctx.renaming === entry.path) return <NameInput depth={depth} ctx={ctx} entry={entry} />
-
-  const { cls, style } = depthProps(depth)
-  const active = isBoard
-    ? ctx.currentBoard === entry.path
-    : isDir
-      ? ctx.currentDir === entry.path
-      : ctx.current === entry.path
-  const ai = ctx.cardAi.get(entry.path)
-  const meta = isBoard ? (
-    <span className="meta">{ctx.cardCount.get(entry.path) ?? ''}</span>
-  ) : ai === 'running' ? (
-    <span className="meta">
-      <IconSpin size={10} sw={2.2} />
-    </span>
-  ) : ai === 'done' ? (
-    <span className="meta">AI</span>
-  ) : over === 'into' ? (
-    <span className="meta">drop to move</span>
-  ) : null
-
-  const onActivate = (beside = false) => {
-    if (isDir) {
-      ctx.selectDir(entry.path)
-      if (!beside) setOpen(true)
-      ctx.open(entry, beside)
-    } else {
-      ctx.selectDir(dirname(entry.path))
-      ctx.open(entry, beside)
-    }
-  }
-
-  return (
-    <>
-      <div
-        className={`ti${cls}${active ? ' on' : ''}${isSelected ? ' sel' : ''}${over === 'into' ? ' drop' : over ? ` drop-${over}` : ''}`}
-        data-path={entry.path}
-        style={style}
-        role="treeitem"
-        tabIndex={0}
-        aria-selected={ctx.selected.size ? isSelected : active}
-        aria-expanded={isDir ? open : undefined}
-        aria-current={active ? 'page' : undefined}
-        title={entry.path}
-        draggable
-        onDragStart={(e) => {
-          e.stopPropagation()
-          e.dataTransfer.setData('text/zync-path', entry.path)
-          if (isSelected && ctx.selected.size > 1)
-            e.dataTransfer.setData('text/zync-paths', JSON.stringify([...ctx.selected]))
-        }}
-        onDragOver={(e) => {
-          if (!e.dataTransfer.types.includes('text/zync-path') || isSelected) return
-          e.preventDefault()
-          e.stopPropagation()
-          // Top or bottom edge: place before / after. Middle of a folder: move into it.
-          const r = e.currentTarget.getBoundingClientRect()
-          const y = (e.clientY - r.top) / r.height
-          setOver(isDir ? (y < 0.28 ? 'before' : y > 0.72 ? 'after' : 'into') : y < 0.5 ? 'before' : 'after')
-        }}
-        onDragLeave={() => setOver(null)}
-        onDrop={(e) => {
-          const zone = over
-          setOver(null)
-          const froms = draggedPaths(e.dataTransfer).filter((f) => f !== entry.path)
-          if (!froms.length || !zone) return
-          e.preventDefault()
-          e.stopPropagation()
-          if (zone === 'into') ctx.moveInto(froms, entry.path)
-          else ctx.place(froms, entry, zone, siblings)
-        }}
-        onClick={(e) => {
-          if (e.metaKey || e.ctrlKey) return ctx.select(entry.path, 'toggle')
-          if (e.shiftKey) return ctx.select(entry.path, 'range')
-          ctx.clearSelection()
-          onActivate(e.altKey)
-        }}
-        onKeyDown={(e) => {
-          if (e.target !== e.currentTarget) return
-          const items = [
-            ...(e.currentTarget.closest('[role="tree"]')?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? []),
-          ]
-          const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0
-          if (step) {
-            e.preventDefault()
-            const next = items[items.indexOf(e.currentTarget) + step]
-            next?.focus()
-            if (next?.dataset.path && e.shiftKey) {
-              if (!ctx.selected.size) ctx.select(entry.path, 'only')
-              ctx.select(next.dataset.path, 'range')
-            }
-            return
-          }
-          if (e.key === ' ') {
-            e.preventDefault()
-            ctx.select(entry.path, 'toggle')
-          }
-          if (e.key === 'a' && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault()
-            const paths = items.map((el) => el.dataset.path).filter((p): p is string => !!p)
-            ctx.select(paths[0], 'only')
-            ctx.select(paths[paths.length - 1], 'range')
-          }
-          if (e.key === 'Escape' && ctx.selected.size) {
-            e.preventDefault()
-            ctx.clearSelection()
-          }
-          if (e.key === 'Enter') onActivate(e.altKey)
-          if (e.key === 'F2') ctx.startRename(entry)
-          if (e.key === 'Delete' || (e.key === 'Backspace' && e.metaKey)) {
-            if (isSelected && ctx.selected.size > 1) ctx.removeMany([...ctx.selected])
-            else ctx.remove(entry)
-          }
-          if (isDir && e.key === 'ArrowRight') setOpen(true)
-          if (isDir && e.key === 'ArrowLeft') setOpen(false)
-        }}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          ctx.menu(entry, e.clientX, e.clientY)
-        }}
-      >
-        {isDir ? (
-          <span
-            className="ch row"
-            onClick={(e) => {
-              // The chevron only folds; the label opens boards.
-              e.stopPropagation()
-              setOpen((o) => !o)
-              ctx.selectDir(entry.path)
-            }}
-          >
-            {open ? <IconChevDown className="ch" /> : <IconChevRight className="ch" />}
-          </span>
-        ) : depth === 0 ? (
-          <span className="ch" />
-        ) : null}
-        {isBoard ? (
-          <IconBoard size={15} sw={1.3} />
-        ) : isDir ? (
-          <IconFolder />
-        ) : depth === 0 ? (
-          <IconFile size={15} sw={1.3} />
-        ) : null}
-        <span className="ti-name">{entry.name}</span>
-        {meta}
-      </div>
-      {isDir && open && <Dir path={entry.path} depth={depth + 1} ctx={ctx} />}
     </>
   )
 }

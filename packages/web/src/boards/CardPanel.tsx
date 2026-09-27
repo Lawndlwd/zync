@@ -1,13 +1,16 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router'
-import type { Board, Card, CardPatch, Person } from '../api'
-import { Button, IconButton } from '../components/Button'
-import { IconChevDown, IconChevUp, IconCross } from '../icons'
-import { fileUrl } from '../shell/context'
-import { CardDocument, type Draft, emptyDraft } from './CardDocument'
-import { statusOf } from './shared'
 
-export type { Draft } from './CardDocument'
+import { Button } from '../components/Button'
+import { IconButton } from '../components/IconButton'
+import { statusOf } from '../helpers/boards'
+import { fileUrl } from '../helpers/urls'
+import { usePanelEscape } from '../hooks/usePanelEscape'
+import { IconChevDown, IconChevUp, IconCross } from '../icons'
+import type { Board, Card, CardPatch, Draft } from '../types/boards'
+import type { Person } from '../types/people'
+import { CardDocument } from './CardDocument'
+import { emptyDraft } from './helpers'
 
 /**
  * The 480px side panel beside the board. It shows the card's file as a page (CardDocument); in
@@ -50,11 +53,6 @@ export function CardPanel({
   const creating = !card
   const [draft, setDraft] = useState<Draft>(() => initialDraft ?? emptyDraft(board))
   const [busy, setBusy] = useState(false)
-  const titleRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (creating) titleRef.current?.focus()
-  }, [creating])
 
   const create = async () => {
     if (!draft.title.trim() || busy) return
@@ -66,17 +64,7 @@ export function CardPanel({
     }
   }
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) onClose()
-      if (creating && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        void create()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  })
+  usePanelEscape(onClose, creating ? { onSubmit: () => void create() } : {})
 
   const column = board.columns.find((c) => c.id === (card ? statusOf(board, card) : draft.status))
 
@@ -133,7 +121,6 @@ export function CardPanel({
           onPatch={onPatch}
           onRun={onRun}
           onSubmitDraft={() => void create()}
-          titleRef={titleRef}
           layout="panel"
         />
         {error && <span className="help err">{error}</span>}

@@ -5,7 +5,7 @@ import { linter, lintGutter } from '@codemirror/lint'
 import { EditorState } from '@codemirror/state'
 import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view'
 import { tags as t } from '@lezer/highlight'
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef } from 'react'
 
 // Code editor in the zync style (CodeMirror 6). Uncontrolled: remount via `key` to load new content.
 
@@ -65,15 +65,18 @@ export function CodeEditor({
   ariaLabel: string
 }) {
   const host = useRef<HTMLDivElement>(null)
-  const cb = useRef({ onChange, onSave })
-  cb.current = { onChange, onSave }
+  // Uncontrolled: `value` and `ariaLabel` are read once, when the editor is created.
+  const initial = useEffectEvent(() => ({ doc: value, label: ariaLabel }))
+  const change = useEffectEvent((v: string) => onChange(v))
+  const save = useEffectEvent(() => onSave?.())
 
   useEffect(() => {
     if (!host.current) return
+    const { doc, label } = initial()
     const view = new EditorView({
       parent: host.current,
       state: EditorState.create({
-        doc: value,
+        doc,
         extensions: [
           lineNumbers(),
           foldGutter(),
@@ -87,13 +90,13 @@ export function CodeEditor({
           linter(jsonParseLinter(), { delay: 300 }),
           syntaxHighlighting(zyncHighlight),
           zyncTheme,
-          EditorView.contentAttributes.of({ 'aria-label': ariaLabel }),
+          EditorView.contentAttributes.of({ 'aria-label': label }),
           keymap.of([
             {
               key: 'Mod-s',
               preventDefault: true,
               run: () => {
-                cb.current.onSave?.()
+                save()
                 return true
               },
             },
@@ -102,7 +105,7 @@ export function CodeEditor({
             ...historyKeymap,
           ]),
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) cb.current.onChange(u.state.doc.toString())
+            if (u.docChanged) change(u.state.doc.toString())
           }),
         ],
       }),

@@ -63,15 +63,19 @@ confined to the workspace, but its shell commands aren't. Runs are aborted after
 
 ## Deploy on Dokploy
 
-1. DNS: point your host (e.g. `zync.example.com`) at the Dokploy server.
+1. Cloudflare Zero Trust: create a **tunnel** (public hostname `zync.example.com` → `http://api:3001`)
+   and a self-hosted **Access application** for that hostname allowing only your email. Note the
+   tunnel token, your team domain and the application's AUD tag.
 2. Pick a host folder for the workspaces (e.g. `/srv/zync/workspaces`). It may be missing or
    root-owned: the containers hand it to their `node` user (uid 1000) on every start.
 3. Dokploy → **Create Service → Compose**, source = this git repo, compose path `docker-compose.yml`.
-4. **Environment**: copy `.env.example` and fill in `APP_URL`, `WORKSPACES_HOST_DIR`, your provider
-   keys, `NTFY_TOPIC`, and `ALLOW_NO_AUTH=1` (read the security note below first).
-5. Dokploy → **Domains**: one domain, your host → service `api`, port `3001`, HTTPS on.
-   Nothing for `opencode` or `scheduler`.
-6. Deploy, then open `APP_URL`.
+4. **Environment**: copy `.env.example` and fill in `APP_URL`, `WORKSPACES_HOST_DIR`,
+   `CLOUDFLARE_TUNNEL_TOKEN`, `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, your provider keys and
+   `NTFY_TOPIC`.
+5. **No Dokploy domain**: the tunnel is the only way in.
+6. Deploy. The api log prints a one-time **setup code**; open `APP_URL/login`, enter it, create your
+   passkey and save the recovery codes. Add a second passkey (phone, security key) in Settings →
+   Security.
 
 The AI server config starts from `opencode/opencode.json` in this repo: on the first start of a fresh
 `opencode-config` volume it is copied there and zync merges in its own pieces (zync-jobs MCP, job agent,
@@ -79,15 +83,26 @@ skills). From then on edit it in the app (Settings → AI server) and press Rest
 the seed. Keep secrets out of it — reference them as `{env:NAME}` and set NAME in Dokploy → Environment.
 Provider logins done in the chat UI persist in the `opencode-data` volume.
 
-> **Security:** the chat (and every job) can run any shell command on the mounted folders, and
-> zync has **no login** yet. Only expose it behind access control (VPN, IP allow-list…). The app
-> refuses to start until you set `ALLOW_NO_AUTH=1` to acknowledge this.
+> **Security:** the chat (and every job) can run any shell command on the mounted folders, so
+> access is zero trust, in layers:
+> 1. **No public entry**: no domain, no port; only the Cloudflare tunnel reaches `api`.
+> 2. **Cloudflare Access** checks your identity at the edge; zync verifies the signed Access token
+>    on every request, so nothing that went around Access gets in.
+> 3. **Passkey sign-in** in zync itself (no passwords), with one-time recovery codes. Sessions are
+>    `__Host-` cookies (HttpOnly, Secure, SameSite=Strict), 12 h idle / 7 days max.
+> 4. **One gate** for every request and WebSocket: exact Host (no DNS rebinding), same-origin only
+>    (no CSRF), then the session. Repeated failures lock sign-in; every sign-in and change is
+>    pushed to ntfy.
+>
+> Passkeys and sessions live in the `zync-auth` volume, mounted only in the api container — the AI
+> never sees it. Lost every passkey and every recovery code? Stop the stack, delete that volume's
+> `auth.json`, start again: a new setup code is printed.
 
 ## Local
 
 ```sh
-# Docker, same image as production, no login, on localhost:
-WORKSPACES_HOST_DIR=$PWD/data/workspaces \
+# Docker, same image as production, on localhost (setup code in the api log):
+WORKSPACES_HOST_DIR=$PWD/data/workspaces APP_URL=http://localhost:3001 CLOUDFLARE_TUNNEL_TOKEN=unused \
   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 # http://localhost:3001
 ```
@@ -98,6 +113,7 @@ Without Docker (Node 24 or later, pnpm, opencode installed):
 pnpm install && pnpm build
 pnpm dev:opencode      # opencode on :4096
 pnpm dev               # api :3001 (+ scheduler), web :5173 — open http://localhost:5173
+                       # first run: the api prints a setup code → /login → create a passkey (data/auth)
 ```
 
 Both use `WORKSPACES_ROOT` (default `data/workspaces`). Keep workspaces **outside** any git repo

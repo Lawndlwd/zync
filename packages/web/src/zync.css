@@ -74,7 +74,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:1
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
 a{color:inherit;text-decoration:none}
-:focus-visible,.is-focus{outline:2px solid var(--focus);outline-offset:2px}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 svg{flex-shrink:0}
 
 /* ---------- type ---------- */
@@ -97,7 +97,7 @@ svg{flex-shrink:0}
 .col{display:flex;flex-direction:column}
 .grow{flex:1 1 0;min-width:0}
 .between{justify-content:space-between}
-.g4{gap:4px}.g6{gap:6px}.g8{gap:8px}.g10{gap:10px}.g12{gap:12px}.g16{gap:16px}.g20{gap:20px}.g24{gap:24px}.g32{gap:32px}
+.g4{gap:4px}.g6{gap:6px}.g8{gap:8px}.g10{gap:10px}.g12{gap:12px}.g16{gap:16px}.g20{gap:20px}.g24{gap:24px}
 .wrap{flex-wrap:wrap}
 .trunc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -115,7 +115,7 @@ svg{flex-shrink:0}
 .btn-ghost:hover,.btn-ghost.is-hover{border-style:solid;border-color:var(--ink-2);background:var(--quiet)}
 .btn-danger{border:1px dashed var(--danger);color:var(--danger)}
 .btn-danger:hover{background:var(--danger-soft)}
-.btn[disabled],.btn.is-disabled{opacity:.45;cursor:not-allowed}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
 .ibtn{width:36px;height:36px;border-radius:var(--r-sm);display:inline-flex;align-items:center;justify-content:center;color:var(--ink)}
 .ibtn:hover,.ibtn.is-hover{background:var(--accent-soft)}
 .ibtn-s{width:28px;height:28px}
@@ -177,7 +177,7 @@ svg{flex-shrink:0}
 .input{height:40px;border:1px dashed var(--line);border-radius:var(--r-sm);background:var(--raised);padding:0 12px;font-size:14px;width:100%;display:flex;align-items:center;gap:8px;min-width:0}
 .input::placeholder{color:var(--ink-2)}
 .input.monoin{font-family:var(--f-mono);font-size:12px;letter-spacing:.05em}
-.input.is-focus,.input:focus{outline:none;border:1px solid var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.input:focus{outline:none;border:1px solid var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .input.err{border:1px solid var(--danger)}
 .help{font-size:12.5px;color:var(--ink-2)}
 .help.err{color:var(--danger)}
@@ -200,8 +200,6 @@ svg{flex-shrink:0}
 .av-xl{width:40px;height:40px;font-size:13px}
 .av-me{background:#273918;color:#F4F7EC}
 .av-ai{background:var(--accent-soft);color:var(--on-soft);border:1px dashed var(--accent)}
-.av-alice{background:#E8C9A8;color:#3B2410}
-.av-marco{background:#B9CFD9;color:#12303D}
 [data-theme="dark"] .av-me{background:#DFE9C1;color:#10170B}
 .avstack{display:flex}
 .avstack .av{border:2px solid var(--bg);margin-left:-6px}
@@ -339,10 +337,7 @@ svg{flex-shrink:0}
 .doc h1{font-size:40px;line-height:1.1;letter-spacing:-.03em;font-weight:500;margin:0}
 .doc h2{font-size:22px;letter-spacing:-.015em;font-weight:500;margin:0}
 .doc p{margin:0;font-size:16px;line-height:1.65}
-.doc .blk{display:flex;flex-direction:column;gap:14px}
-.wikil{border-bottom:1px dashed var(--sage-2);color:var(--ink)}
 .aimark{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 6px;border-radius:4px;border:1px dashed var(--accent);font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
-.ai-hl{background:var(--accent-soft);border-radius:3px;padding:0 2px;box-decoration-break:clone}
 
 /* ---------- table ---------- */
 .tbl{width:100%;border-collapse:collapse;font-size:14px}
@@ -365,7 +360,6 @@ svg{flex-shrink:0}
 .show-narrow{display:none !important}
 @container z (max-width: 1360px){
   .side{width:212px}
-  .hide-1280{display:none !important}
 }
 /* Page layouts measure the page (zmain), not the app: the handoff's 1360/820 app-width breakpoints
    become 1100/760 page widths (app 1440 → page 1152, 1280 → 1016, 720 → 720), so the design sizes
@@ -471,7 +465,7 @@ svg{flex-shrink:0}
 .select{width:100%;text-align:left;cursor:pointer;color:var(--ink);transition:border-color .12s,box-shadow .12s}
 .select:hover{border-color:var(--ink-2)}
 .select.compact{height:34px;font-size:13.5px}
-.select.is-open,.select.is-focus{border:1px solid var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.select.is-open{border:1px solid var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .select.err{border:1px solid var(--danger)}
 .select .chev{color:var(--ink-2);transition:transform .15s}
 .select.is-open .chev{transform:rotate(180deg)}
@@ -829,3 +823,30 @@ body.cal-dragging,body.cal-dragging *{cursor:grabbing !important;user-select:non
 .cfg-row .oc-row{border-bottom:0;margin:0}
 .cfg-toggle{padding-top:12px;border-top:1px dashed var(--line)}
 .file-code{height:calc(100vh - 240px)}
+
+/* getting started: a checklist on the Overview, a spotlight on the control to use */
+.ring{flex:none}
+.ring-track{fill:none;stroke:var(--line);stroke-width:2.5}
+.ring-fill{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.gs{gap:14px;border-style:solid;border-color:var(--accent-soft);background:linear-gradient(135deg,var(--accent-soft) 0%,var(--surface) 55%)}
+.gs-head{display:flex;align-items:center;gap:14px}
+.gs-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px}
+.gs-step{display:flex;align-items:center;gap:10px;min-height:34px;padding:0 10px;border-radius:var(--r-sm);font-size:14px}
+.gs-step.next{background:var(--raised);border:1px dashed var(--accent)}
+.gs-step.done{color:var(--ink-2)}
+.gs-step.done .grow{text-decoration:line-through;text-decoration-color:var(--line)}
+.gs-dot{flex:none;width:18px;height:18px;border-radius:50%;border:1.5px dashed var(--line);display:inline-flex;align-items:center;justify-content:center}
+.gs-step.done .gs-dot{border:none;background:var(--accent);color:var(--on-accent);animation:gs-pop .35s ease}
+@keyframes gs-pop{0%{transform:scale(.4)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.guide-btn{gap:8px;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+.spot-shade{position:fixed;inset:0;z-index:60;pointer-events:none;background:color-mix(in srgb,var(--bg) 60%,transparent)}
+.spot-hole{position:fixed;z-index:60;pointer-events:none;border-radius:var(--r-md);outline:2px solid var(--accent);outline-offset:2px;box-shadow:0 0 0 100vmax color-mix(in srgb,var(--bg) 60%,transparent);transition:top .3s ease,left .3s ease,width .3s ease,height .3s ease;animation:spot-halo 1.8s ease-in-out infinite}
+@keyframes spot-halo{50%{outline-offset:6px}}
+.spot-card{position:fixed;z-index:61;width:min(320px,calc(100vw - 16px));display:flex;flex-direction:column;gap:8px;padding:16px 18px;background:var(--raised);border:1px solid var(--accent);border-radius:var(--r-lg);animation:spot-in .25s ease}
+.spot-card p{margin:0;color:var(--ink-2)}
+@keyframes spot-in{from{opacity:0;transform:translateY(6px)}}
+@media (max-width:820px){.gs-steps{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.spot-hole,.spot-card,.gs-step.done .gs-dot{animation:none;transition:none}.ring-fill{transition:none}}
+
+/* sign-in */
+.recovery-codes{list-style:none;margin:0;padding:12px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 20px;border:1px dashed var(--line);border-radius:var(--r-md);background:var(--raised);font-size:13px;user-select:all}

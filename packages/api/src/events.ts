@@ -1,13 +1,17 @@
 import path from 'node:path'
+
 import { type FSWatcher, watch } from 'chokidar'
 import type { Request, Response } from 'express'
+
 import { wsOf } from './workspace-param.js'
 
 type Listener = (event: { type: string; path: string }) => void
 
-interface Shared {
+type Shared = {
   watcher: FSWatcher
   listeners: Set<Listener>
+  /** Bumped on every change seen: lets callers cache what they derive from the files. */
+  version: number
 }
 
 // One watcher per workspace, shared by all connected browsers, closed when the last one leaves.
@@ -20,11 +24,12 @@ function subscribe(wsPath: string, listener: Listener): () => void {
     const watcher = watch(wsPath, { ignoreInitial: true, ignored: (p) => IGNORED.test(p), depth: 12 })
     const listeners = new Set<Listener>()
     watcher.on('all', (type, file) => {
+      if (shared) shared.version++
       const rel = path.relative(wsPath, file).split(path.sep).join('/')
       for (const l of listeners) l({ type, path: rel })
     })
     watcher.on('error', () => {})
-    shared = { watcher, listeners }
+    shared = { watcher, listeners, version: 0 }
     watchers.set(wsPath, shared)
   }
   shared.listeners.add(listener)
@@ -36,6 +41,12 @@ function subscribe(wsPath: string, listener: Listener): () => void {
     }
   }
 }
+
+/**
+ * The workspace's change counter while a browser watches it (live events), else undefined: no
+ * watcher, no way to know the files are unchanged.
+ */
+export const watchVersion = (wsPath: string): number | undefined => watchers.get(wsPath)?.version
 
 export async function eventsHandler(req: Request, res: Response): Promise<void> {
   const ws = await wsOf(req)

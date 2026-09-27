@@ -1,4 +1,5 @@
-import { readPref, type Theme, writePref } from './context'
+import type { Theme } from '../types/shell'
+import { readPref, writePref } from './prefs'
 
 // The chat is opencode's web UI served on the app's own domain, so its per-browser preferences live
 // in this origin's localStorage and zync can set them. These keys are opencode internals (web UI
@@ -72,11 +73,19 @@ function set(key: string, value: string | null) {
   } catch {}
 }
 
-function json<T>(key: string): T | null {
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null
+}
+
+function isChatSettings(v: unknown): v is ChatSettings {
+  return isRecord(v)
+}
+
+function json(key: string): unknown {
   const raw = get(key)
   if (!raw) return null
   try {
-    return JSON.parse(raw) as T
+    return JSON.parse(raw)
   } catch {
     return null
   }
@@ -89,15 +98,19 @@ export function reloadChat() {
 
 // ── theme ──────────────────────────────────────────────────────────────────
 
-export function chatThemes(): { id: string; name: string }[] {
-  const catalog = json<Record<string, { title?: string }>>(KEY.catalog)
-  const live = catalog
+export function chatThemes(): Array<{ id: string; name: string }> {
+  const catalog = json(KEY.catalog)
+  const live = isRecord(catalog)
     ? Object.entries(catalog)
         .filter(([k]) => k.startsWith('theme.set.'))
-        .map(([k, v]) => ({ id: k.slice('theme.set.'.length), name: (v.title ?? '').replace(/^Use theme:\s*/, '') }))
+        .map(([k, v]) => {
+          const t = isRecord(v) ? v.title : undefined
+          const title = typeof t === 'string' ? t : ''
+          return { id: k.slice('theme.set.'.length), name: title.replace(/^Use theme:\s*/, '') }
+        })
     : []
   if (live.length) return live
-  return BUILTIN.map((id) => ({ id, name: id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) }))
+  return BUILTIN.map((id) => ({ id, name: id.replaceAll('-', ' ').replaceAll(/\b\w/g, (c) => c.toUpperCase()) }))
 }
 
 export const chatTheme = () => get(KEY.theme)
@@ -119,7 +132,10 @@ export function setFollowsZyncTheme(on: boolean, theme: Theme) {
   if (on) set(KEY.scheme, theme)
 }
 
-export const chatScheme = () => (get(KEY.scheme) as Theme | null) ?? 'system'
+export const chatScheme = (): Theme => {
+  const s = get(KEY.scheme)
+  return s === 'system' || s === 'light' || s === 'dark' ? s : 'system'
+}
 export const setChatScheme = (s: Theme) => set(KEY.scheme, s)
 
 /**
@@ -141,7 +157,7 @@ export function applyChatDefaults(theme: Theme): boolean {
 
 // ── opencode's settings.v3 ─────────────────────────────────────────────────
 
-export interface ChatSettings {
+export type ChatSettings = {
   general: {
     showFileTree?: boolean
     showNavigation?: boolean
@@ -157,15 +173,15 @@ export interface ChatSettings {
 }
 
 /** null until the chat has been opened once in this browser (opencode creates the settings then). */
-export const chatSettings = () => json<ChatSettings>(KEY.settings)
+export const chatSettings = (): ChatSettings | null => {
+  const s = json(KEY.settings)
+  return isChatSettings(s) ? s : null
+}
 
 /** Change some of opencode's settings, keeping every other field as opencode wrote it. */
 export function patchChatSettings(fn: (s: ChatSettings) => void): boolean {
   const s = chatSettings()
   if (!s) return false
-  s.general ??= {}
-  s.appearance ??= {}
-  s.sounds ??= {}
   fn(s)
   set(KEY.settings, JSON.stringify(s))
   return true

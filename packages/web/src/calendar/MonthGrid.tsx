@@ -1,11 +1,15 @@
 import { useRef, useState } from 'react'
-import type { CalendarItem } from '../api'
+
+import { WEEKDAYS_MONDAY_FIRST, ymd } from '../helpers/dates'
+import { plural } from '../helpers/format'
+import { isFailedRun } from '../helpers/runs'
 import { IconPlus } from '../icons'
-import { colorOf, dayAt, daysBetween, daysOf, shiftDays, startDrag, type ViewProps, ymd } from './model'
-import { Block } from './TimeGrid'
+import type { CalendarItem, ViewProps } from '../types/calendar'
+import { Block } from './Block'
+import { dayAt, startDrag } from './drag'
+import { colorOf, daysBetween, daysOf, shiftDays } from './helpers'
 
 const MAX_CHIPS = 3
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /** Six weeks of days. Drag a chip to another day (it keeps its time); + or double-click adds. */
 export function MonthGrid({
@@ -31,8 +35,7 @@ export function MonthGrid({
         ? { ...raw, start: shiftDays(raw.start, drag.delta), end: shiftDays(raw.end, drag.delta) }
         : raw
     if (item.kind === 'run') {
-      if (item.status === 'failed' || item.status === 'timeout')
-        failed.set(item.start.slice(0, 10), (failed.get(item.start.slice(0, 10)) ?? 0) + 1)
+      if (isFailedRun(item.status)) failed.set(item.start.slice(0, 10), (failed.get(item.start.slice(0, 10)) ?? 0) + 1)
       continue
     }
     for (const d of daysOf(item)) byDay.set(d, [...(byDay.get(d) ?? []), item])
@@ -60,7 +63,7 @@ export function MonthGrid({
   return (
     <div className="mg">
       <div className="mg-head">
-        {WEEKDAYS.map((w) => (
+        {WEEKDAYS_MONDAY_FIRST.map((w) => (
           <span key={w} className="mono-s muted">
             {w}
           </span>
@@ -69,7 +72,7 @@ export function MonthGrid({
       <div ref={grid} className="mg-grid">
         {days.map((d) => {
           const key = ymd(d)
-          const list = (byDay.get(key) ?? []).sort(
+          const list = (byDay.get(key) ?? []).toSorted(
             (a, b) => Number(b.allDay) - Number(a.allDay) || a.start.localeCompare(b.start),
           )
           const more = list.length - MAX_CHIPS
@@ -88,7 +91,7 @@ export function MonthGrid({
                   {d.getDate()}
                 </button>
                 {fails ? (
-                  <span className="mono-s danger-t" title={`${fails} failed run${fails === 1 ? '' : 's'}`}>
+                  <span className="mono-s danger-t" title={plural(fails, 'failed run')}>
                     ✕{fails}
                   </span>
                 ) : null}

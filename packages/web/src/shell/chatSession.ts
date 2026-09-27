@@ -1,4 +1,4 @@
-import { readPref, writePref } from './context'
+import { readPref, writePref } from './prefs'
 
 // The docked chat reopens the conversation you were in, per workspace, instead of a fresh one on
 // every page load. The chat runs on the app's own origin, so its address is readable here.

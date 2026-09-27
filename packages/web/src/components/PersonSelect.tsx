@@ -1,7 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router'
-import { api, type Person } from '../api'
-import { PersonAvatar } from '../ui'
+
+import { api } from '../api'
+import { wsUrl } from '../helpers/urls'
+import type { Person } from '../types/people'
+import { PersonAvatar } from './PersonAvatar'
 import { Select } from './Select'
 
 const NONE = '__none'
@@ -66,7 +69,7 @@ export function PersonSelect({
             const name = q.trim()
             close()
             if (!name) {
-              navigate(`/w/${encodeURIComponent(ws)}/people`)
+              void navigate(wsUrl(ws, 'people'))
               return
             }
             const p = await api.createPerson(name)

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -18,6 +19,7 @@
     "@lezer/highlight": "^1.2.4",
     "@milkdown/crepe": "^7.22.2",
     "@milkdown/kit": "^7.22.2",
+    "@simplewebauthn/browser": "^14.0.0",
     "@tanstack/react-query": "^5.104.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -25,10 +27,15 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "typescript": "^6.0.3",
-    "vite": "^7.3.6"
+    "babel-plugin-react-compiler": "^1.0.0",
+    "jsdom": "^30.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11"
   }
 }

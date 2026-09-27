@@ -1,27 +1,24 @@
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import {
-  api,
-  MEMORY_TYPES,
-  type Memory,
-  type MemoryPatch,
-  type MemoryScope,
-  type MemoryType,
-  type Person,
-} from '../api'
-import { usePeople } from '../boards/shared'
-import { Button, IconButton } from '../components/Button'
-import { Segmented } from '../components/Controls'
-import { useConfirm, useToast } from '../components/Dialog'
-import { TextInput } from '../components/Field'
-import { IconChevDown, IconChevRight, IconPin, IconPlus, IconSearch, IconTrash } from '../icons'
-import { wsUrl } from '../shell/context'
-import { Card, PersonAvatar } from '../ui'
-import { MemoryPanel, scopeName, TYPE_INFO } from './MemoryPanel'
-import { PersonPanel } from './PersonPanel'
 
-type Filter = 'all' | MemoryType
+import { api } from '../api'
+import { Button } from '../components/Button'
+import { Card } from '../components/Card'
+import { useConfirm, useToast } from '../components/Dialog'
+import { Segmented } from '../components/Segmented'
+import { TextInput } from '../components/TextInput'
+import { errorMessage } from '../helpers/format'
+import { wsUrl } from '../helpers/urls'
+import { usePeople } from '../hooks/usePeople'
+import { IconPlus, IconSearch } from '../icons'
+import { type Memory, type MemoryFilter, type MemoryPatch, type MemoryScope, MEMORY_TYPES } from '../types/memory'
+import { scopeName, TYPE_INFO } from './helpers'
+import { MemoryList } from './MemoryList'
+import { MemoryPanel } from './MemoryPanel'
+import { PersonNoteRow } from './PersonNoteRow'
+import { PersonPanel } from './PersonPanel'
+import { PromptPreview } from './PromptPreview'
 
 /**
  * What the AI remembers: people notes (who you are, who others are), and memories — rules,
@@ -36,7 +33,7 @@ export function MemoryView() {
   const people = usePeople()
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<Filter>('all')
+  const [filter, setFilter] = useState<MemoryFilter>('all')
   const [err, setErr] = useState('')
 
   // Global memory has no file events (it lives outside the workspace): poll while the page is open.
@@ -54,10 +51,14 @@ export function MemoryView() {
     })),
   })
 
-  const [openScope, openFile] = (params.get('m') ?? '').split(/:(.*)/s) as [MemoryScope | '', string]
+  const mParts = (params.get('m') ?? '').split(/:(.*)/s)
+  const openScopeRaw = mParts[0] ?? ''
+  const openScope: MemoryScope | '' = openScopeRaw === 'global' || openScopeRaw === 'workspace' ? openScopeRaw : ''
+  const openFile = mParts[1] ?? ''
   const all = [...(local.data ?? []), ...(global.data ?? [])]
   const open = openFile ? all.find((m) => m.scope === openScope && m.file === openFile) : undefined
-  const newScope = params.get('new') as MemoryScope | null
+  const newParam = params.get('new')
+  const newScope: MemoryScope | null = newParam === 'global' || newParam === 'workspace' ? newParam : null
   const person = people.find((p) => p.id === params.get('person'))
 
   const show = (next: { m?: string; new?: MemoryScope; person?: string }) =>
@@ -72,9 +73,10 @@ export function MemoryView() {
     try {
       setErr('')
       return await fn()
-    } catch (e) {
-      setErr((e as Error).message)
-      toast((e as Error).message, 'bad')
+    } catch (caught) {
+      const msg = errorMessage(caught)
+      setErr(msg)
+      toast(msg, 'bad')
       return undefined
     } finally {
       await qc.invalidateQueries({ queryKey: ['memory'] })
@@ -140,7 +142,7 @@ export function MemoryView() {
           >
             <div className="col">
               {people.map((p, i) => (
-                <PersonRow
+                <PersonNoteRow
                   key={p.id}
                   person={p}
                   people={people}
@@ -162,11 +164,11 @@ export function MemoryView() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <Button variant="primary" onClick={() => show({ new: 'global' })}>
+            <Button variant="primary" data-tour="new-memory" onClick={() => show({ new: 'global' })}>
               <IconPlus size={13} /> New memory
             </Button>
           </div>
-          <Segmented<Filter>
+          <Segmented<MemoryFilter>
             label="Type"
             value={filter}
             onChange={setFilter}
@@ -245,135 +247,5 @@ export function MemoryView() {
         />
       )}
     </div>
-  )
-}
-
-function PersonRow({
-  person: p,
-  people,
-  notes,
-  active,
-  onOpen,
-}: {
-  person: Person
-  people: Person[]
-  notes?: string
-  active: boolean
-  onOpen: () => void
-}) {
-  const role = p.id === 'me' ? 'About you' : p.id === 'ai' ? 'How the AI should work' : `@${p.id}`
-  const first = notes
-    ?.split('\n')
-    .map((l) => l.replace(/^[#>*\-\s]+/, '').trim())
-    .find(Boolean)
-  return (
-    <button
-      type="button"
-      className={`lr row-link${active ? ' hl' : ''}`}
-      onClick={onOpen}
-      style={{ textAlign: 'left' }}
-    >
-      <PersonAvatar id={p.id} people={people} size="l" />
-      <span className="col grow" style={{ minWidth: 0 }}>
-        <span className="row g8">
-          <b style={{ fontWeight: 500 }}>{p.name}</b>
-          <span className="mono-s muted">{role}</span>
-        </span>
-        <span className={`small trunc${first ? '' : ' muted'}`}>{first ?? 'No notes yet — add some'}</span>
-      </span>
-      <IconChevRight />
-    </button>
-  )
-}
-
-function MemoryList({
-  title,
-  meta,
-  items,
-  total,
-  openFile,
-  onOpen,
-  onDelete,
-  onNew,
-}: {
-  title: string
-  meta: string
-  items: Memory[]
-  total: number
-  openFile?: string
-  onOpen: (m: Memory) => void
-  onDelete: (m: Memory) => void
-  onNew: () => void
-}) {
-  return (
-    <Card title={`${title} · ${total}`} meta={meta}>
-      <div className="col">
-        {items.map((m) => (
-          <div key={m.file} className={`lr row-link mem-row${openFile === m.file ? ' hl' : ''}`}>
-            <button
-              type="button"
-              className="row g10 grow"
-              style={{ textAlign: 'left', alignItems: 'flex-start', minWidth: 0 }}
-              onClick={() => onOpen(m)}
-            >
-              <span className="col grow g4" style={{ minWidth: 0 }}>
-                <span className="row g8">
-                  {m.pinned && <IconPin />}
-                  <b style={{ fontWeight: 500 }} className="trunc">
-                    {m.title}
-                  </b>
-                </span>
-                <span className="small muted clamp2">{m.description || m.body.slice(0, 160) || 'Empty'}</span>
-              </span>
-              {m.type && <span className="label alt">{TYPE_INFO[m.type].label}</span>}
-              <span className="mono-s muted" style={{ whiteSpace: 'nowrap', paddingTop: 3 }}>
-                {new Date(m.updated).toLocaleDateString()}
-              </span>
-            </button>
-            <IconButton small label={`Delete ${m.title}`} className="mem-del" onClick={() => onDelete(m)}>
-              <IconTrash />
-            </IconButton>
-          </div>
-        ))}
-        {!items.length && (
-          <div className="lr small muted between">
-            <span>{total ? 'Nothing matches.' : 'Nothing yet. The AI adds memories as it learns, or add one.'}</span>
-            {!total && (
-              <Button size="sm" onClick={onNew}>
-                Add
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-    </Card>
-  )
-}
-
-/** The exact block added to the AI's system prompt, for when you wonder what it knows. */
-function PromptPreview({ ws }: { ws: string }) {
-  const [open, setOpen] = useState(false)
-  const { data } = useQuery({
-    queryKey: ['memory', 'prompt', ws],
-    queryFn: () => api.memoryPrompt(ws),
-    enabled: open,
-  })
-  return (
-    <section className="props" aria-label="What the AI sees">
-      <div className="props-h">
-        <button type="button" className="mono row g8" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-          {open ? <IconChevDown /> : <IconChevRight />}
-          What the AI sees <span className="muted">· added to every prompt in {ws}</span>
-        </button>
-      </div>
-      {open && (
-        <pre
-          className="mono-s"
-          style={{ margin: 0, padding: '12px 14px', whiteSpace: 'pre-wrap', maxHeight: 420, overflow: 'auto' }}
-        >
-          {data?.text ?? 'Loading…'}
-        </pre>
-      )}
-    </section>
   )
 }

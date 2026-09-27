@@ -1,9 +1,10 @@
 import { mkdir, mkdtemp, readdir, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+
 import { describe, expect, it } from 'vitest'
+
 import {
-  errorMessage,
   listJobs,
   nextRuns,
   parseJobFile,
@@ -14,7 +15,7 @@ import {
   validateJob,
   writeJob,
 } from './job-file.js'
-import { buildPrompt } from './scheduler.js'
+import { buildPrompt } from './job-prompt.js'
 import { resolveWorkspace, safeResolve } from './workspaces.js'
 
 const base = { name: 'weekly-report', instructions: 'Write the report.' }
@@ -42,7 +43,7 @@ describe('validateJob', () => {
 
   it('accepts a one-shot date and returns no runs when in the past', () => {
     const future = validateJob({ ...base, at: '2999-01-01T09:00', timezone: 'UTC' })
-    expect(nextRuns(future)[0].toISOString()).toBe('2999-01-01T09:00:00.000Z')
+    expect(nextRuns(future)[0]?.toISOString()).toBe('2999-01-01T09:00:00.000Z')
     const past = validateJob({ ...base, at: '2000-01-01T09:00' })
     expect(nextRuns(past)).toEqual([])
   })
@@ -50,18 +51,13 @@ describe('validateJob', () => {
   it.each([
     [{ ...base }, 'exactly one'],
     [{ ...base, schedule: '* * * * *', at: '2999-01-01T09:00' }, 'exactly one'],
-    [{ ...base, schedule: 'not a cron' }, ''],
+    [{ ...base, schedule: 'not a cron' }, 'CronPattern'],
     [{ ...base, name: 'Bad Name', schedule: '* * * * *' }, 'kebab-case'],
     [{ ...base, schedule: '* * * * *', timezone: 'Mars/Olympus' }, 'timezone'],
     [{ ...base, schedule: '* * * * *', model: 'no-slash' }, 'provider/model'],
     [{ ...base, schedule: '* * * * *', instructions: '  ' }, 'instructions'],
   ])('rejects invalid input %#', (input, msg) => {
-    expect(() => validateJob(input as any)).toThrow()
-    try {
-      validateJob(input as any)
-    } catch (err) {
-      expect(errorMessage(err)).toContain(msg)
-    }
+    expect(() => validateJob(input)).toThrow(msg)
   })
 })
 
@@ -113,7 +109,7 @@ describe('workspace paths', () => {
     await mkdir(path.join(root, 'alpha'))
     expect((await resolveWorkspace('alpha', root)).name).toBe('alpha')
     expect((await resolveWorkspace(path.join(root, 'alpha', 'sub'), root)).name).toBe('alpha')
-    await expect(resolveWorkspace('../etc', root)).rejects.toThrow()
+    await expect(resolveWorkspace('../etc', root)).rejects.toThrow('Invalid workspace name')
     await expect(resolveWorkspace('missing', root)).rejects.toThrow('Unknown workspace')
     await expect(resolveWorkspace('/etc', root)).rejects.toThrow('not inside')
   })

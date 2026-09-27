@@ -1,8 +1,10 @@
 import { mkdir, mkdtemp, readdir, readFile, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
+
 import { createApp } from './app.js'
 
 let root: string
@@ -13,8 +15,11 @@ beforeEach(async () => {
   await mkdir(path.join(root, 'alpha/notes'), { recursive: true })
   await writeFile(path.join(root, 'alpha/notes/a.md'), '# A')
   await writeFile(path.join(root, 'alpha/.secret'), 'x')
-  app = createApp({ workspacesRoot: root, chatUrl: 'http://chat' })
+  app = createApp({ workspacesRoot: root })
 })
+
+/** form-data keeps a relative `filepath` (a folder upload); superagent's types only list `filename`. */
+const withPath = (filepath: string) => ({ filepath }) as { filename?: string }
 
 describe('workspaces', () => {
   it('lists and creates', async () => {
@@ -25,7 +30,8 @@ describe('workspaces', () => {
   })
 
   it('404s on unknown workspace', async () => {
-    await request(app).get('/zync/api/ws/nope/tree').expect(404)
+    const res = await request(app).get('/zync/api/ws/nope/tree')
+    expect(res.status).toBe(404)
   })
 })
 
@@ -42,7 +48,9 @@ describe('files', () => {
   })
 
   it('lists recent files recursively, newest first, skipping dotfiles', async () => {
-    await new Promise((r) => setTimeout(r, 15))
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 15)
+    })
     await writeFile(path.join(root, 'alpha/z.txt'), 'z')
     const res = await request(app).get('/zync/api/ws/alpha/recent?limit=1').expect(200)
     expect(res.body.total).toBe(2)
@@ -52,7 +60,7 @@ describe('files', () => {
   it('lists every file for the link picker', async () => {
     await writeFile(path.join(root, 'alpha/z.txt'), 'z')
     const res = await request(app).get('/zync/api/ws/alpha/files').expect(200)
-    expect(res.body.entries.map((e: any) => e.path).sort()).toEqual(['notes/a.md', 'z.txt'])
+    expect(res.body.entries.map((e: any) => e.path).toSorted()).toEqual(['notes/a.md', 'z.txt'])
   })
 
   it('reads, writes (creating parents), deletes', async () => {
@@ -122,9 +130,9 @@ describe('files', () => {
   it('uploads a folder, keeping its subfolders and nothing outside the target', async () => {
     const r = await request(app)
       .post('/zync/api/ws/alpha/upload?dir=in')
-      .attach('files', Buffer.from('a'), { filepath: 'photos/2026/a.jpg' })
-      .attach('files', Buffer.from('b'), { filepath: 'photos/b.txt' })
-      .attach('files', Buffer.from('x'), { filepath: '../../escape.txt' })
+      .attach('files', Buffer.from('a'), withPath('photos/2026/a.jpg'))
+      .attach('files', Buffer.from('b'), withPath('photos/b.txt'))
+      .attach('files', Buffer.from('x'), withPath('../../escape.txt'))
       .expect(201)
     expect(r.body.saved).toEqual(['in/photos/2026/a.jpg', 'in/photos/b.txt', 'in/escape.txt'])
     expect(await readFile(path.join(root, 'alpha/in/photos/2026/a.jpg'), 'utf8')).toBe('a')
@@ -134,12 +142,26 @@ describe('files', () => {
     const outside = await mkdtemp(path.join(tmpdir(), 'out-'))
     await writeFile(path.join(outside, 's.txt'), 'secret')
     await symlink(outside, path.join(root, 'alpha/link'))
-    await request(app).get('/zync/api/ws/alpha/file/..%2F..%2Fetc%2Fpasswd').expect(400)
-    await request(app).get('/zync/api/ws/alpha/file/link/s.txt').expect(400)
-    await request(app).put('/zync/api/ws/alpha/file/link/new.txt').send('x').expect(400)
-    await request(app).post('/zync/api/ws/alpha/move').send({ from: 'notes/a.md', to: '../beta/a.md' }).expect(400)
-    await request(app).get('/zync/api/ws/alpha/tree?path=../').expect(400)
-    await request(app).delete('/zync/api/ws/alpha/file/').expect(404)
+    expect((await request(app).get('/zync/api/ws/alpha/file/..%2F..%2Fetc%2Fpasswd')).status).toBe(400)
+    expect((await request(app).get('/zync/api/ws/alpha/file/link/s.txt')).status).toBe(400)
+    expect((await request(app).put('/zync/api/ws/alpha/file/link/new.txt').send('x')).status).toBe(400)
+    expect(
+      (await request(app).post('/zync/api/ws/alpha/move').send({ from: 'notes/a.md', to: '../beta/a.md' })).status,
+    ).toBe(400)
+    expect((await request(app).get('/zync/api/ws/alpha/tree?path=../')).status).toBe(400)
+    expect((await request(app).delete('/zync/api/ws/alpha/file/')).status).toBe(404)
+  })
+})
+
+describe('raw files', () => {
+  it('sandboxes pages and SVGs served from the workspace, not images', async () => {
+    await writeFile(path.join(root, 'alpha/page.html'), '<script>alert(1)</script>')
+    await writeFile(path.join(root, 'alpha/pic.png'), 'png')
+    const page = await request(app).get('/zync/api/ws/alpha/file/page.html?raw=1').expect(200)
+    expect(page.headers['content-security-policy']).toBe('sandbox')
+    expect(page.headers['x-content-type-options']).toBe('nosniff')
+    const pic = await request(app).get('/zync/api/ws/alpha/file/pic.png?raw=1').expect(200)
+    expect(pic.headers['content-security-policy']).toBeUndefined()
   })
 })
 
@@ -161,6 +183,17 @@ describe('jobs', () => {
     await request(app).post('/zync/api/ws/alpha/jobs/missing/run').expect(404)
     await request(app).delete('/zync/api/ws/alpha/jobs/daily').expect(204)
     expect((await request(app).get('/zync/api/ws/alpha/jobs')).body).toEqual([])
+  })
+
+  it('rejects job names that would leave the jobs folder', async () => {
+    const victim = path.join(root, 'victim.md')
+    await writeFile(victim, '---\nname: victim\nschedule: "0 9 * * *"\n---\nkeep me\n')
+    const evil = encodeURIComponent('../../../victim')
+    await request(app).delete(`/zync/api/ws/alpha/jobs/${evil}`).expect(400)
+    await request(app).post(`/zync/api/ws/alpha/jobs/${evil}/run`).expect(400)
+    await request(app).patch(`/zync/api/ws/alpha/jobs/${evil}`).send({ enabled: false }).expect(400)
+    await request(app).get(`/zync/api/ws/alpha/jobs/${evil}/runs`).expect(400)
+    expect(await readFile(victim, 'utf8')).toContain('keep me')
   })
 })
 
@@ -407,7 +440,7 @@ describe('opencode config', () => {
 describe('opencode proxy', () => {
   it('forwards everything outside the app paths to opencode, with bodies and without Origin', async () => {
     const { createServer } = await import('node:http')
-    const seen: { method?: string; url?: string; origin?: string; body: string }[] = []
+    const seen: Array<{ method?: string; url?: string; origin?: string; body: string }> = []
     const upstream = createServer((req, res) => {
       let body = ''
       req.on('data', (c) => (body += c))
@@ -417,7 +450,9 @@ describe('opencode proxy', () => {
         res.end(JSON.stringify({ from: 'opencode', url: req.url }))
       })
     })
-    await new Promise<void>((r) => upstream.listen(0, '127.0.0.1', r))
+    await new Promise<void>((resolve) => {
+      upstream.listen(0, '127.0.0.1', resolve)
+    })
     const { port } = upstream.address() as { port: number }
     const a = createApp({ workspacesRoot: root, opencodeUrl: `http://127.0.0.1:${port}` })
     try {

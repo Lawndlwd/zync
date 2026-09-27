@@ -1,21 +1,25 @@
 import { readdir, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+
 import type { Cron } from 'croner'
-import { applyCardRun, cardExists } from './boards.js'
-import { buildCron, deleteJob, errorMessage, type Job, listJobs, readJob, TRIGGER_DIR, writeJob } from './job-file.js'
+
+import { applyCardRun, cardExists } from './boards/index.js'
+import { errorMessage } from './errors.js'
+import { buildCron, deleteJob, type Job, listJobs, readJob, TRIGGER_DIR, writeJob } from './job-file.js'
+import { buildPrompt } from './job-prompt.js'
 import { notify, sessionLink, shouldNotify } from './notify.js'
-import { OpencodeClient } from './opencode.js'
+import { OpencodeClient, type OpencodeEvent } from './opencode.js'
 import { appendRun, type RunRecord } from './runs.js'
 import { listWorkspaces, type Workspace, workspacesRoot } from './workspaces.js'
 
-interface Registered {
+type Registered = {
   ws: Workspace
   job: Job
   cron: Cron
 }
 
-interface Running {
+type Running = {
   key: string
   ws: Workspace
   job: Job
@@ -25,7 +29,7 @@ interface Running {
   finishing?: boolean
 }
 
-export interface SchedulerOptions {
+export type SchedulerOptions = {
   root?: string
   scanMs?: number
   pollMs?: number
@@ -33,30 +37,6 @@ export interface SchedulerOptions {
 }
 
 const log = (...args: unknown[]) => console.log(new Date().toISOString(), '[scheduler]', ...args)
-
-export function buildPrompt(job: Job, wsPath?: string): string {
-  const lines = [
-    `You are running the scheduled job "${job.name}" unattended. No human is watching this session,`,
-    'so do not ask questions: make reasonable decisions and complete the task.',
-    '',
-  ]
-  if (wsPath) {
-    // Models sometimes guess a project root from elsewhere (e.g. an enclosing git repo) and write there.
-    lines.push(
-      `Your workspace is ${wsPath}. Relative paths and "the workspace root" mean this directory.`,
-      'Read and write files only inside it, including from shell commands.',
-      '',
-    )
-  }
-  if (job.context.length) {
-    lines.push('Before starting, read these files/folders for context:')
-    for (const c of job.context) lines.push(`- ${c}`)
-    lines.push('')
-  }
-  lines.push('## Task', job.instructions, '')
-  lines.push('When finished, reply with a short summary of what you did and where the results are.')
-  return lines.join('\n')
-}
 
 export class Scheduler {
   private registered = new Map<string, Registered>()
@@ -196,15 +176,15 @@ export class Scheduler {
     }
     if (job.at && trigger === 'schedule') {
       // One-shot jobs disable themselves once fired.
-      await writeJob(ws.path, { ...job, enabled: false }, { overwrite: true }).catch((err) =>
+      await writeJob(ws.path, { ...job, enabled: false }, { overwrite: true }).catch((err: unknown) =>
         log(`could not disable one-shot ${key}: ${errorMessage(err)}`),
       )
     }
   }
 
-  private onEvent(e: any): void {
-    const type = e?.payload?.type
-    const sid = e?.payload?.properties?.sessionID
+  private onEvent(e: OpencodeEvent): void {
+    const type = e.payload?.type
+    const sid = e.payload?.properties?.sessionID
     if (!sid || !this.running.has(sid)) return
     if (type === 'session.idle' || type === 'session.error') void this.complete(sid)
   }
@@ -212,7 +192,8 @@ export class Scheduler {
   /** Fallback for missed events, plus timeout enforcement. */
   async poll(): Promise<void> {
     const now = Date.now()
-    for (const r of [...this.running.values()]) {
+    // A snapshot: complete() removes finished runs from the map.
+    for (const r of Array.from(this.running.values())) {
       if (now - r.started > this.timeoutMs) await this.complete(r.sessionId, true)
       else if (now - r.started > 10_000) await this.complete(r.sessionId)
     }
@@ -255,7 +236,9 @@ export class Scheduler {
 
   private async record(ws: Workspace, job: Job, run: Omit<RunRecord, 'ts'>): Promise<void> {
     const rec: RunRecord = { ts: new Date().toISOString(), ...run }
-    await appendRun(ws.path, job.name, rec).catch((err) => log(`could not write run log: ${errorMessage(err)}`))
+    await appendRun(ws.path, job.name, rec).catch((err: unknown) =>
+      log(`could not write run log: ${errorMessage(err)}`),
+    )
     if (job.card) await applyCardRun(ws.path, job.card, { type: 'finished', run: rec })
     if (shouldNotify(job.notify, rec)) {
       await notify({ workspace: ws.name, job: job.name, run: rec, link: sessionLink(ws.name, rec.sessionId) })

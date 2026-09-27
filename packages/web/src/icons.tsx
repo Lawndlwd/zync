@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 // Icons drawn exactly as in zync-design (16×16 viewBox). Each default size/stroke matches the
 // place it is used most; pass `size`/`sw` where the design differs.
 
-interface IconProps {
+type IconProps = {
   size?: number
   sw?: number
   className?: string
@@ -177,6 +177,23 @@ export function IconSpark({ size = 14, className, style }: IconProps) {
       aria-hidden="true"
     >
       <path d="M8 1.2l1.5 5.3 5.3 1.5-5.3 1.5L8 14.8l-1.5-5.3L1.2 8l5.3-1.5z" />
+    </svg>
+  )
+}
+
+export function CalendarIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      aria-hidden="true"
+    >
+      <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" />
+      <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" />
     </svg>
   )
 }

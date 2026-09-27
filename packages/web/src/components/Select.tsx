@@ -1,8 +1,10 @@
-import { type CSSProperties, type KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, type KeyboardEvent, type ReactNode, useCallback, useRef, useState } from 'react'
+
+import { useScrollActiveIntoView } from '../hooks/useScrollActiveIntoView'
 import { IconCheck, IconChevDown } from '../icons'
 import { Popover } from './Popover'
 
-export interface Option<T extends string> {
+export type Option<T extends string> = {
   value: T
   label: ReactNode
   /** Text used for type-ahead and filtering (defaults to the value). */
@@ -29,7 +31,7 @@ export function Select<T extends string>({
   trigger,
 }: {
   value: T | undefined
-  options: Option<T>[]
+  options: Array<Option<T>>
   onChange: (v: T) => void
   placeholder?: string
   compact?: boolean
@@ -55,14 +57,13 @@ export function Select<T extends string>({
   const text = (o: Option<T>) => (o.text ?? o.value).toLowerCase()
   const shown = q ? options.filter((o) => text(o).includes(q.toLowerCase())) : options
 
-  useEffect(() => {
-    if (!open) return
-    const i = shown.findIndex((o) => o.value === value)
+  /** Opens with the current value highlighted. */
+  const show = () => {
+    const i = options.findIndex((o) => o.value === value)
     setHi(i < 0 ? 0 : i)
-  }, [open])
-  useEffect(() => {
-    list.current?.querySelector<HTMLElement>(`[data-i="${hi}"]`)?.scrollIntoView({ block: 'nearest' })
-  }, [hi])
+    setOpen(true)
+  }
+  useScrollActiveIntoView(list, hi, `[data-i="${hi}"]`)
 
   const pick = (o: Option<T>) => {
     onChange(o.value)
@@ -74,7 +75,7 @@ export function Select<T extends string>({
     if (!open) {
       if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
         e.preventDefault()
-        setOpen(true)
+        show()
       }
       return
     }
@@ -103,7 +104,7 @@ export function Select<T extends string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
-        onClick={() => (open ? close() : setOpen(true))}
+        onClick={() => (open ? close() : show())}
         onKeyDown={onKey}
       >
         {trigger ?? (

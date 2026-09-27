@@ -1,18 +1,19 @@
 # Local run only — NEVER used by Dokploy (it deploys docker-compose.yml alone).
-#   docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
-# App (and the chat inside it): http://localhost:3001
+#   WORKSPACES_HOST_DIR=$PWD/data/workspaces APP_URL=http://localhost:3001 CLOUDFLARE_TUNNEL_TOKEN=unused \
+#     docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+# App (and the chat inside it): http://localhost:3001 — the first start prints a setup code in the
+# api log: open /login, enter it, create a passkey.
 
 services:
   api:
     ports: ["127.0.0.1:3001:3001"]
     environment:
-      ALLOW_NO_AUTH: "1"
       APP_URL: http://localhost:3001
   scheduler:
     environment:
       APP_URL: http://localhost:3001
-
-networks:
-  dokploy-network:
-    external: false
-    name: zync-local-dokploy
+  # No tunnel locally.
+  cloudflared:
+    profiles: ["tunnel"]
+    environment:
+      TUNNEL_TOKEN: unused

@@ -15,8 +15,8 @@
     "zync-jobs-mcp": "./dist/mcp.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput & node --watch dist/scheduler.js",
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --watch dist/scheduler.js",
     "start": "node dist/scheduler.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   }
 }

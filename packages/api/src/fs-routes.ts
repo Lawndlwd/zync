@@ -1,39 +1,30 @@
-import { copyFile, mkdir, open, readdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { safeResolve, syncCardFile } from '@zync/jobs'
-import express, { type Request, Router } from 'express'
+
+import { badRequest, conflict, safeResolve, syncCardFile } from '@zync/jobs'
+import express, { Router } from 'express'
 import multer from 'multer'
-import { listFiles, searchWorkspace } from './search.js'
+
+import { FolderBody, MoveBody, OrderBody } from './body.js'
+import { watchVersion } from './events.js'
+import { isBinaryFile } from './helpers/binary.js'
+import { relPath } from './helpers/request.js'
+import { listFilesCached, searchWorkspace } from './search.js'
 import { applyOrder, readOrder, renameInOrder, setOrder } from './tree-order.js'
 import { wsOf } from './workspace-param.js'
 
 const HIDDEN = new Set(['.git', 'node_modules', '.DS_Store'])
 const MAX_TEXT_BYTES = 5 * 1024 * 1024
+/** Files a browser would run scripts in when opened directly. */
+const ACTIVE_CONTENT = /\.(html?|xhtml|svg|xml|xsl)$/i
 
-export interface TreeEntry {
+type TreeEntry = {
   name: string
   path: string
   type: 'dir' | 'file'
   size: number
   mtime: number
-}
-
-function relPath(req: Request): string {
-  const p = (req.params as Record<string, string | string[]>).path
-  return Array.isArray(p) ? p.join('/') : p || ''
-}
-
-async function isBinary(file: string, size: number): Promise<boolean> {
-  if (size === 0) return false
-  const fh = await open(file, 'r')
-  try {
-    const buf = Buffer.alloc(Math.min(8192, size))
-    await fh.read(buf, 0, buf.length, 0)
-    return buf.includes(0)
-  } finally {
-    await fh.close()
-  }
 }
 
 export function fsRoutes(): Router {
@@ -48,19 +39,20 @@ export function fsRoutes(): Router {
   // One directory level; the UI expands folders lazily.
   r.get('/tree', async (req, res) => {
     const ws = await wsOf(req)
-    const rel = String(req.query.path || '')
+    const rel = typeof req.query.path === 'string' ? req.query.path : ''
     const showHidden = req.query.hidden === '1'
     const dir = await safeResolve(ws.path, rel)
     const dirents = await readdir(dir, { withFileTypes: true })
+    const shown = dirents.filter((d) => !HIDDEN.has(d.name) && (showHidden || !d.name.startsWith('.')))
     const entries: TreeEntry[] = []
-    for (const d of dirents) {
-      if (HIDDEN.has(d.name) || (!showHidden && d.name.startsWith('.'))) continue
-      const full = path.join(dir, d.name)
-      const s = await stat(full).catch(() => null)
-      if (!s) continue
+    for (const [i, s] of (
+      await Promise.all(shown.map((d) => stat(path.join(dir, d.name)).catch(() => null)))
+    ).entries()) {
+      const d = shown[i]
+      if (!s || !d) continue
       entries.push({
         name: d.name,
-        path: path.relative(ws.path, full).split(path.sep).join('/'),
+        path: path.relative(ws.path, path.join(dir, d.name)).split(path.sep).join('/'),
         type: s.isDirectory() ? 'dir' : 'file',
         size: s.size,
         mtime: s.mtimeMs,
@@ -74,8 +66,9 @@ export function fsRoutes(): Router {
   // The sidebar order of one folder (drag and drop), see tree-order.ts.
   r.put('/order', express.json(), async (req, res) => {
     const ws = await wsOf(req)
-    const dir = await safeResolve(ws.path, String(req.body?.dir || ''))
-    const names = Array.isArray(req.body?.names) ? req.body.names : []
+    const body = OrderBody.parse(req.body)
+    const dir = await safeResolve(ws.path, body.dir)
+    const { names } = body
     await setOrder(ws.path, path.relative(ws.path, dir).split(path.sep).join('/'), names)
     res.status(204).end()
   })
@@ -84,22 +77,23 @@ export function fsRoutes(): Router {
   r.get('/recent', async (req, res) => {
     const ws = await wsOf(req)
     const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100)
-    const files = (await listFiles(ws.path)).sort((a, b) => b.mtime - a.mtime)
-    res.json({ total: files.length, entries: files.slice(0, limit).map((f) => ({ ...f, type: 'file' })) })
+    // Tagging the (possibly cached) entries with the same `type` every time is harmless.
+    const files = (await listFilesCached(ws.path, watchVersion(ws.path))).toSorted((a, b) => b.mtime - a.mtime)
+    res.json({ total: files.length, entries: files.slice(0, limit).map((f) => Object.assign(f, { type: 'file' })) })
   })
 
   // Every file, newest first — for the editor's @-mention / [[link picker.
   r.get('/files', async (req, res) => {
     const ws = await wsOf(req)
-    const files = (await listFiles(ws.path)).sort((a, b) => b.mtime - a.mtime)
-    res.json({ entries: files.map((f) => ({ ...f, type: 'file' })) })
+    const files = (await listFilesCached(ws.path, watchVersion(ws.path))).toSorted((a, b) => b.mtime - a.mtime)
+    res.json({ entries: files.map((f) => Object.assign(f, { type: 'file' })) })
   })
 
   // Full-text search (⌘K): accent/case-insensitive, phrase first, with matching lines.
   r.get('/search', async (req, res) => {
     const ws = await wsOf(req)
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50)
-    res.json({ results: await searchWorkspace(ws.path, String(req.query.q || ''), limit) })
+    res.json({ results: await searchWorkspace(ws.path, typeof req.query.q === 'string' ? req.query.q : '', limit) })
   })
 
   r.get('/file/*path', async (req, res) => {
@@ -107,14 +101,17 @@ export function fsRoutes(): Router {
     const file = await safeResolve(ws.path, relPath(req))
     const s = await stat(file)
     if (s.isDirectory()) {
-      res.status(400).json({ error: 'Is a directory' })
-      return
+      throw badRequest('Is a directory')
     }
     if (req.query.raw === '1') {
+      // Workspace files are served from the app's own origin: a page or SVG written by anyone (or the
+      // AI) must not run scripts with the app's cookies. Sandbox them; images, PDFs, media are left as-is.
+      res.setHeader('X-Content-Type-Options', 'nosniff')
+      if (ACTIVE_CONTENT.test(file)) res.setHeader('Content-Security-Policy', 'sandbox')
       res.sendFile(file, { dotfiles: 'allow' })
       return
     }
-    const binary = s.size > MAX_TEXT_BYTES || (await isBinary(file, s.size))
+    const binary = s.size > MAX_TEXT_BYTES || (await isBinaryFile(file, 8192))
     const content = binary ? null : await readFile(file, 'utf8')
     res.json({ path: relPath(req), size: s.size, mtime: s.mtimeMs, binary, content })
   })
@@ -135,8 +132,7 @@ export function fsRoutes(): Router {
     const rel = relPath(req)
     const target = await safeResolve(ws.path, rel)
     if (target === ws.path) {
-      res.status(400).json({ error: 'Refusing to delete the workspace root' })
-      return
+      throw badRequest('Refusing to delete the workspace root')
     }
     await stat(target)
     await rm(target, { recursive: true })
@@ -145,39 +141,38 @@ export function fsRoutes(): Router {
 
   r.post('/folder', express.json(), async (req, res) => {
     const ws = await wsOf(req)
-    const dir = await safeResolve(ws.path, String(req.body?.path || ''))
+    const body = FolderBody.parse(req.body)
+    const dir = await safeResolve(ws.path, body.path)
     await mkdir(dir, { recursive: true })
-    res.status(201).json({ path: req.body.path })
+    res.status(201).json({ path: body.path })
   })
 
   r.post('/move', express.json(), async (req, res) => {
     const ws = await wsOf(req)
-    const from = await safeResolve(ws.path, String(req.body?.from || ''))
-    const to = await safeResolve(ws.path, String(req.body?.to || ''))
+    const body = MoveBody.parse(req.body)
+    const from = await safeResolve(ws.path, body.from)
+    const to = await safeResolve(ws.path, body.to)
     if (from === ws.path) {
-      res.status(400).json({ error: 'Cannot move the workspace root' })
-      return
+      throw badRequest('Cannot move the workspace root')
     }
     if (to === from || to.startsWith(from + path.sep)) {
-      res.status(400).json({ error: 'Cannot move a folder into itself' })
-      return
+      throw badRequest('Cannot move a folder into itself')
     }
     if (await stat(to).catch(() => null)) {
-      res.status(409).json({ error: `Already exists: ${req.body.to}` })
-      return
+      throw conflict(`Already exists: ${body.to}`)
     }
     await mkdir(path.dirname(to), { recursive: true })
     await rename(from, to)
     const rel = (p: string) => path.relative(ws.path, p).split(path.sep).join('/')
     await renameInOrder(ws.path, rel(from), rel(to))
-    res.json({ from: req.body.from, to: req.body.to })
+    res.json({ from: body.from, to: body.to })
   })
 
   r.post('/upload', upload.array('files'), async (req, res) => {
     const ws = await wsOf(req)
-    const files = (req.files as Express.Multer.File[]) || []
+    const files = Array.isArray(req.files) ? req.files : []
     try {
-      const dir = await safeResolve(ws.path, String(req.query.dir || ''))
+      const dir = await safeResolve(ws.path, typeof req.query.dir === 'string' ? req.query.dir : '')
       await mkdir(dir, { recursive: true })
       const saved: string[] = []
       for (const f of files) {

@@ -6,7 +6,7 @@ set -e
 # them to `node` — only entries that aren't already its own, so restarts stay fast — then re-run this
 # script as `node`.
 if [ "$(id -u)" = 0 ]; then
-  for dir in "${WORKSPACES_ROOT:-/workspace}" /opencode-config /home/node/.config/opencode /home/node/.local/share/opencode; do
+  for dir in "${WORKSPACES_ROOT:-/workspace}" /opencode-config /zync-auth /home/node/.config/opencode /home/node/.local/share/opencode; do
     if [ -d "$dir" ]; then
       find "$dir" -xdev \! -user node -exec chown node:node {} + 2>/dev/null || true
     fi
@@ -16,18 +16,9 @@ fi
 
 role="${1:-api}"
 
-require_ack() {
-  # The app (and the AI chat it serves) can run shell commands on every workspace and has no login.
-  if [ "$ALLOW_NO_AUTH" != "1" ]; then
-    echo "ERROR: zync has no login: anyone who can reach it can use your files and the AI." >&2
-    echo "       Put it behind access control (VPN, IP allow-list…), then set ALLOW_NO_AUTH=1." >&2
-    exit 1
-  fi
-}
-
 case "$role" in
   api)
-    require_ack
+    # Sign-in is always on (passkeys, plus Cloudflare Access when configured): see packages/api/src/auth.
     exec node /app/packages/api/dist/index.js
     ;;
   scheduler)

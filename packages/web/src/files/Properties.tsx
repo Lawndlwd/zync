@@ -1,20 +1,16 @@
 import { useState } from 'react'
-import { isMap, isScalar, isSeq, parseDocument } from 'yaml'
-import type { Person } from '../api'
-import { TextButton } from '../components/Button'
-import { Toggle } from '../components/Controls'
-import { DatePicker } from '../components/DatePicker'
-import { TextInput } from '../components/Field'
-import { PersonSelect } from '../components/PersonSelect'
-import { TagInput } from '../components/TagInput'
+import { isMap, isScalar, parseDocument } from 'yaml'
+
+import { TextButton } from '../components/TextButton'
+import { TextInput } from '../components/TextInput'
 import { IconChevDown, IconChevRight } from '../icons'
+import type { Person } from '../types/people'
+import { LIST_KEYS } from './helpers'
+import { PropertyRow } from './PropertyRow'
+import { PropertyValue } from './PropertyValue'
 
 // Frontmatter as a property sheet: each YAML key gets the control that fits its value
 // (dates → calendar, lists → chips, booleans → switch, card status/assignee → pickers).
-
-const DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/
-const LIST_KEYS = new Set(['labels', 'context', 'tags', 'people'])
-const DATE_KEYS = new Set(['due', 'runAt', 'run_at', 'date', 'start', 'end'])
 
 export function Properties({
   source,
@@ -48,7 +44,7 @@ export function Properties({
           <span className="mono danger-t">Properties · invalid YAML</span>
         </div>
         <p className="small muted" style={{ margin: 0, padding: '10px 14px' }}>
-          {doc.errors[0].message.split('\n')[0]} — fix it in a text editor or ask the AI.
+          {doc.errors[0]?.message.split('\n')[0]} — fix it in a text editor or ask the AI.
         </p>
       </section>
     )
@@ -69,9 +65,9 @@ export function Properties({
           {items.map((pair) => {
             const key = isScalar(pair.key) ? String(pair.key.value) : String(pair.key)
             return (
-              <Row key={key} name={key}>
-                <Value name={key} node={pair.value} people={people} onChange={(v) => set(key, v)} />
-              </Row>
+              <PropertyRow key={key} name={key}>
+                <PropertyValue name={key} node={pair.value} people={people} onChange={(v) => set(key, v)} />
+              </PropertyRow>
             )
           })}
           {adding && (
@@ -83,7 +79,7 @@ export function Properties({
                 placeholder="key"
                 aria-label="New property name"
                 value={newKey}
-                onChange={(e) => setNewKey(e.target.value.replace(/[^\w-]/g, ''))}
+                onChange={(e) => setNewKey(e.target.value.replaceAll(/[^\w-]/g, ''))}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newKey) {
                     set(newKey, LIST_KEYS.has(newKey) ? [] : '')
@@ -106,80 +102,5 @@ export function Properties({
         </div>
       )}
     </section>
-  )
-}
-
-function Row({ name, children }: { name: string; children: React.ReactNode }) {
-  return (
-    <>
-      <span className="k trunc" title={name}>
-        {name}
-      </span>
-      <div className="props-v">{children}</div>
-    </>
-  )
-}
-
-function Value({
-  name,
-  node,
-  people,
-  onChange,
-}: {
-  name: string
-  node: unknown
-  people: Person[]
-  onChange: (v: unknown) => void
-}) {
-  if (isSeq(node) || LIST_KEYS.has(name)) {
-    const values = isSeq(node) ? node.items.map((i) => String(isScalar(i) ? i.value : i)) : []
-    return (
-      <TagInput
-        ariaLabel={name}
-        variant={name === 'context' ? 'tag' : 'label'}
-        values={values}
-        suggestions={name === 'people' ? people.map((p) => p.id) : undefined}
-        onChange={onChange}
-        addLabel={name === 'context' ? '+ file or folder' : '+ add'}
-      />
-    )
-  }
-  if (isMap(node))
-    return (
-      <span className="mono-s muted trunc" title={String(node)}>
-        {node.items
-          .map((p) => `${isScalar(p.key) ? p.key.value : p.key}: ${isScalar(p.value) ? p.value.value : '…'}`)
-          .join(' · ')}
-      </span>
-    )
-  const value = isScalar(node) ? node.value : node
-  if (typeof value === 'boolean') return <Toggle label={name} checked={value} onChange={onChange} />
-  const text = value === null || value === undefined ? '' : String(value)
-  if (name === 'assignee') return <PersonSelect compact value={text || undefined} people={people} onChange={onChange} />
-  if (DATE_KEYS.has(name) || DATE.test(text))
-    return (
-      <DatePicker
-        compact
-        ariaLabel={name}
-        withTime={name === 'runAt' || name === 'run_at'}
-        optionalTime
-        value={text || undefined}
-        onChange={onChange}
-      />
-    )
-  return (
-    <TextInput
-      compact
-      mono={typeof value === 'number'}
-      key={text}
-      defaultValue={text}
-      aria-label={name}
-      onBlur={(e) => {
-        const v = e.target.value
-        if (v === text) return
-        onChange(typeof value === 'number' && v.trim() !== '' && !Number.isNaN(Number(v)) ? Number(v) : v)
-      }}
-      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-    />
   )
 }

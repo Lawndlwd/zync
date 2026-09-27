@@ -1,35 +1,31 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { CalendarItem } from '../api'
-import { dayLabel, pad2 } from '../workspaceData'
+import { useLayoutEffect, useRef, useState } from 'react'
+
+import { dayLabel, pad2, ymd } from '../helpers/dates'
+import { clamp } from '../helpers/math'
+import { useNow } from '../hooks/useNow'
+import type { CalendarItem, Preview, ViewProps } from '../types/calendar'
+import { Block } from './Block'
+import { dayAt, startDrag } from './drag'
 import {
   atMinute,
+  clampMin,
   colorOf,
-  DEFAULT_MINUTES,
-  dayAt,
   dayOf,
   daysBetween,
   daysOf,
+  DEFAULT_MINUTES,
   hm,
-  isDone,
+  HOUR,
   lanes,
   layoutDay,
   minuteOf,
   minutesBetween,
+  PX_PER_MIN,
   resizable,
-  SNAP,
   shiftDays,
-  startDrag,
-  type ViewProps,
-  ymd,
-} from './model'
-
-const HOUR = 48
-const PX_PER_MIN = HOUR / 60
-const snap = (m: number) => Math.round(m / SNAP) * SNAP
-const clampMin = (m: number) => Math.max(0, Math.min(24 * 60, m))
-
-/** An item's start/end while it is being dragged, or the range being drawn for a new one. */
-type Preview = { id: string; start: string; end: string } | null
+  SNAP,
+  snap,
+} from './helpers'
 
 /** Week and Day: an all-day row, then 24 hours with blocks you can move, stretch and draw. */
 export function TimeGrid({ items, people, days, selectedId, onOpen, onChange, onCreate, onDay }: ViewProps) {
@@ -37,17 +33,13 @@ export function TimeGrid({ items, people, days, selectedId, onOpen, onChange, on
   const body = useRef<HTMLDivElement>(null)
   const allDayRow = useRef<HTMLDivElement>(null)
   const [preview, setPreview] = useState<Preview>(null)
-  const [now, setNow] = useState(() => new Date())
+  const now = useNow(60_000)
   const dayKeys = days.map(ymd)
   const today = ymd(now)
 
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(new Date()), 60_000)
-    return () => clearInterval(t)
-  }, [])
   // Open on the working day (or just before now when that's later).
   useLayoutEffect(() => {
-    if (scroll.current) scroll.current.scrollTop = Math.max(0, Math.min(7, now.getHours() - 2)) * HOUR
+    if (scroll.current) scroll.current.scrollTop = clamp(new Date().getHours() - 2, 0, 7) * HOUR
   }, [])
 
   const shown = (i: CalendarItem) => (preview?.id === i.id ? { ...i, start: preview.start, end: preview.end } : i)
@@ -129,15 +121,15 @@ export function TimeGrid({ items, people, days, selectedId, onOpen, onChange, on
   }
 
   // ── all-day row: spanning bars stacked in lanes ──
-  const idx = (d: string) => daysBetween(dayKeys[0], d)
+  const idx = (d: string) => daysBetween(dayKeys[0] ?? d, d)
   const bars = lanes(
     allDay
       .map((i) => {
         const covered = daysOf(i)
         return {
           item: i,
-          a: Math.max(0, idx(covered[0])),
-          b: Math.min(days.length - 1, idx(covered[covered.length - 1])),
+          a: Math.max(0, idx(covered[0] ?? '')),
+          b: Math.min(days.length - 1, idx(covered.at(-1) ?? '')),
         }
       })
       .filter((b) => b.b >= 0 && b.a < days.length),
@@ -279,89 +271,6 @@ export function TimeGrid({ items, people, days, selectedId, onOpen, onChange, on
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-const KIND_LABEL: Record<CalendarItem['kind'], string> = {
-  event: 'Event',
-  card: 'Card',
-  'card-ai': 'AI run',
-  job: 'Job',
-  run: 'Run',
-}
-
-/** One item on the grid: a block (timed) or a bar (all-day). */
-export function Block({
-  item,
-  color,
-  selected,
-  dragging,
-  className = '',
-  style,
-  onPointerDown,
-  onActivate,
-  onResize,
-  compact,
-}: {
-  item: CalendarItem
-  color?: string
-  selected?: boolean
-  dragging?: boolean
-  className?: string
-  style?: React.CSSProperties
-  onPointerDown: (e: React.PointerEvent) => void
-  /** Enter / Space: open it. */
-  onActivate: () => void
-  onResize?: (e: React.PointerEvent) => void
-  compact?: boolean
-}) {
-  const time = item.allDay ? '' : item.kind === 'run' ? hm(item.start) : `${hm(item.start)}–${hm(item.end)}`
-  const tip = [
-    item.title,
-    KIND_LABEL[item.kind],
-    time,
-    item.recurring
-      ? item.kind === 'event'
-        ? 'repeats — open it to change the series'
-        : 'recurring — change its schedule on the Jobs page'
-      : '',
-    item.kind === 'run' ? item.status : '',
-  ]
-    .filter(Boolean)
-    .join(' · ')
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      title={tip}
-      className={`cal-block k-${item.kind}${item.editable ? ' editable' : ''}${selected ? ' sel' : ''}${dragging ? ' dragging' : ''}${isDone(item) ? ' done' : ''}${item.kind === 'run' ? ` run-${item.status}` : ''}${item.recurring ? ' recurring' : ''} ${className}`}
-      style={{ ...(color ? { '--c': color } : {}), ...style } as React.CSSProperties}
-      onPointerDown={onPointerDown}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onActivate()
-        }
-      }}
-    >
-      <span className="cal-block-t trunc">
-        {compact && time && <span className="cal-block-m mono-s">{item.start.slice(11, 16)} </span>}
-        {item.kind === 'card-ai' || item.kind === 'job' ? '✦ ' : ''}
-        {item.kind === 'run' ? (item.status === 'ok' ? '✓ ' : item.status === 'skipped' ? '– ' : '✕ ') : ''}
-        {item.title}
-      </span>
-      {!compact && time && <span className="cal-block-m mono-s">{time}</span>}
-      {onResize && (
-        <span
-          className="cal-resize"
-          aria-hidden="true"
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            onResize(e)
-          }}
-        />
-      )}
     </div>
   )
 }

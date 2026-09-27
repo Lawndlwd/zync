@@ -1,20 +1,26 @@
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+
 import { Cron } from 'croner'
-import matter from 'gray-matter'
 import { z } from 'zod'
+
+import { badRequest, codeOf, errorMessage, notFound } from './errors.js'
+import { parseFrontmatter, stringifyFrontmatter } from './frontmatter.js'
+import { defaultTimezone } from './helpers/dates.js'
 
 export const JOBS_DIR = path.join('.opencode', 'jobs')
 export const TRIGGER_DIR = path.join(JOBS_DIR, '.trigger')
+const JOB_NAME_RE = /^[a-z0-9][a-z0-9-]{0,63}$/
 
-export function defaultTimezone(): string {
-  return process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+/** Job names become file names: anything else (e.g. "../x" from a URL) must not reach the filesystem. */
+function checkName(name: string): string {
+  if (!JOB_NAME_RE.test(name)) throw badRequest(`Invalid job name: ${name}`)
+  return name
 }
 
 function isValidTimezone(tz: string): boolean {
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: tz })
-    return true
+    return Boolean(new Intl.DateTimeFormat('en-US', { timeZone: tz }).resolvedOptions().timeZone)
   } catch {
     return false
   }
@@ -30,7 +36,7 @@ const atField = z.preprocess(
 
 export const JobMetaSchema = z
   .object({
-    name: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/, { message: 'name must be lowercase kebab-case (a-z, 0-9, -)' }),
+    name: z.string().regex(JOB_NAME_RE, { message: 'name must be lowercase kebab-case (a-z, 0-9, -)' }),
     schedule: z.string().trim().min(1).optional(),
     at: atField.optional(),
     timezone: z.string().refine(isValidTimezone, { message: 'unknown IANA timezone' }).optional(),
@@ -51,19 +57,19 @@ export const JobMetaSchema = z
 
 export type JobMeta = z.infer<typeof JobMetaSchema>
 
-export interface Job extends JobMeta {
+export type Job = {
   instructions: string
-}
+} & JobMeta
 
-export interface JobInput extends Omit<z.input<typeof JobMetaSchema>, 'name'> {
+export type JobInput = {
   name: string
   instructions: string
-}
+} & Omit<z.input<typeof JobMetaSchema>, 'name'>
 
 export function validateJob(input: JobInput): Job {
   const { instructions, ...meta } = input
   const parsed = JobMetaSchema.parse(meta)
-  if (!instructions?.trim()) throw new Error('instructions must not be empty')
+  if (!instructions.trim()) throw new Error('instructions must not be empty')
   const job: Job = { ...parsed, instructions: instructions.trim() }
   // Throws on an invalid cron pattern or date.
   buildCron(job, { paused: true }).stop()
@@ -71,8 +77,8 @@ export function validateJob(input: JobInput): Job {
 }
 
 export function parseJobFile(source: string): Job {
-  const { data, content } = matter(source)
-  return validateJob({ ...(data as JobInput), instructions: content })
+  const { data, content } = parseFrontmatter(source)
+  return validateJob({ name: data.name, ...data, instructions: content })
 }
 
 export function serializeJob(job: Job): string {
@@ -86,11 +92,12 @@ export function serializeJob(job: Job): string {
   meta.notify = job.notify
   meta.enabled = job.enabled
   if (job.card) meta.card = job.card
-  return matter.stringify(`\n${job.instructions}\n`, meta)
+  return stringifyFrontmatter(meta, job.instructions)
 }
 
 export function buildCron(job: Job, opts: { paused?: boolean } = {}, fn?: () => void): Cron {
-  const pattern = job.schedule ?? (job.at as string)
+  const pattern = job.schedule ?? job.at
+  if (!pattern) throw new Error(`Job ${job.name} has neither a schedule nor an at date`)
   return new Cron(pattern, { timezone: job.timezone || defaultTimezone(), paused: opts.paused, protect: true }, fn)
 }
 
@@ -103,14 +110,14 @@ export function nextRuns(job: Job, count = 3): Date[] {
 }
 
 export function jobPath(wsPath: string, name: string): string {
-  return path.join(wsPath, JOBS_DIR, `${name}.md`)
+  return path.join(wsPath, JOBS_DIR, `${checkName(name)}.md`)
 }
 
 export function runsPath(wsPath: string, name: string): string {
-  return path.join(wsPath, JOBS_DIR, `${name}.runs.jsonl`)
+  return path.join(wsPath, JOBS_DIR, `${checkName(name)}.runs.jsonl`)
 }
 
-export interface JobEntry {
+export type JobEntry = {
   job?: Job
   error?: string
   file: string
@@ -122,7 +129,7 @@ export async function listJobs(wsPath: string): Promise<JobEntry[]> {
   const dir = path.join(wsPath, JOBS_DIR)
   const files = await readdir(dir).catch(() => [] as string[])
   const out: JobEntry[] = []
-  for (const f of files.filter((f) => f.endsWith('.md')).sort()) {
+  for (const f of files.filter((name) => name.endsWith('.md')).toSorted()) {
     const file = path.join(dir, f)
     const name = f.slice(0, -3)
     try {
@@ -138,7 +145,7 @@ export async function listJobs(wsPath: string): Promise<JobEntry[]> {
 
 export async function readJob(wsPath: string, name: string): Promise<Job> {
   const src = await readFile(jobPath(wsPath, name), 'utf8').catch(() => {
-    throw Object.assign(new Error(`Job "${name}" not found`), { status: 404 })
+    throw notFound(`Job "${name}" not found`)
   })
   return parseJobFile(src)
 }
@@ -146,8 +153,8 @@ export async function readJob(wsPath: string, name: string): Promise<Job> {
 export async function writeJob(wsPath: string, job: Job, opts: { overwrite?: boolean } = {}): Promise<string> {
   const file = jobPath(wsPath, job.name)
   await mkdir(path.dirname(file), { recursive: true })
-  await writeFile(file, serializeJob(job), { flag: opts.overwrite ? 'w' : 'wx' }).catch((err) => {
-    if (err.code === 'EEXIST') throw new Error(`Job "${job.name}" already exists; use update_job`)
+  await writeFile(file, serializeJob(job), { flag: opts.overwrite ? 'w' : 'wx' }).catch((err: unknown) => {
+    if (codeOf(err) === 'EEXIST') throw new Error(`Job "${job.name}" already exists; use update_job`)
     throw err
   })
   return file
@@ -163,12 +170,5 @@ export async function requestRun(wsPath: string, name: string): Promise<void> {
   await readJob(wsPath, name)
   const dir = path.join(wsPath, TRIGGER_DIR)
   await mkdir(dir, { recursive: true })
-  await writeFile(path.join(dir, name), new Date().toISOString())
-}
-
-export function errorMessage(err: unknown): string {
-  if (err instanceof z.ZodError) {
-    return err.issues.map((i) => `${i.path.join('.') || 'job'}: ${i.message}`).join('; ')
-  }
-  return err instanceof Error ? err.message : String(err)
+  await writeFile(path.join(dir, checkName(name)), new Date().toISOString())
 }

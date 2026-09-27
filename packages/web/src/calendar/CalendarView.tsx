@@ -1,39 +1,53 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { api, type CalendarItem, type CardPatch } from '../api'
-import { usePeople } from '../boards/shared'
-import { Button, IconButton } from '../components/Button'
-import { PillToggle, Segmented } from '../components/Controls'
+
+import { api } from '../api'
+import { Button } from '../components/Button'
 import { useToast } from '../components/Dialog'
+import { IconButton } from '../components/IconButton'
+import { PersonAvatar } from '../components/PersonAvatar'
+import { PillToggle } from '../components/PillToggle'
+import { Segmented } from '../components/Segmented'
 import { Select } from '../components/Select'
+import { ymd } from '../helpers/dates'
+import { isTyping } from '../helpers/dom'
+import { errorMessage } from '../helpers/format'
+import { wsUrl } from '../helpers/urls'
+import { useHotkeys } from '../hooks/useHotkeys'
+import { usePeople } from '../hooks/usePeople'
 import { IconChevRight } from '../icons'
-import { isTyping, wsUrl } from '../shell/context'
-import { PersonAvatar } from '../ui'
-import { ItemPanel, type Selection } from './ItemPanel'
+import type { CardPatch } from '../types/boards'
+import type { CalendarFilter, CalendarItem, Selection, View } from '../types/calendar'
+import {
+  DEFAULT_MINUTES,
+  filterOf,
+  minutesBetween,
+  rangeLabel,
+  rangeOf,
+  selectionId,
+  selectionKey,
+  stepDate,
+  toDate,
+} from './helpers'
+import { ItemPanel } from './ItemPanel'
 import { MonthGrid } from './MonthGrid'
-import { DEFAULT_MINUTES, minutesBetween, rangeLabel, rangeOf, stepDate, toDate, type View, ymd } from './model'
 import { TimeGrid } from './TimeGrid'
 import { Timeline } from './Timeline'
 
-type Filter = 'events' | 'cards' | 'ai' | 'runs'
-
-const VIEWS: { value: View; label: string }[] = [
+const VIEWS: Array<{ value: View; label: string }> = [
   { value: 'month', label: 'Month' },
   { value: 'week', label: 'Week' },
   { value: 'day', label: 'Day' },
   { value: 'timeline', label: 'Timeline' },
 ]
 
-const FILTERS: { value: Filter; label: string }[] = [
+const FILTERS: Array<{ value: CalendarFilter; label: string }> = [
   { value: 'events', label: 'Events' },
   { value: 'cards', label: 'Cards' },
   { value: 'ai', label: 'AI & jobs' },
   { value: 'runs', label: 'Past runs' },
 ]
-
-const filterOf = (i: CalendarItem): Filter =>
-  i.kind === 'event' ? 'events' : i.kind === 'card' ? 'cards' : i.kind === 'run' ? 'runs' : 'ai'
 
 /**
  * Everything with a time in one place: events (pages in Calendar/), cards (due + duration, AI run
@@ -49,13 +63,19 @@ export function CalendarView() {
   const [search, setSearch] = useSearchParams()
   const [selection, setSelection] = useState<Selection | null>(null)
 
-  const view = (VIEWS.some((v) => v.value === search.get('view')) ? search.get('view') : 'week') as View
+  const viewParam = search.get('view')
+  const view: View = VIEWS.find((v) => v.value === viewParam)?.value ?? 'week'
   const dateParam = search.get('date')
   const date = useMemo(
     () => (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? toDate(dateParam) : new Date()),
     [dateParam],
   )
-  const hidden = new Set((search.get('hide') ?? '').split(',').filter(Boolean) as Filter[])
+  const hidden = new Set(
+    (search.get('hide') ?? '')
+      .split(',')
+      .filter(Boolean)
+      .filter((f): f is CalendarFilter => FILTERS.some((x) => x.value === f)),
+  )
   const who = search.get('who') ?? ''
 
   const setParams = useCallback(
@@ -79,36 +99,27 @@ export function CalendarView() {
   const key = ['calendar', ws, ymd(from), ymd(to)]
   const { data, error, isLoading } = useQuery({
     queryKey: key,
-    queryFn: () => api.calendar(ws, ymd(from), ymd(to)),
-    refetchInterval: 30_000,
+    queryFn: ({ signal }) => api.calendar(ws, ymd(from), ymd(to), signal),
     placeholderData: (prev) => prev,
   })
 
-  const items = useMemo(
-    () =>
-      (data ?? []).filter(
-        (i) =>
-          !hidden.has(filterOf(i)) &&
-          (!who || i.assignee === who || i.people?.includes(who) || (who === 'ai' && filterOf(i) === 'ai')),
-      ),
-    [data, search],
+  const items = (data ?? []).filter(
+    (i) =>
+      !hidden.has(filterOf(i)) &&
+      (!who || i.assignee === who || i.people?.includes(who) || (who === 'ai' && filterOf(i) === 'ai')),
   )
 
   // Keyboard: ←/→ page, T today, M/W/D/L switch view.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || document.querySelector('.palette-wrap')) return
-      const k = e.key.toLowerCase()
-      const v = ({ m: 'month', w: 'week', d: 'day', l: 'timeline' } as const)[k]
-      if (e.key === 'ArrowLeft') go(view, stepDate(view, date, -1))
-      else if (e.key === 'ArrowRight') go(view, stepDate(view, date, 1))
-      else if (k === 't') go(view, new Date())
-      else if (v) go(v, date)
-      else return
-      e.preventDefault()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+  useHotkeys((e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || document.querySelector('.palette-wrap')) return
+    const k = e.key.toLowerCase()
+    const v = ({ m: 'month', w: 'week', d: 'day', l: 'timeline' } as const)[k]
+    if (e.key === 'ArrowLeft') go(view, stepDate(view, date, -1))
+    else if (e.key === 'ArrowRight') go(view, stepDate(view, date, 1))
+    else if (k === 't') go(view, new Date())
+    else if (v) go(v, date)
+    else return
+    e.preventDefault()
   })
 
   const refresh = (item?: CalendarItem) => {
@@ -133,9 +144,9 @@ export function CalendarView() {
         await api.updateCard(ws, item.board, item.file, { runAt: start })
       else if (item.kind === 'job') await api.setJobAt(ws, item.ref, start)
       else return
-    } catch (e) {
+    } catch (err) {
       qc.setQueryData(key, prev)
-      toast((e as Error).message, 'bad')
+      toast(errorMessage(err), 'bad')
     }
     refresh(item)
   }
@@ -144,7 +155,7 @@ export function CalendarView() {
     if (item.board && item.file) setSelection({ type: 'card', board: item.board, file: item.file })
     else if (item.kind === 'event' && item.file)
       setSelection({ type: 'event', file: item.file, date: item.recurring ? item.start.slice(0, 10) : undefined })
-    else navigate(wsUrl(ws, 'jobs'))
+    else void navigate(wsUrl(ws, 'jobs'))
   }
   const create = (start: string, end: string) => setSelection({ type: 'new', start, end })
 
@@ -226,7 +237,7 @@ export function CalendarView() {
           </div>
 
           {error ? (
-            <p className="lede danger-t">{(error as Error).message}</p>
+            <p className="lede danger-t">{error.message}</p>
           ) : view === 'month' ? (
             <MonthGrid {...shared} days={days} month={date.getMonth()} onDay={(d) => go('day', d)} />
           ) : view === 'timeline' ? (
@@ -252,17 +263,4 @@ export function CalendarView() {
       )}
     </div>
   )
-}
-
-function selectionKey(s: Selection): string {
-  if (s.type === 'card') return `card:${s.board}/${s.file}`
-  if (s.type === 'event') return `event:${s.file}`
-  return `new:${s.start}`
-}
-
-function selectionId(s: Selection | null): string | undefined {
-  if (!s) return undefined
-  if (s.type === 'card') return `${s.board}/${s.file}`
-  if (s.type === 'event') return `Calendar/${s.file}`
-  return undefined
 }

@@ -2,7 +2,7 @@ import { mkdir, readdir, realpath, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export interface Workspace {
+export type Workspace = {
   name: string
   path: string
 }
@@ -27,7 +27,7 @@ export async function listWorkspaces(root = workspacesRoot()): Promise<Workspace
   return entries
     .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
     .map((e) => ({ name: e.name, path: path.join(root, e.name) }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .toSorted((a, b) => a.name.localeCompare(b.name))
 }
 
 /** Accepts a workspace name or an absolute path inside the root. */
@@ -38,7 +38,7 @@ export async function resolveWorkspace(nameOrPath: string, root = workspacesRoot
     if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new Error(`Path is not inside the workspaces root (${root}): ${nameOrPath}`)
     }
-    name = rel.split(path.sep)[0]
+    name = rel.split(path.sep)[0] ?? ''
   }
   if (!isValidWorkspaceName(name)) throw new Error(`Invalid workspace name: ${nameOrPath}`)
   const wsPath = path.join(root, name)
@@ -62,14 +62,14 @@ export async function createWorkspace(name: string, root = workspacesRoot()): Pr
  * symlinks that escape the workspace (checked on the nearest existing ancestor).
  */
 export async function safeResolve(wsPath: string, rel: string): Promise<string> {
-  const cleaned = (rel || '').replace(/\\/g, '/').replace(/^\/+/, '')
+  const cleaned = (rel || '').replaceAll('\\', '/').replace(/^\/+/, '')
   const target = path.resolve(wsPath, cleaned)
   if (target !== wsPath && !target.startsWith(wsPath + path.sep)) {
     throw new PathError(`Path escapes workspace: ${rel}`)
   }
   const realRoot = await realpath(wsPath)
   let probe = target
-  while (true) {
+  for (;;) {
     const real = await realpath(probe).catch(() => null)
     if (real) {
       if (real !== realRoot && !real.startsWith(realRoot + path.sep)) {
