@@ -1,5 +1,5 @@
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { type AccessVerifier, accessVerifier } from './cf-access.js'
 
@@ -21,6 +21,14 @@ beforeAll(async () => {
 })
 
 describe('accessVerifier', () => {
+  it('logs why a token was refused, without the token', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const token = await sign({ email: cfg.email }, { aud: 'other' })
+    await verify(token)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('CF_ACCESS_AUD'))
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(token)
+  })
+
   it('accepts a token Access signed for this app and identity', async () => {
     expect(await verify(await sign({ email: 'Me@Example.com' }))).toBe(true)
   })
