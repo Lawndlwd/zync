@@ -4,7 +4,7 @@ import { IconButton } from '../components/IconButton'
 import { Popover } from '../components/Popover'
 import { TextInput } from '../components/TextInput'
 import { IconPlus } from '../icons'
-import type { Board, Column } from '../types/boards'
+import type { Board, Column, QuickCard } from '../types/boards'
 import { Composer } from './Composer'
 import { DONE_PREVIEW } from './helpers'
 
@@ -39,8 +39,8 @@ export function KColumn({
   onDragOver: (e: DragEvent<HTMLElement>) => void
   onDragLeave: (e: DragEvent<HTMLElement>) => void
   onDrop: (e: DragEvent<HTMLElement>) => void
-  onQuickAdd: (title: string) => Promise<unknown>
-  onMore: (title: string) => void
+  onQuickAdd: (card: QuickCard) => Promise<unknown>
+  onMore: (card: QuickCard) => void
   renderCards: (limit: number) => React.ReactNode
 }) {
   const [menu, setMenu] = useState(false)

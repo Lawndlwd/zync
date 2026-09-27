@@ -1,10 +1,11 @@
 import { useState } from 'react'
 
 import { Button } from '../components/Button'
+import { DatePicker } from '../components/DatePicker'
 import { IconButton } from '../components/IconButton'
 import { TextArea } from '../components/TextArea'
-import { TextButton } from '../components/TextButton'
-import { IconCross } from '../icons'
+import { IconCross, IconExpand } from '../icons'
+import type { QuickCard } from '../types/boards'
 
 /** Inline quick-add: Enter adds and stays open for the next; "More fields" opens the full card panel. */
 export function Composer({
@@ -12,19 +13,27 @@ export function Composer({
   onMore,
   onClose,
 }: {
-  onAdd: (title: string) => Promise<unknown>
-  onMore: (title: string) => void
+  onAdd: (card: QuickCard) => Promise<unknown>
+  onMore: (card: QuickCard) => void
   onClose: () => void
 }) {
   const [title, setTitle] = useState('')
+  const [due, setDue] = useState<string | undefined>()
   const [busy, setBusy] = useState(false)
+  const card = (): QuickCard => ({ title: title.trim(), ...(due ? { due } : {}) })
+  // The full panel takes over the draft, so the inline one goes away.
+  const more = () => {
+    onMore(card())
+    onClose()
+  }
   const add = async () => {
-    const t = title.trim()
-    if (!t || busy) return
+    const next = card()
+    if (!next.title || busy) return
     setBusy(true)
-    await onAdd(t)
+    await onAdd(next)
     setBusy(false)
     setTitle('')
+    setDue(undefined)
   }
   return (
     <div className="kcard composer">
@@ -40,7 +49,7 @@ export function Composer({
         onKeyDown={(e) => {
           if (e.key === 'Enter' && e.shiftKey) {
             e.preventDefault()
-            onMore(title.trim())
+            more()
           } else if (e.key === 'Enter') {
             e.preventDefault()
             void add()
@@ -50,21 +59,30 @@ export function Composer({
           }
         }}
         onBlur={(e) => {
-          if (!title.trim() && !e.currentTarget.parentElement?.contains(e.relatedTarget)) onClose()
+          if (!title.trim() && !due && !e.currentTarget.parentElement?.contains(e.relatedTarget)) onClose()
         }}
       />
+      <DatePicker
+        compact
+        optionalTime
+        noPast
+        placeholder="Due date"
+        ariaLabel="Due"
+        value={due}
+        onChange={(v) => setDue(v ?? undefined)}
+      />
       <div className="row between">
-        <span className="row g10">
-          <Button variant="primary" size="sm" busy={busy} disabled={!title.trim()} onClick={() => void add()}>
-            Add
-          </Button>
-          <TextButton onClick={() => onMore(title.trim())} title="Assignee, due date, labels, AI task… (⇧↵)">
-            [⤢] More fields
-          </TextButton>
+        <Button variant="primary" size="sm" busy={busy} disabled={!title.trim()} onClick={() => void add()}>
+          Add
+        </Button>
+        <span className="row g4">
+          <IconButton small label="More fields: assignee, labels, AI task… (⇧↵)" onClick={more}>
+            <IconExpand size={12} sw={1.6} />
+          </IconButton>
+          <IconButton small label="Cancel (Esc)" onClick={onClose}>
+            <IconCross size={12} sw={1.6} />
+          </IconButton>
         </span>
-        <IconButton small label="Cancel (Esc)" onClick={onClose}>
-          <IconCross size={12} sw={1.6} />
-        </IconButton>
       </div>
     </div>
   )

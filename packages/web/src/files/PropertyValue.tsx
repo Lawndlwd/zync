@@ -6,7 +6,7 @@ import { TagInput } from '../components/TagInput'
 import { TextInput } from '../components/TextInput'
 import { Toggle } from '../components/Toggle'
 import type { Person } from '../types/people'
-import { DATE, DATE_KEYS, LIST_KEYS, textOf } from './helpers'
+import { DATE, DATE_KEYS, FUTURE_KEYS, LIST_KEYS, textOf } from './helpers'
 
 export function PropertyValue({
   name,
@@ -55,6 +55,7 @@ export function PropertyValue({
         ariaLabel={name}
         withTime={name === 'runAt' || name === 'run_at'}
         optionalTime
+        noPast={FUTURE_KEYS.has(name)}
         value={text || undefined}
         onChange={onChange}
       />

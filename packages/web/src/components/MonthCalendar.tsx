@@ -1,17 +1,29 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 
-import { addDays, dayLabel, MONTHS, pad2, sameYmd, startOfWeek, WEEKDAYS_MONDAY_FIRST, ymd } from '../helpers/dates'
+import {
+  addDays,
+  dayLabel,
+  isPastTime,
+  MONTHS,
+  notPastTime,
+  pad2,
+  sameYmd,
+  startOfDay,
+  startOfWeek,
+  timeSlots,
+  WEEKDAYS_MONDAY_FIRST,
+  ymd,
+} from '../helpers/dates'
 import { IconChevRight } from '../icons'
 import { IconButton } from './IconButton'
 import { TextButton } from './TextButton'
-
-const TIMES = ['09:00', '12:00', '15:00', '18:00']
 
 export function MonthCalendar({
   date,
   time,
   withTime,
   optionalTime,
+  notBefore,
   onAllDay,
   onPick,
   onClear,
@@ -22,6 +34,8 @@ export function MonthCalendar({
   withTime?: boolean
   /** Show the time row even without a time: typing or picking one adds it, [All day] removes it. */
   optionalTime?: boolean
+  /** Days and times before this moment can't be picked. */
+  notBefore?: Date
   onAllDay: () => void
   /** `setTime`: the user chose a time, so the value gets one. */
   onPick: (d: Date, time: string, setTime?: boolean) => void
@@ -29,6 +43,8 @@ export function MonthCalendar({
   onDone: () => void
 }) {
   const today = new Date()
+  const firstDay = notBefore && startOfDay(notBefore)
+  const tooEarly = (d: Date) => !!firstDay && d < firstDay
   const [cursor, setCursor] = useState(() => date ?? today)
   const [t, setT] = useState(time)
   const [tErr, setTErr] = useState(false)
@@ -48,7 +64,10 @@ export function MonthCalendar({
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key]
     if (step) {
       e.preventDefault()
-      setCursor((c) => addDays(c, step))
+      setCursor((c) => {
+        const next = addDays(c, step)
+        return tooEarly(next) ? c : next
+      })
     } else if (e.key === 'PageUp') month(-1)
     else if (e.key === 'PageDown') month(1)
   }
@@ -66,9 +85,20 @@ export function MonthCalendar({
       return
     }
     const next = `${pad2(h)}:${pad2(min)}`
+    if (notBefore && isPastTime(date ?? cursor, next, notBefore)) {
+      setTErr(true)
+      return
+    }
     setT(next)
     setTErr(false)
     onPick(date ?? cursor, next, true)
+  }
+
+  // A day keeps the chosen time unless that time has already passed on it.
+  const pick = (d: Date) => {
+    const at = notPastTime(d, t, notBefore)
+    setT(at)
+    onPick(d, at)
   }
 
   return (
@@ -104,11 +134,12 @@ export function MonthCalendar({
               aria-selected={sel}
               aria-label={`${dayLabel(d)} ${d.getFullYear()}`}
               tabIndex={isCursor ? 0 : -1}
+              disabled={tooEarly(d)}
               data-day={isCursor ? cursorDay : undefined}
               className={`dp-day${out ? ' out' : ''}${sel ? ' sel' : ''}${sameYmd(today, d) ? ' today' : ''}`}
               onClick={() => {
                 setCursor(d)
-                onPick(d, t)
+                pick(d)
               }}
             >
               {d.getDate()}
@@ -135,7 +166,7 @@ export function MonthCalendar({
             />
           </div>
           <div className="row g6 wrap">
-            {TIMES.map((x) => (
+            {timeSlots(date ?? cursor, notBefore).map((x) => (
               <button
                 key={x}
                 type="button"
@@ -149,9 +180,9 @@ export function MonthCalendar({
         </div>
       )}
       <div className="row wrap" style={{ borderTop: '1px dashed var(--line)', paddingTop: 10, gap: '6px 12px' }}>
-        <TextButton onClick={() => onPick(today, t)}>[Today]</TextButton>
-        <TextButton onClick={() => onPick(addDays(today, 1), t)}>[Tomorrow]</TextButton>
-        <TextButton onClick={() => onPick(addDays(startOfWeek(today), 7), t)}>[Next Mon]</TextButton>
+        <TextButton onClick={() => pick(today)}>[Today]</TextButton>
+        <TextButton onClick={() => pick(addDays(today, 1))}>[Tomorrow]</TextButton>
+        <TextButton onClick={() => pick(addDays(startOfWeek(today), 7))}>[Next Mon]</TextButton>
         <span className="grow" />
         {optionalTime && withTime && <TextButton onClick={onAllDay}>[All day]</TextButton>}
         {date && (

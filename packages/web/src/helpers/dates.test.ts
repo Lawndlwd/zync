@@ -5,9 +5,12 @@ import {
   ago,
   dayLabel,
   formatDateValue,
+  isPastTime,
+  notPastTime,
   relativeDayTime,
   shortDayTime,
   startOfWeek,
+  timeSlots,
   until,
   ymd,
 } from './dates'
@@ -70,5 +73,24 @@ describe('formatDateValue', () => {
     expect(formatDateValue('2026-10-02')).toBe('Fri 02 Oct 2026')
     expect(formatDateValue('2026-10-02T09:30', false)).toBe('Fri 02 Oct · 09:30')
     expect(formatDateValue(undefined)).toBe('')
+  })
+})
+
+describe('times not in the past', () => {
+  const nine = new Date(2026, 8, 27, 21, 0)
+  it('today offers slots from now on, rounded up to the half hour', () => {
+    expect(timeSlots(nine, nine)).toEqual(['21:00', '22:00', '23:00'])
+    expect(timeSlots(nine, new Date(2026, 8, 27, 10, 5))).toEqual(['10:30', '11:30', '12:30', '13:30'])
+  })
+  it('later days keep the default slots, earlier days get none', () => {
+    expect(timeSlots(addDays(nine, 1), nine)).toEqual(['09:00', '12:00', '15:00', '18:00'])
+    expect(timeSlots(addDays(nine, -1), nine)).toEqual([])
+    expect(timeSlots(nine)).toEqual(['09:00', '12:00', '15:00', '18:00'])
+  })
+  it('a passed time moves to the next slot, the current minute still counts', () => {
+    expect(isPastTime(nine, '20:59', nine)).toBe(true)
+    expect(isPastTime(nine, '21:00', new Date(2026, 8, 27, 21, 0, 40))).toBe(false)
+    expect(notPastTime(nine, '09:00', nine)).toBe('21:00')
+    expect(notPastTime(addDays(nine, 1), '09:00', nine)).toBe('09:00')
   })
 })

@@ -55,6 +55,12 @@ export type Draft = {
   context: string[]
 }
 
+/** What the inline composer collects before a card exists. */
+export type QuickCard = {
+  title: string
+  due?: string
+}
+
 export type DropTarget = {
   column: string
   index: number

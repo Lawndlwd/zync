@@ -110,3 +110,28 @@ export function formatDateValue(v: string | undefined, withYear = true): string 
   const day = `${dayLabel(date)}${withYear ? ` ${date.getFullYear()}` : ''}`
   return v?.includes('T') ? `${day} · ${time}` : day
 }
+
+const DEFAULT_TIMES = ['09:00', '12:00', '15:00', '18:00']
+
+/** Quick-pick times for `day`. On `from`'s day, hourly slots from `from` rounded up to the half hour. */
+export function timeSlots(day: Date, from?: Date): string[] {
+  if (!from || startOfDay(day) > startOfDay(from)) return DEFAULT_TIMES
+  if (!sameDay(day, from)) return []
+  const out: string[] = []
+  for (let m = Math.ceil((from.getHours() * 60 + from.getMinutes()) / 30) * 30; m < 24 * 60 && out.length < 4; m += 60)
+    out.push(`${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`)
+  return out
+}
+
+/** `day` at `time` ("HH:MM") falls before `from`'s minute. */
+export function isPastTime(day: Date, time: string, from: Date): boolean {
+  const floor = new Date(from)
+  floor.setSeconds(0, 0)
+  return new Date(`${ymd(day)}T${time}`) < floor
+}
+
+/** `time` on `day`, or the first slot still ahead of `from` when it has passed. */
+export function notPastTime(day: Date, time: string, from?: Date): string {
+  if (!from || !isPastTime(day, time, from)) return time
+  return timeSlots(day, from)[0] ?? time
+}

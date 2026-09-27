@@ -13,7 +13,7 @@ import { boardUrl, fileUrl, wsUrl } from '../helpers/urls'
 import { usePeople } from '../hooks/usePeople'
 import { usePaneId } from '../shell/paneId'
 import { useShell } from '../shell/ShellContext'
-import type { Board, Card, CardPatch, Column, Draft, DropTarget } from '../types/boards'
+import type { Board, Card, CardPatch, Column, Draft, DropTarget, QuickCard } from '../types/boards'
 import { AddColumn } from './AddColumn'
 import { AssigneeFilter } from './AssigneeFilter'
 import { CardPanel } from './CardPanel'
@@ -38,7 +38,7 @@ export function BoardView() {
   const [err, setErr] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [addingColumn, setAddingColumn] = useState(false)
-  const [newTitle, setNewTitle] = useState('')
+  const [newCard, setNewCard] = useState<QuickCard>({ title: '' })
 
   const who = search.get('who') ?? ''
   const openId = search.get('card')
@@ -167,15 +167,23 @@ export function BoardView() {
         context: d.assignee === 'ai' ? d.context : undefined,
       })
       await refresh()
-      setParams({ new: null, card: c.file })
+      setNewCard({ title: '' })
+      setParams({ new: null })
       toast(`Created “${c.title}”`)
     } catch (caught) {
       setErr(errorMessage(caught))
     }
   }
 
-  const quickCreate = (title: string, column: string) =>
-    run(() => api.createCard(ws, boardId, { title, status: column, ...(who && who !== '-' ? { assignee: who } : {}) }))
+  const quickCreate = ({ title, due }: QuickCard, column: string) =>
+    run(() =>
+      api.createCard(ws, boardId, {
+        title,
+        status: column,
+        ...(due ? { due } : {}),
+        ...(who && who !== '-' ? { assignee: who } : {}),
+      }),
+    )
 
   const rename = (name: string) => {
     setRenaming(false)
@@ -325,9 +333,9 @@ export function BoardView() {
                     if (!(e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget))) setDrop(null)
                   }}
                   onDrop={(e) => onDrop(e, col.id)}
-                  onQuickAdd={(title) => quickCreate(title, col.id)}
-                  onMore={(title) => {
-                    setNewTitle(title)
+                  onQuickAdd={(card) => quickCreate(card, col.id)}
+                  onMore={(card) => {
+                    setNewCard(card)
                     setParams({ card: null, new: col.id })
                   }}
                   renderCards={(limit) => (
@@ -432,13 +440,14 @@ export function BoardView() {
       )}
       {!open && newIn && (
         <CardPanel
-          key={`new:${newIn}:${newTitle}`}
+          key={`new:${newIn}:${newCard.title}:${newCard.due ?? ''}`}
           ws={ws}
           board={board}
           cards={cards}
           people={people}
           draft={{
-            title: newTitle,
+            title: newCard.title,
+            due: newCard.due,
             status: board.columns.some((c) => c.id === newIn) ? newIn : firstColumn(board),
             assignee: who && who !== '-' ? who : undefined,
             labels: [],
@@ -450,7 +459,7 @@ export function BoardView() {
           onRun={async () => {}}
           onDelete={() => {}}
           onClose={() => {
-            setNewTitle('')
+            setNewCard({ title: '' })
             setParams({ new: null })
           }}
           error={err}

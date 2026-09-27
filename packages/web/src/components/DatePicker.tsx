@@ -13,6 +13,7 @@ export function DatePicker({
   onChange,
   withTime,
   optionalTime,
+  noPast,
   placeholder = 'No date',
   compact,
   ariaLabel = 'Date',
@@ -24,6 +25,8 @@ export function DatePicker({
   withTime?: boolean
   /** A date that may also carry a time: offers [+ Time] / [All day] and keeps whichever the value has. */
   optionalTime?: boolean
+  /** Only today and later, and on today only times still ahead. */
+  noPast?: boolean
   placeholder?: string
   compact?: boolean
   ariaLabel?: string
@@ -57,6 +60,7 @@ export function DatePicker({
           time={time}
           withTime={timed}
           optionalTime={optionalTime && !withTime}
+          notBefore={noPast ? new Date() : undefined}
           onAllDay={() => onChange(ymd(date ?? new Date()))}
           onPick={(d, t, setTime) => {
             const useTime = timed || setTime

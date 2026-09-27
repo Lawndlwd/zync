@@ -159,6 +159,7 @@ export function CardDocument({
             <DatePicker
               compact
               optionalTime
+              noPast
               ariaLabel="due"
               value={v.due}
               onChange={(due) => set({ due: due ?? undefined }, { due })}
@@ -192,6 +193,7 @@ export function CardDocument({
                     <DatePicker
                       compact
                       withTime
+                      noPast
                       ariaLabel="run at"
                       placeholder="Pick a time…"
                       value={v.runAt}
