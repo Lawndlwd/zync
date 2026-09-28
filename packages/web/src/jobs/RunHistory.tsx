@@ -1,26 +1,15 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 
 import { Select } from '../components/Select'
+import { SessionLink } from '../components/SessionLink'
 import { StatusBadge } from '../components/StatusBadge'
 import { runningCards } from '../helpers/boards'
 import { addDays, dayLabel, hhmm, relativeDayTime, startOfDay } from '../helpers/dates'
 import { formatDuration } from '../helpers/format'
-import { sessionUrl } from '../helpers/urls'
 import type { JobRow } from '../types/jobs'
 import type { BoardCard, RunEvent } from '../types/workspace'
 
-export function RunHistory({
-  ws,
-  runs,
-  jobs,
-  cards,
-}: {
-  ws: string
-  runs: RunEvent[]
-  jobs: JobRow[]
-  cards: BoardCard[]
-}) {
+export function RunHistory({ runs, jobs, cards }: { runs: RunEvent[]; jobs: JobRow[]; cards: BoardCard[] }) {
   const [job, setJob] = useState('__all')
   const [range, setRange] = useState('7')
   const now = new Date()
@@ -89,9 +78,7 @@ export function RunHistory({
                   <td className="small muted">Working…</td>
                   <td>
                     {c.card.ai?.sessionId && (
-                      <Link to={sessionUrl(ws, c.card.ai.sessionId)} className="link">
-                        [Open session ↗]
-                      </Link>
+                      <SessionLink sessionId={c.card.ai.sessionId}>[Open session ↗]</SessionLink>
                     )}
                   </td>
                 </tr>
@@ -114,13 +101,7 @@ export function RunHistory({
                   <td className="small" style={{ color: bad ? 'var(--on-danger-soft)' : 'var(--ink-2)' }}>
                     <span className="clamp2">{r.run.summary}</span>
                   </td>
-                  <td>
-                    {r.run.sessionId && (
-                      <Link to={sessionUrl(ws, r.run.sessionId)} className="link">
-                        [Open session ↗]
-                      </Link>
-                    )}
-                  </td>
+                  <td>{r.run.sessionId && <SessionLink sessionId={r.run.sessionId}>[Open session ↗]</SessionLink>}</td>
                 </tr>
               )
             })}

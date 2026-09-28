@@ -7,6 +7,7 @@ const KIND_LABEL: Record<CalendarItem['kind'], string> = {
   'card-ai': 'AI run',
   job: 'Job',
   run: 'Run',
+  external: 'Google',
 }
 
 /** One item on the grid: a block (timed) or a bar (all-day). */

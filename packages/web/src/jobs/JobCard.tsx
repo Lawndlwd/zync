@@ -4,13 +4,16 @@ import { Link } from 'react-router'
 import { api } from '../api'
 import { Button } from '../components/Button'
 import { useConfirm, useToast } from '../components/Dialog'
+import { SessionLink } from '../components/SessionLink'
 import { StatusBadge } from '../components/StatusBadge'
 import { Toggle } from '../components/Toggle'
-import { relativeDayTime } from '../helpers/dates'
+import { hhmm, relativeDayTime } from '../helpers/dates'
 import { errorMessage, formatDuration } from '../helpers/format'
 import { isFailedRun } from '../helpers/runs'
-import { boardUrl, fileUrl, sessionUrl } from '../helpers/urls'
-import { IconBoard } from '../icons'
+import { boardUrl, fileUrl } from '../helpers/urls'
+import { useRunJob } from '../hooks/useRunJob'
+import { IconBoard, IconSpin } from '../icons'
+import { useShell } from '../shell/ShellContext'
 import type { JobRow } from '../types/jobs'
 import type { BoardCard } from '../types/workspace'
 import { describeSchedule } from './helpers'
@@ -35,11 +38,13 @@ export function JobCard({ ws, row, card }: { ws: string; row: JobRow; card?: Boa
     }
   }
   const title = card?.card.title ?? row.name
+  const runJob = useRunJob(ws)
+  const shell = useShell()
   const runNow = () =>
-    act(
-      () => (card ? api.runCard(ws, card.board.path, card.card.file) : api.runJob(ws, row.name)),
-      `${title} · queued — starts within a few seconds`,
+    runJob(row.name, card ? () => api.runCard(ws, card.board.path, card.card.file) : undefined).finally(
+      () => void qc.invalidateQueries({ queryKey: ['jobs', ws] }),
     )
+  const running = row.running
 
   return (
     <article className="card" style={{ gap: 14, ...(failed || row.error ? { borderColor: 'var(--danger)' } : {}) }}>
@@ -140,10 +145,22 @@ export function JobCard({ ws, row, card }: { ws: string; row: JobRow; card?: Boa
           </div>
         </div>
       )}
+      {running && (
+        <div className="lr hl">
+          <IconSpin size={13} sw={2} />
+          <span className="grow small">Running since {hhmm(new Date(running.started))}</span>
+        </div>
+      )}
       <div className="row g8">
-        <Button variant="primary" size="sm" onClick={() => void runNow()}>
-          {failed ? '[↻] Retry' : '[▶] Run now'}
-        </Button>
+        {running ? (
+          <Button variant="primary" size="sm" onClick={() => shell.openSession(running.sessionId)}>
+            [↗] Watch it run
+          </Button>
+        ) : (
+          <Button variant="primary" size="sm" onClick={() => void runNow()}>
+            {failed ? '[↻] Retry' : '[▶] Run now'}
+          </Button>
+        )}
         {card ? (
           <Link
             to={`${boardUrl(ws, card.board.path)}?card=${encodeURIComponent(card.card.file)}`}
@@ -174,9 +191,9 @@ export function JobCard({ ws, row, card }: { ws: string; row: JobRow; card?: Boa
           </>
         )}
         {last?.sessionId && (
-          <Link to={sessionUrl(ws, last.sessionId)} className="link" style={{ marginLeft: 'auto' }}>
+          <SessionLink sessionId={last.sessionId} style={{ marginLeft: 'auto' }}>
             [{failed ? 'Failed' : 'Last'} session ↗]
-          </Link>
+          </SessionLink>
         )}
       </div>
     </article>

@@ -7,6 +7,7 @@ import { TextInput } from '../components/TextInput'
 import { Toggle } from '../components/Toggle'
 import type { Person } from '../types/people'
 import { DATE, DATE_KEYS, FUTURE_KEYS, LIST_KEYS, textOf } from './helpers'
+import { PropertyList } from './PropertyList'
 
 export function PropertyValue({
   name,
@@ -19,6 +20,11 @@ export function PropertyValue({
   people: Person[]
   onChange: (v: unknown) => void
 }) {
+  // A list of objects (a brief's to-dos…): readable, not tags, which would flatten it to text.
+  if (isSeq(node) && node.items.some((i) => !isScalar(i))) {
+    const items: unknown = node.toJSON()
+    return <PropertyList items={Array.isArray(items) ? items : []} />
+  }
   if (isSeq(node) || LIST_KEYS.has(name)) {
     const values = isSeq(node) ? node.items.map((i) => String(isScalar(i) ? i.value : i)) : []
     return (

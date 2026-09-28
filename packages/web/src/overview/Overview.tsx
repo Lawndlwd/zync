@@ -22,6 +22,7 @@ import { RecentlyEdited } from './RecentlyEdited'
 import { RunResults } from './RunResults'
 import { RunsThisWeek } from './RunsThisWeek'
 import { Schedule } from './Schedule'
+import { TodayBrief } from './TodayBrief'
 import { Workload } from './Workload'
 
 export function Overview() {
@@ -108,6 +109,7 @@ export function Overview() {
       </div>
 
       <GettingStarted ws={ws} data={data} />
+      <TodayBrief ws={ws} />
 
       <div className="ov-grid">
         <QuickAccess quick={quick} />

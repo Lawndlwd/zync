@@ -34,7 +34,7 @@ export function Timeline({ items, people, days, selectedId, onOpen, onChange, on
     ),
   ].toSorted()
   const rows: Row[] = [
-    { id: 'events', label: 'Events', items: shown.filter((i) => i.kind === 'event') },
+    { id: 'events', label: 'Events', items: shown.filter((i) => i.kind === 'event' || i.kind === 'external') },
     ...boards.map((b) => ({
       id: `board:${b}`,
       label: b.split('/').pop() ?? b,

@@ -27,6 +27,7 @@ const job = (over: Partial<NonNullable<JobRow['job']>>): JobRow => ({
   name: 'weekly',
   nextRuns: [],
   lastRun: null,
+  running: null,
   job: { name: 'weekly', context: [], notify: 'always', enabled: true, instructions: 'x', ...over },
 })
 

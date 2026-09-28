@@ -49,9 +49,9 @@ export function TagInput({
   return (
     <div className="row g6 wrap" role="group" aria-label={ariaLabel}>
       {values.map((v) => (
-        <span key={v} className={`${chip} removable`}>
+        <span key={v} className={`${chip} removable`} title={v}>
           {variant === 'tag' && (v.endsWith('/') ? <IconFolder size={11} /> : <IconFile size={11} />)}
-          {v}
+          <span className="trunc">{v}</span>
           <button
             type="button"
             className="x"

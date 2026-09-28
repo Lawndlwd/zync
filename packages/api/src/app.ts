@@ -10,7 +10,10 @@ import { authRoutes } from './auth/routes.js'
 import type { Auth } from './auth/service.js'
 import { boardsRoutes } from './boards-routes.js'
 import { WorkspaceBody } from './body.js'
+import { briefsRoutes } from './briefs-routes.js'
 import { calendarRoutes } from './calendar-routes.js'
+import { connectionsRoutes } from './connections-routes.js'
+import type { Connections } from './connections/service.js'
 import { eventsHandler } from './events.js'
 import { fsRoutes } from './fs-routes.js'
 import { jobsRoutes } from './jobs-routes.js'
@@ -40,6 +43,8 @@ export type AppOptions = {
    * `ZYNC_INSECURE_DEV` on localhost (see index.ts).
    */
   auth?: Auth
+  /** Connected accounts (Settings → Connections). */
+  connections?: Connections
 }
 
 export function createApp(opts: AppOptions) {
@@ -76,6 +81,8 @@ export function createApp(opts: AppOptions) {
   app.use(`${API}/ws/:ws/memory`, workspaceMemoryRoutes(opts.workspacesRoot))
   app.use(`${API}/ws/:ws/boards`, boardsRoutes())
   app.use(`${API}/ws/:ws/calendar`, calendarRoutes())
+  app.use(`${API}/ws/:ws/briefs`, briefsRoutes())
+  if (opts.connections) app.use(`${API}/connections`, connectionsRoutes(opts.connections))
   app.use(`${API}/ws/:ws`, fsRoutes())
   app.use(`${API}/ws/:ws/jobs`, jobsRoutes())
   app.get(`${API}/ws/:ws/events`, eventsHandler)

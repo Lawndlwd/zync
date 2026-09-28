@@ -25,6 +25,9 @@ const PUBLIC = new Set([
   '/zync/api/auth/login/verify',
   '/zync/api/auth/recovery',
   '/zync/api/auth/logout',
+  // Google's consent screen sends the browser back here without the (SameSite=Strict) session
+  // cookie; the one-time state it carries was issued to a signed-in session (connections/service.ts).
+  '/zync/api/connections/google/callback',
 ])
 const isPublic = (path: string) => PUBLIC.has(path) || path.startsWith('/zync/assets/')
 /** The app's pages: without a session they redirect to the sign-in page. */

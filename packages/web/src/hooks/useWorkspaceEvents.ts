@@ -29,6 +29,7 @@ export function useWorkspaceEvents(ws: string) {
         // Events, cards and jobs (and their runs) all show on the calendar.
         if (p.endsWith('.md') || p.startsWith('.opencode/jobs/'))
           void qc.invalidateQueries({ queryKey: ['calendar', ws] })
+        if (p.startsWith('Briefs/')) void qc.invalidateQueries({ queryKey: ['briefs', ws] })
       }
       if (visible) void qc.invalidateQueries({ queryKey: ['recent', ws] })
       pending.clear()

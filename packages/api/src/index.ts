@@ -7,6 +7,9 @@ import { createApp } from './app.js'
 import { authConfigFromEnv } from './auth/config.js'
 import { guardUpgrade } from './auth/guard.js'
 import { Auth } from './auth/service.js'
+import { connectionsFromEnv } from './connections/config.js'
+import { Connections } from './connections/service.js'
+import { internalApp } from './internal.js'
 import { opencodeUpgrade } from './opencode-proxy.js'
 import { isAppPath } from './spa.js'
 
@@ -23,6 +26,7 @@ if (insecure && process.env.NODE_ENV === 'production') {
   process.exit(1)
 }
 const auth = insecure ? undefined : new Auth(authConfigFromEnv(process.env))
+const connections = new Connections(connectionsFromEnv(process.env))
 
 const app = createApp({
   workspacesRoot: root,
@@ -32,6 +36,7 @@ const app = createApp({
   opencodeConfigPath:
     process.env.ZYNC_OPENCODE_CONFIG || path.resolve(here, '../../../data/opencode/config/opencode/opencode.json'),
   opencodeSkillsDir: process.env.ZYNC_SKILLS_DIR || path.resolve(here, '../../../opencode/skills'),
+  connections,
   ...(auth ? { auth } : {}),
 })
 
@@ -49,3 +54,13 @@ const server = app.listen(port, host, () => {
 })
 const upgrade = opencodeUpgrade(opencodeUrl, isAppPath)
 server.on('upgrade', auth ? guardUpgrade(auth, upgrade) : upgrade)
+
+// What the product's AI reads through its MCP tools (connected accounts), on its own port: the tunnel
+// only reaches `port`. Off unless ZYNC_INTERNAL_TOKEN is set.
+const internalToken = process.env.ZYNC_INTERNAL_TOKEN
+if (internalToken) {
+  const internalPort = Number(process.env.ZYNC_INTERNAL_PORT || 3002)
+  internalApp(connections, internalToken).listen(internalPort, host, () => {
+    console.log(`[api] internal (AI tools) on ${host}:${internalPort}`)
+  })
+}

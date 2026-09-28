@@ -1,20 +1,18 @@
 import type { DragEvent } from 'react'
-import { Link } from 'react-router'
 
 import { PersonAvatar } from '../components/PersonAvatar'
+import { SessionLink } from '../components/SessionLink'
 import { StatusBadge } from '../components/StatusBadge'
 import { TextButton } from '../components/TextButton'
 import { dayLabel, dueDate, hhmm, shortDayTime } from '../helpers/dates'
 import { stopPropagation } from '../helpers/dom'
 import { firstLine } from '../helpers/format'
-import { sessionUrl } from '../helpers/urls'
 import { IconWarn } from '../icons'
 import type { Card } from '../types/boards'
 import type { Person } from '../types/people'
 
 /** A card on the board, in every state the handoff draws: human, @ai scheduled/running/done/failed, overdue, done. */
 export function KanbanCard({
-  ws,
   card,
   people,
   done,
@@ -27,7 +25,6 @@ export function KanbanCard({
   onDragEnd,
   onDragOver,
 }: {
-  ws: string
   card: Card
   people: Person[]
   done: boolean
@@ -120,20 +117,12 @@ export function KanbanCard({
         {state === 'done' && !done ? (
           <span className="row g10">
             <TextButton onClick={stopPropagation(onAccept)}>[✓] Accept</TextButton>
-            {ai?.sessionId && (
-              <Link to={sessionUrl(ws, ai.sessionId)} className="link" onClick={(e) => e.stopPropagation()}>
-                [↗] Session
-              </Link>
-            )}
+            {ai?.sessionId && <SessionLink sessionId={ai.sessionId}>[↗] Session</SessionLink>}
           </span>
         ) : state === 'failed' && !done ? (
           <span className="row g10">
             <TextButton onClick={stopPropagation(onRetry)}>[↻] Retry</TextButton>
-            {ai?.sessionId && (
-              <Link to={sessionUrl(ws, ai.sessionId)} className="link" onClick={(e) => e.stopPropagation()}>
-                [↗] Session
-              </Link>
-            )}
+            {ai?.sessionId && <SessionLink sessionId={ai.sessionId}>[↗] Session</SessionLink>}
           </span>
         ) : overdue ? (
           <span className="due over">
@@ -150,9 +139,7 @@ export function KanbanCard({
           </span>
         )}
         {state === 'running' && ai?.sessionId ? (
-          <Link to={sessionUrl(ws, ai.sessionId)} className="link" onClick={(e) => e.stopPropagation()}>
-            [↗] Watch
-          </Link>
+          <SessionLink sessionId={ai.sessionId}>[↗] Watch</SessionLink>
         ) : (
           card.assignee && card.assignee !== 'ai' && <PersonAvatar id={card.assignee} people={people} />
         )}

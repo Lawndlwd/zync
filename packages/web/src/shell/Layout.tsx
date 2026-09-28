@@ -13,7 +13,7 @@ import {
 import { api } from '../api'
 import { Spotlight } from '../components/Spotlight'
 import { isTyping } from '../helpers/dom'
-import { chatUrlFor, wsUrl } from '../helpers/urls'
+import { chatUrlFor, sessionUrl, wsUrl } from '../helpers/urls'
 import { useHotkeys } from '../hooks/useHotkeys'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { PALETTE_SEEN_PREF } from '../hooks/useOnboarding'
@@ -93,8 +93,8 @@ export function Layout() {
 
   const chatDir = config ? `${config.workspacesRoot.replace(/\/$/, '')}/${ws}` : null
   // A ?session= link points this workspace's chat at that conversation.
-  const sessionUrl = chatDir && sessionParam ? chatUrlFor(chatDir, sessionParam) : null
-  if (sessionUrl && frames[ws] !== sessionUrl) setFrames((f) => ({ ...f, [ws]: sessionUrl }))
+  const sessionFrame = chatDir && sessionParam ? chatUrlFor(chatDir, sessionParam) : null
+  if (sessionFrame && frames[ws] !== sessionFrame) setFrames((f) => ({ ...f, [ws]: sessionFrame }))
   const hasFrame = frames[ws] !== undefined
   useEffect(() => {
     if (!chatDir || sessionParam || hasFrame) return
@@ -118,6 +118,18 @@ export function Layout() {
     if (isChat) void navigate(lastPath)
     else void navigate(wsUrl(ws, 'chat'))
   }, [isChat, navigate, ws, lastPath])
+
+  const openSession = useCallback(
+    (sessionId: string) => {
+      if (!chatDir || window.innerWidth < 1024) {
+        void navigate(sessionUrl(ws, sessionId))
+        return
+      }
+      setFrames((f) => ({ ...f, [ws]: chatUrlFor(chatDir, sessionId) }))
+      setSplitPref('split')
+    },
+    [chatDir, navigate, setSplitPref, ws],
+  )
 
   const toggleDock = useCallback(() => {
     if (isChat) {
@@ -291,6 +303,7 @@ export function Layout() {
       activePath,
       sides,
       openInOther,
+      openSession,
       theme,
       setTheme,
     }),
@@ -306,6 +319,7 @@ export function Layout() {
       activePath,
       sides,
       openInOther,
+      openSession,
       theme,
       setTheme,
     ],

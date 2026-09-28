@@ -8,7 +8,9 @@ import type {
 import { encodePath } from './helpers/paths'
 import type { AuthSession, AuthStatus, Passkey } from './types/auth'
 import type { Board, Card, CardPatch, Column } from './types/boards'
+import type { Brief, BriefSummary } from './types/briefs'
 import type { CalendarEvent, CalendarItem, EventPatch } from './types/calendar'
+import type { Connection, ConnectionList, ExternalEvent, Gathered } from './types/connections'
 import type { FileData, SearchResult, TreeEntry } from './types/files'
 import type { JobRow, RunRecord } from './types/jobs'
 import type { Memory, MemoryPatch, MemoryScope } from './types/memory'
@@ -34,6 +36,7 @@ const errorText = (body: unknown): string | undefined =>
     : undefined
 
 const AUTH = '/zync/api/auth'
+const CONN = '/zync/api/connections'
 
 /** Signed out (or the session ended): go to the sign-in page, then come back here. */
 function signInAgain() {
@@ -174,6 +177,37 @@ export const api = {
     req<Card>(`${ws(w)}/boards/${encodeURIComponent(b)}/cards/${encodeURIComponent(id)}/run`, { method: 'POST' }),
 
   eventsUrl: (w: string) => `${ws(w)}/events`,
+
+  briefs: (w: string, from: string, to: string, signal?: AbortSignal) =>
+    req<BriefSummary[]>(`${ws(w)}/briefs?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal }),
+  brief: (w: string, date: string) => req<Brief>(`${ws(w)}/briefs/${encodeURIComponent(date)}`),
+  briefTodoToCard: (w: string, date: string, index: number, board: string, status?: string) =>
+    req<{ brief: Brief; card: string }>(
+      `${ws(w)}/briefs/${encodeURIComponent(date)}/todos/${index}/card`,
+      json('POST', { board, status }),
+    ),
+  setBriefTodoDone: (w: string, date: string, index: number, done: boolean) =>
+    req<Brief>(`${ws(w)}/briefs/${encodeURIComponent(date)}/todos/${index}`, json('PATCH', { done })),
+  enableBriefJob: (w: string) => req<unknown>(`${ws(w)}/briefs/job`, { method: 'POST' }),
+
+  connections: () => req<ConnectionList>(CONN),
+  renameConnection: (id: string, label: string) =>
+    req<Connection>(`${CONN}/${encodeURIComponent(id)}`, json('PATCH', { label })),
+  removeConnection: (id: string) => req<void>(`${CONN}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  /** Where to send the browser for Google's consent screen; it comes back to `back`. */
+  googleConnectUrl: (back: string) => req<{ url: string }>(`${CONN}/google`, json('POST', { back })),
+  connectSlack: (token: string, label?: string) => req<Connection>(`${CONN}/slack`, json('POST', { token, label })),
+  telegramStart: (apiId: string, apiHash: string, phone: string) =>
+    req<{ login: string }>(`${CONN}/telegram/start`, json('POST', { apiId, apiHash, phone })),
+  telegramCode: (login: string, code: string) =>
+    req<{ connection?: Connection; password?: true }>(`${CONN}/telegram/code`, json('POST', { login, code })),
+  telegramPassword: (login: string, password: string) =>
+    req<{ connection: Connection }>(`${CONN}/telegram/password`, json('POST', { login, password })),
+  /** Events of the connected Google calendars, read live. */
+  externalEvents: (from: string, to: string, signal?: AbortSignal) =>
+    req<Gathered<ExternalEvent>>(`${CONN}/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+      signal,
+    }),
 
   opencodeConfig: () =>
     req<{ path: string; exists: boolean; mtime: number; content: string }>('/zync/api/opencode/config'),

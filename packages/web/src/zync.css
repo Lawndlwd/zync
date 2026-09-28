@@ -717,6 +717,7 @@ body.cal-dragging,body.cal-dragging *{cursor:grabbing !important;user-select:non
 .cal-block.done .cal-block-t{text-decoration:line-through}
 .cal-block.k-job,.cal-block.k-card-ai{background:color-mix(in srgb,var(--c) 10%,var(--raised));border:1px dashed var(--c);border-left:3px solid var(--c)}
 .cal-block.recurring{cursor:pointer}
+.cal-block.k-external{--c:var(--ink-2);background:var(--raised);border:1px dashed var(--line);border-left:3px solid var(--c)}
 .cal-block.k-run{background:var(--quiet);border-left-color:var(--ink-2);color:var(--ink-2)}
 .cal-block.run-failed,.cal-block.run-timeout{background:var(--danger-soft);border-left-color:var(--danger);color:var(--on-danger-soft)}
 .cal-block-t{font-weight:500}
@@ -855,3 +856,32 @@ body.cal-dragging,body.cal-dragging *{cursor:grabbing !important;user-select:non
 
 /* sign-in */
 .recovery-codes{list-style:none;margin:0;padding:12px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 20px;border:1px dashed var(--line);border-radius:var(--r-md);background:var(--raised);font-size:13px;user-select:all}
+
+/* Settings → Connections */
+.chip-provider{flex-shrink:0;min-width:72px;padding:2px 6px;border-radius:var(--r-xs);background:var(--quiet);text-align:center;text-transform:uppercase;letter-spacing:.06em}
+.connect-form{padding:12px;border:1px dashed var(--line);border-radius:var(--r-sm)}
+
+/* Daily brief */
+.md-lite{display:flex;flex-direction:column;gap:4px;font-size:14px;line-height:1.5}
+.md-lite h3{margin:10px 0 2px}
+.md-lite h3:first-child{margin-top:0}
+.md-lite p{margin:0}
+.md-lite .md-li{padding-left:14px;position:relative}
+.md-lite .md-li::before{content:'·';position:absolute;left:4px;color:var(--ink-2)}
+.md-lite code{font-family:var(--f-mono);font-size:12px}
+.link-inline{text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--line)}
+.link-inline:hover{text-decoration-color:currentColor}
+.brief-todo .t{min-width:0}
+.brief-todo.done .t{text-decoration:line-through;color:var(--ink-2)}
+.mg-brief{padding:0 5px;border-radius:var(--r-xs);background:var(--accent-soft);color:var(--on-soft);font-size:10px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.day-brief-body summary{cursor:pointer;margin-bottom:6px}
+
+/* Frontmatter: a list of objects, read-only; tags never wider than their field */
+.prop-list{display:flex;flex-direction:column;gap:8px;min-width:0;padding:4px 0}
+.prop-item{display:flex;flex-direction:column;gap:1px;min-width:0;padding-left:10px;border-left:2px solid var(--line-2);overflow-wrap:anywhere}
+.prop-detail{text-transform:none;letter-spacing:0}
+.label.removable,.tag.removable{max-width:100%;min-width:0}
+.checkbox{flex-shrink:0;width:16px;height:16px;border-radius:4px;border:1.5px solid var(--ink-2);background:var(--raised);display:inline-flex;align-items:center;justify-content:center;color:var(--on-accent);cursor:pointer;padding:0}
+.checkbox:hover{border-color:var(--ink)}
+.checkbox.on{background:var(--accent);border-color:var(--accent)}
+.checkbox:disabled{opacity:.5;cursor:default}

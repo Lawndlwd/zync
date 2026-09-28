@@ -1,6 +1,7 @@
 import type { Person } from './people'
 
-type CalendarKind = 'event' | 'card' | 'card-ai' | 'job' | 'run'
+/** `external`: an event of a connected Google calendar (read-only, opens in Google). */
+type CalendarKind = 'event' | 'card' | 'card-ai' | 'job' | 'run' | 'external'
 
 export type CalendarItem = {
   id: string

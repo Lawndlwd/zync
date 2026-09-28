@@ -22,7 +22,8 @@ export function MonthGrid({
   onChange,
   onCreate,
   onDay,
-}: ViewProps & { month: number }) {
+  briefDays,
+}: ViewProps & { month: number; /** Days with a daily brief. */ briefDays?: Set<string> }) {
   const grid = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ id: string; delta: number } | null>(null)
   const today = ymd(new Date())
@@ -90,6 +91,11 @@ export function MonthGrid({
                 <button type="button" className="mg-num" onClick={() => onDay(d)} title="Open this day">
                   {d.getDate()}
                 </button>
+                {briefDays?.has(key) && (
+                  <button type="button" className="mg-brief mono-s" onClick={() => onDay(d)} title="This day's brief">
+                    Brief
+                  </button>
+                )}
                 {fails ? (
                   <span className="mono-s danger-t" title={plural(fails, 'failed run')}>
                     ✕{fails}

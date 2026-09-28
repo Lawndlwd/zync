@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "dev": "APP_URL=${APP_URL:-http://localhost:5173} tsx watch src/index.ts",
+    "dev": "APP_URL=${APP_URL:-http://localhost:5173} tsx watch --env-file-if-exists=../../.env src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
@@ -17,6 +17,7 @@
     "express": "^5.2.1",
     "jose": "^6.2.12",
     "multer": "^2.4.0",
+    "telegram": "^2.26.22",
     "zod": "^4.6.5"
   },
   "devDependencies": {

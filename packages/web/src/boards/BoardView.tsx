@@ -346,7 +346,6 @@ export function BoardView() {
                           <div key={card.file} className="col" style={{ gap: 6 }}>
                             {indicator === index && <div className="dropline" aria-hidden="true" />}
                             <KanbanCard
-                              ws={ws}
                               card={card}
                               people={people}
                               done={col.id === last}

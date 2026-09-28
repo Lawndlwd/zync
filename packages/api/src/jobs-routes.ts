@@ -1,4 +1,14 @@
-import { deleteJob, listJobs, nextRuns, readJob, readRuns, requestRun, validateJob, writeJob } from '@zync/jobs'
+import {
+  deleteJob,
+  listJobs,
+  nextRuns,
+  readJob,
+  readRunning,
+  readRuns,
+  requestRun,
+  validateJob,
+  writeJob,
+} from '@zync/jobs'
 import express, { Router } from 'express'
 
 import { JobPatchBody } from './body.js'
@@ -11,13 +21,14 @@ export function jobsRoutes(): Router {
     const ws = await wsOf(req)
     const out = await Promise.all(
       (await listJobs(ws.path)).map(async (e) => {
-        const [lastRun] = await readRuns(ws.path, e.name, 1)
+        const [[lastRun], running] = await Promise.all([readRuns(ws.path, e.name, 1), readRunning(ws.path, e.name)])
         return {
           name: e.name,
           error: e.error,
           job: e.job,
           nextRuns: e.job ? nextRuns(e.job).map((d) => d.toISOString()) : [],
           lastRun: lastRun ?? null,
+          running,
         }
       }),
     )

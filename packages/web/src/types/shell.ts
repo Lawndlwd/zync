@@ -32,6 +32,8 @@ export type Shell = {
    * Returns false when not split, so the caller can open it in place instead.
    */
   openInOther: (fromId: string, path: string) => boolean
+  /** Show an AI session in the chat beside the page (split), e.g. a job running (full screen when narrow). */
+  openSession: (sessionId: string) => void
   theme: Theme
   setTheme: (t: Theme) => void
   /** Spotlight one control with a short explanation (the "Get started" guide). */

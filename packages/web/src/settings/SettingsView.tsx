@@ -8,6 +8,7 @@ import { wsUrl } from '../helpers/urls'
 import { useShell } from '../shell/ShellContext'
 import type { Theme } from '../types/shell'
 import { ChatAppearance } from './ChatAppearance'
+import { ConnectionsPanel } from './ConnectionsPanel'
 import { SecurityPanel } from './SecurityPanel'
 
 export function SettingsView() {
@@ -19,7 +20,7 @@ export function SettingsView() {
         <span className="mono muted">{ws} / settings</span>
         <h1 className="display">Settings</h1>
         <p className="lede">
-          How zync looks, and the <b>AI server</b> config every chat and job runs with.
+          How zync looks, the accounts it reads, and the <b>AI server</b> config every chat and job runs with.
         </p>
       </div>
       <Card title="Appearance" meta="This browser">
@@ -38,6 +39,7 @@ export function SettingsView() {
         </div>
       </Card>
       <SecurityPanel />
+      <ConnectionsPanel ws={ws} />
       <ConfigFiles ws={ws} />
       <ChatAppearance />
       <Card title="AI server" meta="opencode.json · agents · commands · skills">

@@ -8,7 +8,8 @@
 //   - the zync plugin (packages/jobs/dist/opencode-plugin.js): the AI's memory, see packages/jobs/src/memory.ts
 //
 // Usage: node opencode/configure.mjs <config-file>
-// Env:   ZYNC_MCP_PATH, ZYNC_PLUGIN_PATH, ZYNC_SKILLS_DIR, WORKSPACES_ROOT, TZ, NTFY_* are forwarded to the MCP server.
+// Env:   ZYNC_MCP_PATH, ZYNC_PLUGIN_PATH, ZYNC_SKILLS_DIR, WORKSPACES_ROOT, TZ, NTFY_*, ZYNC_INTERNAL_TOKEN and
+//        ZYNC_API_INTERNAL_URL are forwarded to the MCP server.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -37,6 +38,13 @@ if (existsSync(target)) {
 
 const env = { WORKSPACES_ROOT: process.env.WORKSPACES_ROOT || '/workspace' }
 if (process.env.TZ) env.TZ = process.env.TZ
+// Connected accounts are read through the api's internal port (see packages/jobs/src/connections).
+// The token stays an {env:…} reference, so it is never written into this file.
+if (process.env.ZYNC_INTERNAL_TOKEN) {
+  env.ZYNC_INTERNAL_TOKEN = '{env:ZYNC_INTERNAL_TOKEN}'
+  // Docker sets http://api:3002; without it the MCP client uses the local api (127.0.0.1:3002).
+  if (process.env.ZYNC_API_INTERNAL_URL) env.ZYNC_API_INTERNAL_URL = process.env.ZYNC_API_INTERNAL_URL
+}
 
 config.$schema ??= 'https://opencode.ai/config.json'
 config.mcp ??= {}

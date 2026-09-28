@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url'
 
 import type { Cron } from 'croner'
 
+import { clearAllRunning, clearRunning, markRunning } from './active-runs.js'
 import { applyCardRun, cardExists } from './boards/index.js'
 import { errorMessage } from './errors.js'
 import { buildCron, deleteJob, type Job, listJobs, readJob, TRIGGER_DIR, writeJob } from './job-file.js'
@@ -65,7 +66,7 @@ export class Scheduler {
       (e) => this.onEvent(e),
       (ok) => log(ok ? 'event stream connected' : 'event stream disconnected, retrying'),
     )
-    void this.scan()
+    void this.resetRunning().then(() => this.scan())
     this.timers.push(setInterval(() => void this.scan(), this.scanMs))
     this.timers.push(setInterval(() => void this.poll(), this.pollMs))
   }
@@ -75,6 +76,11 @@ export class Scheduler {
     for (const r of this.registered.values()) r.cron.stop()
     this.registered.clear()
     this.unsubscribe?.()
+  }
+
+  /** Runs left marked as running by a previous scheduler (crash, restart) are not running any more. */
+  private async resetRunning(): Promise<void> {
+    for (const ws of await listWorkspaces(this.root).catch(() => [])) await clearAllRunning(ws.path).catch(() => {})
   }
 
   /** Sync registered crons with job files on disk and consume run-now triggers. */
@@ -160,11 +166,13 @@ export class Scheduler {
       const agent = job.agent || process.env.JOB_DEFAULT_AGENT || 'job'
       sessionId = await this.client.createSession(ws.path, title, agent)
       this.running.set(sessionId, { key, ws, job, sessionId, started, trigger })
+      await markRunning(ws.path, name, { sessionId, started: new Date(started).toISOString(), trigger })
       await this.client.promptAsync(sessionId, ws.path, buildPrompt(job, ws.path), { agent, model: job.model })
       log(`started ${key} → session ${sessionId}`)
       if (job.card) await applyCardRun(ws.path, job.card, { type: 'started', sessionId })
     } catch (err) {
       if (sessionId) this.running.delete(sessionId)
+      await clearRunning(ws.path, name).catch(() => {})
       log(`failed to start ${key}: ${errorMessage(err)}`)
       await this.record(ws, job, {
         status: 'failed',
@@ -220,6 +228,7 @@ export class Scheduler {
         summary = res.failed ? `Error: ${res.error}\n${res.text}`.trim() : res.text
       }
       this.running.delete(sessionId)
+      await clearRunning(r.ws.path, r.job.name).catch(() => {})
       log(`finished ${r.key}: ${status}`)
       await this.record(r.ws, r.job, {
         status,

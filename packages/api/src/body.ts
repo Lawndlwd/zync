@@ -76,3 +76,17 @@ export const AuthenticationBody = z.object({
 
 /** The setup code (printed in the server log) or a recovery code. */
 export const CodeBody = z.object({ code: z.string().trim().min(1).max(64) })
+
+export const ConnectionPatchBody = z.object({ label: text })
+export const GoogleStartBody = z.object({ back: text })
+export const SlackBody = z.object({ token: trimmed.min(1, 'Paste the token'), label: text.optional() })
+export const TelegramStartBody = z.object({
+  apiId: z.coerce.number().int().positive('api_id is a number'),
+  apiHash: trimmed.min(1, 'api_hash is required'),
+  phone: trimmed.regex(/^\+?[\d\s-]{6,}$/, 'Phone number in the international form, e.g. +33 6 12 34 56 78'),
+})
+export const TelegramCodeBody = z.object({ login: text, code: trimmed.min(1) })
+export const TelegramPasswordBody = z.object({ login: text, password: text.min(1) })
+
+export const BriefCardBody = z.object({ board: text.min(1), status: text.optional() })
+export const BriefTodoPatchBody = z.object({ done: z.boolean() })
