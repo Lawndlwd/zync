@@ -1,4 +1,16 @@
-import { MEMORY_TYPES } from '@zync/jobs'
+import {
+  BodyInputSchema,
+  CustomExerciseInputSchema,
+  IdentityInputSchema,
+  IdentityPatchSchema,
+  MEMORY_TYPES,
+  RoutineInputSchema,
+  RoutinePatchSchema,
+  TrainingProfileInputSchema,
+  VOTE_KINDS,
+  WorkoutStartSchema,
+  WorkoutUpdateSchema,
+} from '@zync/jobs'
 import { z } from 'zod'
 
 import { LIBRARY_KINDS } from './opencode-library.js'
@@ -90,3 +102,23 @@ export const TelegramPasswordBody = z.object({ login: text, password: text.min(1
 
 export const BriefCardBody = z.object({ board: text.min(1), status: text.optional() })
 export const BriefTodoPatchBody = z.object({ done: z.boolean() })
+
+export const IdentityBody = IdentityInputSchema
+export const IdentityPatchBody = IdentityPatchSchema
+export const VoteBody = z.object({
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  kind: z.enum(VOTE_KINDS),
+  source: z.enum(['tap', 'palette']).optional(),
+})
+export const MirrorAnswerBody = z.object({ answer: z.string().max(1000) })
+
+export const TrainingProfileBody = TrainingProfileInputSchema
+export const CustomExerciseBody = CustomExerciseInputSchema
+export const RoutineBody = RoutineInputSchema
+export const RoutinePatchBody = RoutinePatchSchema
+export const WorkoutStartBody = WorkoutStartSchema
+export const WorkoutBody = WorkoutUpdateSchema
+export const BodyWeightBody = BodyInputSchema

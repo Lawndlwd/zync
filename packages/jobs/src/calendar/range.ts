@@ -1,12 +1,9 @@
-import path from 'node:path'
-
 import { Cron } from 'croner'
 
 import { AI_ASSIGNEE, firstColumn, listBoards, listCards } from '../boards/index.js'
 import { badRequest } from '../errors.js'
 import { addDays, addMinutes, asUtc, daysApart, defaultTimezone, isDate, localStamp } from '../helpers/dates.js'
 import { listJobs } from '../job-file.js'
-import { readRuns } from '../runs.js'
 import { listEvents } from './events.js'
 import { eventEnd, MAX_OCCURRENCES, occurrences } from './occurrences.js'
 import { CALENDAR_DIR, type CalendarItem, DEFAULT_MINUTES } from './types.js'
@@ -48,11 +45,9 @@ export async function calendarRange(wsPath: string, from: string, to: string): P
     }
   }
 
-  const cardTitles = new Map<string, string>()
   for (const board of await listBoards(wsPath)) {
     for (const c of await listCards(wsPath, board.path)) {
       const ref = `${board.path}/${c.file}`
-      cardTitles.set(ref, c.title)
       const base = { title: c.title, ref, board: board.path, file: c.file, assignee: c.assignee, ai: c.ai?.state }
       const status = c.status ?? firstColumn(board)
       if (c.due) {
@@ -85,66 +80,47 @@ export async function calendarRange(wsPath: string, from: string, to: string): P
   const toLocal = addDays(to, 1)
   for (const entry of await listJobs(wsPath)) {
     const job = entry.job
-    if (!job) continue
+    if (!job || job.card || !job.enabled) continue
     const tz = job.timezone || defaultTimezone()
-    if (!job.card && job.enabled) {
-      if (job.at) {
-        // A bare `at` is already local wall-clock time in the job's timezone.
-        const local = /(Z|[+-]\d{2}:\d{2})$/i.test(job.at) ? localStamp(new Date(job.at), tz) : job.at.slice(0, 16)
+    if (job.at) {
+      // A bare `at` is already local wall-clock time in the job's timezone.
+      const local = /(Z|[+-]\d{2}:\d{2})$/i.test(job.at) ? localStamp(new Date(job.at), tz) : job.at.slice(0, 16)
+      const end = addMinutes(local, JOB_MINUTES)
+      if (overlaps(local, end))
+        out.push({
+          id: `job:${job.name}`,
+          kind: 'job',
+          title: job.name,
+          start: local,
+          end,
+          allDay: false,
+          ref: job.name,
+          editable: true,
+        })
+    } else if (job.schedule) {
+      const cron = new Cron(job.schedule, { timezone: tz, paused: true })
+      let prev: Date = fromDate
+      for (let i = 0; i < MAX_OCCURRENCES; i++) {
+        const next = cron.nextRun(prev)
+        if (!next) break
+        const local = localStamp(next, tz)
+        if (local >= toLocal) break
+        prev = next
         const end = addMinutes(local, JOB_MINUTES)
-        if (overlaps(local, end))
-          out.push({
-            id: `job:${job.name}`,
-            kind: 'job',
-            title: job.name,
-            start: local,
-            end,
-            allDay: false,
-            ref: job.name,
-            editable: true,
-          })
-      } else if (job.schedule) {
-        const cron = new Cron(job.schedule, { timezone: tz, paused: true })
-        let prev: Date = fromDate
-        for (let i = 0; i < MAX_OCCURRENCES; i++) {
-          const next = cron.nextRun(prev)
-          if (!next) break
-          const local = localStamp(next, tz)
-          if (local >= toLocal) break
-          prev = next
-          const end = addMinutes(local, JOB_MINUTES)
-          if (!overlaps(local, end)) continue
-          out.push({
-            id: `job:${job.name}@${local}`,
-            kind: 'job',
-            title: job.name,
-            start: local,
-            end,
-            allDay: false,
-            ref: job.name,
-            recurring: true,
-            editable: false,
-          })
-        }
-        cron.stop()
+        if (!overlaps(local, end)) continue
+        out.push({
+          id: `job:${job.name}@${local}`,
+          kind: 'job',
+          title: job.name,
+          start: local,
+          end,
+          allDay: false,
+          ref: job.name,
+          recurring: true,
+          editable: false,
+        })
       }
-    }
-    for (const run of await readRuns(wsPath, entry.name, 1000)) {
-      const start = localStamp(new Date(run.ts), tz)
-      const end = addMinutes(start, Math.max(15, Math.round((run.durationMs ?? 0) / 60_000)))
-      if (!overlaps(start, end)) continue
-      out.push({
-        id: `run:${entry.name}@${run.ts}`,
-        kind: 'run',
-        title: job.card ? (cardTitles.get(job.card) ?? path.posix.basename(job.card, '.md')) : job.name,
-        start,
-        end,
-        allDay: false,
-        ref: entry.name,
-        ...(job.card ? { board: path.posix.dirname(job.card), file: path.posix.basename(job.card) } : {}),
-        status: run.status,
-        editable: false,
-      })
+      cron.stop()
     }
   }
 

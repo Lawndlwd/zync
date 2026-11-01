@@ -25,6 +25,8 @@ Use the `zync-jobs` MCP tools. Today is in the user's time zone; "since" default
    To look at one conversation in full, `list_chats` then `read_chat`.
 5. **Cards**: `list_calendar` from 7 days ago → tomorrow gives cards due (overdue ones are still in
    an open column); `list_boards` + `list_cards` if you need their columns.
+6. **Becoming**: `becoming_today` (skip when it has no rows): heavy or open day and why, each
+   identity's target (full or the 2-minute version) and free slot, who missed yesterday, the one card.
 
 Every call reports accounts it couldn't read under `failed`: list them, don't retry in a loop.
 
@@ -58,6 +60,13 @@ and `markdown`, in this shape (drop empty sections):
 - **Sara (Gmail · work)**: offer for the Q4 contract, wants a reply today · [open](link)
 - **#design (Slack)**: Tom asks which logo version to ship · [open](link)
 
+## Becoming today
+Heavy day: small versions (7 meetings, longest gap 25 min).
+- **07:10** Writer: one sentence, before standup.
+- **18:30** Runner: shoes on, walk out the door. Missed yesterday: never twice.
+- **From 19:00** Present at home: laptop closes.
+> “You get to write, not have to.” (from writer.md)
+
 ## Cards
 - Overdue: *Write the report* (Launch board, due Fri)
 - Due today: *Pay the invoice*
@@ -70,6 +79,11 @@ and `markdown`, in this shape (drop empty sections):
 
 Checked: Google Calendar ✓ · Gmail · work ✓ · Gmail · perso ✗ · Telegram ✓ 151 unread (3 chats) · Slack ✓ 2 mentions
 ```
+
+**Becoming today** comes right after *Meetings*, only when `becoming_today` has rows: the day mode
+and its reason in one line, one line per identity in slot order (time, name, today's target), the
+never-miss-twice line for a miss yesterday, and one short quote from the most relevant identity's
+*why* (`list_identities`). Encouraging, never a score.
 
 Always end with the **Checked** line: every connection from `list_connections` plus zync's calendar
 and boards, each ✓ (with "nothing unread" / "no meetings" when empty) or ✗ with the short reason.

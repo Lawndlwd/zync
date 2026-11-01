@@ -7,7 +7,7 @@ import { z } from 'zod'
 //   <root>/.zync/people/<id>.md           what the AI knows about a person (@me = the user, @ai = itself)
 //
 // A memory's file name is its title; the frontmatter holds `type`, `description` (the one line shown
-// in the index) and `pinned` (full text always in the prompt). The opencode plugin (opencode-plugin.ts)
+// in the index) and `pinned` (full text always in the prompt). The opencode plugin (opencode-plugin/server.ts)
 // puts the people notes, the pinned memories and an index of the rest into every chat's system prompt,
 // and gives the AI tools to read and write them. The Memory and People pages edit the same files.
 

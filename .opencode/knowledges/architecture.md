@@ -12,7 +12,7 @@ pnpm + turbo monorepo, Node 24, TypeScript 7, ESM everywhere.
   workspaces in `workspaces.ts` (`safeResolve`). Shared pure code in `helpers/` (`dates`, `files`,
   `names`, `paths`, `json`, `async`). Entry points stay at the root because Docker and
   `opencode/configure.mjs` load their `dist/` files: `scheduler.ts`, `mcp.ts` (tools in
-  `mcp/tools/*`), `opencode-plugin.ts`. Errors carry an HTTP status via `httpError` / `badRequest` /
+  `mcp/tools/*`), `opencode-plugin/server.ts` (v2 plugin API). Errors carry an HTTP status via `httpError` / `badRequest` /
   `notFound` / `conflict` (`errors.ts`). Frontmatter goes through `parseFrontmatter` /
   `stringifyFrontmatter` (never bare gray-matter).
 - `packages/api` — Express 5. Thin routes over `@zync/jobs`, one router per area

@@ -22,7 +22,7 @@ import { dayField, WHEN_RE, wallClockField } from '../helpers/dates.js'
 // All times are local wall-clock strings (no timezone), like card `due` / `runAt`.
 //
 // `calendarRange` merges events with everything else that has a time: cards (`due`, AI `runAt`),
-// scheduled jobs (one-shot and each cron occurrence) and past runs.
+// and scheduled jobs (one-shot and each cron occurrence).
 
 export const CALENDAR_DIR = 'Calendar'
 
@@ -76,7 +76,7 @@ export type EventPatch = {
   description?: string
 }
 
-export type CalendarKind = 'event' | 'card' | 'card-ai' | 'job' | 'run'
+export type CalendarKind = 'event' | 'card' | 'card-ai' | 'job'
 
 export type CalendarItem = {
   /** Stable key, e.g. "event:Calendar/Team sync.md" or "job:weekly@2026-09-28T09:00". */
@@ -88,14 +88,14 @@ export type CalendarItem = {
   /** Inclusive last day when all-day, else the end time. */
   end: string
   allDay: boolean
-  /** Workspace-relative file (events, cards) or the job name (jobs, runs). */
+  /** Workspace-relative file (events, cards) or the job name (jobs). */
   ref: string
   /** Cards: board folder and file name. */
   board?: string
   file?: string
   assignee?: string
   people?: string[]
-  /** Cards: column id. Runs: ok | failed | timeout | skipped. */
+  /** Cards: column id. */
   status?: string
   /** Card AI state (scheduled, running, done, failed). */
   ai?: string

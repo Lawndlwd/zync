@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { workspacesRoot } from '@zync/jobs'
+import { opencodeAuthHeader, OpencodeClient, workspacesRoot } from '@zync/jobs'
 
 import { createApp } from './app.js'
 import { authConfigFromEnv } from './auth/config.js'
@@ -17,6 +17,7 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const port = Number(process.env.PORT || 3001)
 const root = workspacesRoot()
 const opencodeUrl = process.env.OPENCODE_URL || 'http://127.0.0.1:4096'
+const opencodeAuth = opencodeAuthHeader()
 
 // Sign-in is always on. The only way around it is ZYNC_INSECURE_DEV=1, refused in production and
 // then only listening on this machine.
@@ -31,6 +32,8 @@ const connections = new Connections(connectionsFromEnv(process.env))
 const app = createApp({
   workspacesRoot: root,
   opencodeUrl,
+  ...(opencodeAuth ? { opencodeAuth } : {}),
+  opencodeClient: new OpencodeClient({ baseUrl: opencodeUrl }),
   webDist: process.env.WEB_DIST || path.resolve(here, '../../web/dist'),
   // Docker mounts opencode's config volume into the api container; dev uses scripts/dev-opencode.sh's file.
   opencodeConfigPath:
@@ -52,7 +55,7 @@ const server = app.listen(port, host, () => {
     )
   }
 })
-const upgrade = opencodeUpgrade(opencodeUrl, isAppPath)
+const upgrade = opencodeUpgrade(opencodeUrl, isAppPath, opencodeAuth)
 server.on('upgrade', auth ? guardUpgrade(auth, upgrade) : upgrade)
 
 // What the product's AI reads through its MCP tools (connected accounts), on its own port: the tunnel

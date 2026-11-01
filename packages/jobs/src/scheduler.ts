@@ -5,8 +5,10 @@ import { pathToFileURL } from 'node:url'
 import type { Cron } from 'croner'
 
 import { clearAllRunning, clearRunning, markRunning } from './active-runs.js'
+import { ActivityRecorder, BecomingDaily } from './becoming/index.js'
 import { applyCardRun, cardExists } from './boards/index.js'
 import { errorMessage } from './errors.js'
+import { localStamp } from './helpers/dates.js'
 import { buildCron, deleteJob, type Job, listJobs, readJob, TRIGGER_DIR, writeJob } from './job-file.js'
 import { buildPrompt } from './job-prompt.js'
 import { notify, sessionLink, shouldNotify } from './notify.js'
@@ -44,6 +46,8 @@ export class Scheduler {
   private running = new Map<string, Running>()
   private known = new Map<string, number>() // key → mtime of last processed job file
   private timers: NodeJS.Timeout[] = []
+  private recorder = new ActivityRecorder(log)
+  private becoming = new BecomingDaily(log)
   private unsubscribe?: () => void
   private readonly root: string
   private readonly scanMs: number
@@ -75,6 +79,7 @@ export class Scheduler {
     for (const t of this.timers) clearInterval(t)
     for (const r of this.registered.values()) r.cron.stop()
     this.registered.clear()
+    this.recorder.stop()
     this.unsubscribe?.()
   }
 
@@ -86,7 +91,10 @@ export class Scheduler {
   /** Sync registered crons with job files on disk and consume run-now triggers. */
   async scan(): Promise<void> {
     const seen = new Set<string>()
-    for (const ws of await listWorkspaces(this.root)) {
+    const workspaces = await listWorkspaces(this.root)
+    await this.recorder.sync(workspaces)
+    await this.becoming.tick(workspaces, localStamp())
+    for (const ws of workspaces) {
       for (const entry of await listJobs(ws.path)) {
         const key = `${ws.name}/${entry.name}`
         seen.add(key)
@@ -164,10 +172,10 @@ export class Scheduler {
     try {
       const title = `[job] ${name} · ${new Date(started).toISOString().slice(0, 16).replace('T', ' ')}`
       const agent = job.agent || process.env.JOB_DEFAULT_AGENT || 'job'
-      sessionId = await this.client.createSession(ws.path, title, agent)
+      sessionId = await this.client.createSession(ws.path, title, { agent, model: job.model })
       this.running.set(sessionId, { key, ws, job, sessionId, started, trigger })
       await markRunning(ws.path, name, { sessionId, started: new Date(started).toISOString(), trigger })
-      await this.client.promptAsync(sessionId, ws.path, buildPrompt(job, ws.path), { agent, model: job.model })
+      await this.client.promptAsync(sessionId, buildPrompt(job, ws.path))
       log(`started ${key} → session ${sessionId}`)
       if (job.card) await applyCardRun(ws.path, job.card, { type: 'started', sessionId })
     } catch (err) {
@@ -191,10 +199,10 @@ export class Scheduler {
   }
 
   private onEvent(e: OpencodeEvent): void {
-    const type = e.payload?.type
-    const sid = e.payload?.properties?.sessionID
+    const sid = e.sessionID
     if (!sid || !this.running.has(sid)) return
-    if (type === 'session.idle' || type === 'session.error') void this.complete(sid)
+    // succeeded, failed, interrupted…: complete() reads the outcome from the session itself.
+    if (e.type?.startsWith('session.execution.') && e.type !== 'session.execution.started') void this.complete(sid)
   }
 
   /** Fallback for missed events, plus timeout enforcement. */
@@ -215,11 +223,11 @@ export class Scheduler {
       let status: RunRecord['status']
       let summary: string
       if (timedOut) {
-        await this.client.abort(sessionId, r.ws.path)
+        await this.client.abort(sessionId)
         status = 'timeout'
         summary = `Aborted after ${Math.round(this.timeoutMs / 60_000)} min`
       } else {
-        const res = await this.client.sessionResult(sessionId, r.ws.path)
+        const res = await this.client.sessionResult(sessionId)
         if (!res.done) {
           r.finishing = false
           return

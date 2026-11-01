@@ -8,10 +8,12 @@ import { guard } from './auth/guard.js'
 import { pageCsp, securityHeaders } from './auth/headers.js'
 import { authRoutes } from './auth/routes.js'
 import type { Auth } from './auth/service.js'
+import { becomingRoutes } from './becoming-routes.js'
 import { boardsRoutes } from './boards-routes.js'
 import { WorkspaceBody } from './body.js'
 import { briefsRoutes } from './briefs-routes.js'
 import { calendarRoutes } from './calendar-routes.js'
+import { chatRoutes } from './chat-routes.js'
 import { connectionsRoutes } from './connections-routes.js'
 import type { Connections } from './connections/service.js'
 import { eventsHandler } from './events.js'
@@ -23,6 +25,7 @@ import { opencodeProxy } from './opencode-proxy.js'
 import { opencodeRoutes, type RestartTiming } from './opencode-routes.js'
 import { peopleRoutes } from './people-routes.js'
 import { appFallback } from './spa.js'
+import { trainingRoutes } from './training-routes.js'
 
 /** zync's own REST API. Namespaced so the root stays free for opencode's UI (see opencode-proxy). */
 const API = '/zync/api'
@@ -32,6 +35,8 @@ export type AppOptions = {
   webDist?: string
   /** Forward opencode's web UI and API through this app (internal URL, e.g. http://opencode:4096). */
   opencodeUrl?: string
+  /** opencode's Basic auth header, added to everything forwarded there (see opencode-proxy). */
+  opencodeAuth?: string
   /** The opencode config file editable from Settings. */
   opencodeConfigPath?: string
   opencodeClient?: OpencodeClient
@@ -82,6 +87,9 @@ export function createApp(opts: AppOptions) {
   app.use(`${API}/ws/:ws/boards`, boardsRoutes())
   app.use(`${API}/ws/:ws/calendar`, calendarRoutes())
   app.use(`${API}/ws/:ws/briefs`, briefsRoutes())
+  app.use(`${API}/ws/:ws/becoming`, becomingRoutes(opts.connections, opts.opencodeClient))
+  app.use(`${API}/ws/:ws/training`, trainingRoutes(opts.opencodeClient))
+  app.use(`${API}/ws/:ws/chat`, chatRoutes(opts.opencodeClient))
   if (opts.connections) app.use(`${API}/connections`, connectionsRoutes(opts.connections))
   app.use(`${API}/ws/:ws`, fsRoutes())
   app.use(`${API}/ws/:ws/jobs`, jobsRoutes())
@@ -97,7 +105,7 @@ export function createApp(opts: AppOptions) {
   })
 
   const web = opts.webDist && existsSync(opts.webDist) ? opts.webDist : null
-  const proxy = opts.opencodeUrl ? opencodeProxy(opts.opencodeUrl) : null
+  const proxy = opts.opencodeUrl ? opencodeProxy(opts.opencodeUrl, opts.opencodeAuth) : null
   if (web) app.use('/zync/assets', express.static(path.join(web, 'zync/assets'), { immutable: true, maxAge: '1y' }))
 
   const csp = auth && web ? pageCsp(path.join(web, 'index.html')) : undefined

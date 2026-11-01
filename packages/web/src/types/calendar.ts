@@ -1,7 +1,10 @@
 import type { Person } from './people'
 
-/** `external`: an event of a connected Google calendar (read-only, opens in Google). */
-type CalendarKind = 'event' | 'card' | 'card-ai' | 'job' | 'run' | 'external'
+/**
+ * `external`: an event of a connected Google calendar (read-only, opens in Google).
+ * `becoming`: where Zync placed an identity today (read-only, moves with the day).
+ */
+type CalendarKind = 'event' | 'card' | 'card-ai' | 'job' | 'external' | 'becoming'
 
 export type CalendarItem = {
   id: string
@@ -12,7 +15,7 @@ export type CalendarItem = {
   /** Inclusive last day when all-day, else the end time. */
   end: string
   allDay: boolean
-  /** Workspace-relative file (events, cards) or job name (jobs, runs). */
+  /** Workspace-relative file (events, cards) or job name (jobs). */
   ref: string
   board?: string
   file?: string
@@ -22,7 +25,14 @@ export type CalendarItem = {
   ai?: string
   recurring?: boolean
   editable: boolean
+  /** Becoming: the preferred time when the slot had to move ("18:00"). */
+  movedFrom?: string
+  /** The guard this item falls inside (its label), shown as a warning dot. */
+  warn?: string
 }
+
+/** A guard's window on one day of the grid, in minutes from midnight. */
+export type GuardBand = { day: string; from: number; to: number; label: string }
 
 export type Weekday = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat'
 
@@ -66,6 +76,8 @@ export type ViewProps = {
   onChange: (item: CalendarItem, start: string, end: string) => void
   onCreate: (start: string, end: string) => void
   onDay: (d: Date) => void
+  /** Guards to shade on the Week and Day grids. */
+  guards?: GuardBand[]
 }
 
 export type Selection =
@@ -88,6 +100,6 @@ export type NewKind = 'event' | 'card'
 /** An item's start/end while it is being dragged, or the range being drawn for a new one. */
 export type Preview = { id: string; start: string; end: string } | null
 
-export type CalendarFilter = 'events' | 'cards' | 'ai' | 'runs'
+export type CalendarFilter = 'events' | 'cards' | 'ai' | 'becoming'
 
 export type Every = Repeat['every']

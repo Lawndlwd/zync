@@ -6,8 +6,8 @@ const KIND_LABEL: Record<CalendarItem['kind'], string> = {
   card: 'Card',
   'card-ai': 'AI run',
   job: 'Job',
-  run: 'Run',
   external: 'Google',
+  becoming: 'Becoming · placed by Zync',
 }
 
 /** One item on the grid: a block (timed) or a bar (all-day). */
@@ -35,17 +35,18 @@ export function Block({
   onResize?: (e: React.PointerEvent) => void
   compact?: boolean
 }) {
-  const time = item.allDay ? '' : item.kind === 'run' ? hm(item.start) : `${hm(item.start)}–${hm(item.end)}`
+  const time = item.allDay ? '' : `${hm(item.start)}–${hm(item.end)}`
   const tip = [
     item.title,
     KIND_LABEL[item.kind],
     time,
+    item.movedFrom ? `moved from ${item.movedFrom}` : '',
+    item.warn ? `inside “${item.warn}”` : '',
     item.recurring
       ? item.kind === 'event'
         ? 'repeats — open it to change the series'
         : 'recurring — change its schedule on the Jobs page'
       : '',
-    item.kind === 'run' ? item.status : '',
   ]
     .filter(Boolean)
     .join(' · ')
@@ -54,7 +55,7 @@ export function Block({
       role="button"
       tabIndex={0}
       title={tip}
-      className={`cal-block k-${item.kind}${item.editable ? ' editable' : ''}${selected ? ' sel' : ''}${dragging ? ' dragging' : ''}${isDone(item) ? ' done' : ''}${item.kind === 'run' ? ` run-${item.status}` : ''}${item.recurring ? ' recurring' : ''} ${className}`}
+      className={`cal-block k-${item.kind}${item.editable ? ' editable' : ''}${selected ? ' sel' : ''}${dragging ? ' dragging' : ''}${isDone(item) ? ' done' : ''}${item.recurring ? ' recurring' : ''}${item.warn ? ' warn' : ''} ${className}`}
       style={{ ...(color ? { '--c': color } : {}), ...style }}
       onPointerDown={onPointerDown}
       onKeyDown={(e) => {
@@ -67,7 +68,6 @@ export function Block({
       <span className="cal-block-t trunc">
         {compact && time && <span className="cal-block-m mono-s">{item.start.slice(11, 16)} </span>}
         {item.kind === 'card-ai' || item.kind === 'job' ? '✦ ' : ''}
-        {item.kind === 'run' ? (item.status === 'ok' ? '✓ ' : item.status === 'skipped' ? '– ' : '✕ ') : ''}
         {item.title}
       </span>
       {!compact && time && <span className="cal-block-m mono-s">{time}</span>}

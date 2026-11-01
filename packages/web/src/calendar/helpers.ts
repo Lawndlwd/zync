@@ -79,7 +79,7 @@ const AI_COLOR = '#8b5cf6'
 
 /** The color an item wears: AI purple for the AI's work, else its person's color. */
 export function colorOf(item: CalendarItem, people: Person[]): string | undefined {
-  if (item.kind === 'job' || item.kind === 'card-ai' || item.kind === 'run') return AI_COLOR
+  if (item.kind === 'job' || item.kind === 'card-ai') return AI_COLOR
   const who = item.kind === 'event' ? item.people?.[0] : item.assignee
   return who ? people.find((p) => p.id === who)?.color : undefined
 }
@@ -153,8 +153,8 @@ export const filterOf = (i: CalendarItem): CalendarFilter =>
     ? 'events'
     : i.kind === 'card'
       ? 'cards'
-      : i.kind === 'run'
-        ? 'runs'
+      : i.kind === 'becoming'
+        ? 'becoming'
         : 'ai'
 
 export function selectionKey(s: Selection): string {

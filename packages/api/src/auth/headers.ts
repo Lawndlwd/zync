@@ -35,7 +35,7 @@ export function pageCsp(indexHtmlPath: string): string {
     `script-src 'self' ${hashes.join(' ')}`.trim(),
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://raw.githubusercontent.com",
     "media-src 'self' blob:",
     "connect-src 'self'",
     "frame-src 'self'",

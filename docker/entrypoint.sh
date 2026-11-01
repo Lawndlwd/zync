@@ -35,8 +35,9 @@ case "$role" in
     export ZYNC_MCP_PATH=/app/packages/jobs/dist/mcp.js ZYNC_SKILLS_DIR=/app/opencode/skills
     cd "${WORKSPACES_ROOT:-/workspace}"
     # Supervised so Settings → Restart AI server can restart it (see opencode/run.sh).
+    # opencode v2 takes lowercase levels only (info, debug…).
     exec /app/opencode/run.sh "$config" --hostname 0.0.0.0 --port 4096 --print-logs \
-      --log-level "${OPENCODE_LOG_LEVEL:-INFO}"
+      --log-level "$(printf %s "${OPENCODE_LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')"
     ;;
   *)
     exec "$@"

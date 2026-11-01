@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Suspense, useMemo, useState } from 'react'
 
 import { api } from '../api'
+import { GuardHint } from '../becoming/GuardHint'
 import { Button } from '../components/Button'
 import { DatePicker } from '../components/DatePicker'
 import { LazyMarkdownEditor } from '../components/LazyMarkdownEditor'
@@ -164,6 +165,11 @@ export function CardDocument({
               ariaLabel="due"
               value={v.due}
               onChange={(due) => set({ due: due ?? undefined }, { due })}
+            />
+            <GuardHint
+              ws={ws}
+              stamp={v.due?.includes('T') ? v.due : undefined}
+              onMove={(due) => set({ due }, { due })}
             />
             {v.due?.includes('T') && (
               <>

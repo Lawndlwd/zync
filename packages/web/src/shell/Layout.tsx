@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   NavigationType,
@@ -47,7 +46,6 @@ export function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [search] = useSearchParams()
-  const { data: config } = useQuery({ queryKey: ['config'], queryFn: api.config, staleTime: Infinity })
   const data = useWorkspaceData(ws)
   const [theme, setTheme] = useTheme()
   const narrow = useMediaQuery('(max-width: 820px)')
@@ -91,28 +89,39 @@ export function Layout() {
     setDrawer(false)
   }
 
-  const chatDir = config ? `${config.workspacesRoot.replace(/\/$/, '')}/${ws}` : null
+  // The chat runs on zync's own origin (which the api proxies to opencode v2).
+  const chatOrigin = window.location.origin
   // A ?session= link points this workspace's chat at that conversation.
-  const sessionFrame = chatDir && sessionParam ? chatUrlFor(chatDir, sessionParam) : null
+  const sessionFrame = sessionParam ? chatUrlFor(chatOrigin, sessionParam) : null
   if (sessionFrame && frames[ws] !== sessionFrame) setFrames((f) => ({ ...f, [ws]: sessionFrame }))
   const hasFrame = frames[ws] !== undefined
   useEffect(() => {
-    if (!chatDir || sessionParam || hasFrame) return
-    const dir = chatDir
-    // First time the chat opens for this workspace: resume the last conversation if it still exists.
+    if (sessionParam || hasFrame) return
+    // First time the chat opens for this workspace: resume the last conversation, or create one
+    // via zync's api (v2 has no URL for "a new chat in a folder").
     let cancelled = false
     const saved = lastChatSession(ws)
-    void (saved ? sessionExists(dir, saved) : Promise.resolve(false)).then((ok) => {
+    const open = async (): Promise<string | null> => {
+      if (saved && (await sessionExists(saved))) return chatUrlFor(chatOrigin, saved)
+      if (saved) rememberChatSession(ws, null)
+      try {
+        const { id } = await api.createChatSession(ws)
+        rememberChatSession(ws, id)
+        return chatUrlFor(chatOrigin, id)
+      } catch {
+        // Leave the frame unset rather than crash — the dock shows its empty state.
+        return null
+      }
+    }
+    void open().then((url) => {
       if (cancelled) return null
-      if (saved && !ok) rememberChatSession(ws, null)
-      const url = chatUrlFor(dir, ok && saved ? saved : undefined)
-      setFrames((f) => (f[ws] ? f : { ...f, [ws]: url }))
+      if (url) setFrames((f) => (f[ws] ? f : { ...f, [ws]: url }))
       return null
     })
     return () => {
       cancelled = true
     }
-  }, [chatDir, ws, sessionParam, hasFrame])
+  }, [chatOrigin, ws, sessionParam, hasFrame])
 
   const toggleFull = useCallback(() => {
     if (isChat) void navigate(lastPath)
@@ -121,14 +130,14 @@ export function Layout() {
 
   const openSession = useCallback(
     (sessionId: string) => {
-      if (!chatDir || window.innerWidth < 1024) {
+      if (window.innerWidth < 1024) {
         void navigate(sessionUrl(ws, sessionId))
         return
       }
-      setFrames((f) => ({ ...f, [ws]: chatUrlFor(chatDir, sessionId) }))
+      setFrames((f) => ({ ...f, [ws]: chatUrlFor(chatOrigin, sessionId) }))
       setSplitPref('split')
     },
-    [chatDir, navigate, setSplitPref, ws],
+    [chatOrigin, navigate, setSplitPref, ws],
   )
 
   const toggleDock = useCallback(() => {

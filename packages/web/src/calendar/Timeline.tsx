@@ -15,8 +15,8 @@ type Row = {
 }
 
 /**
- * Four weeks across, one row per kind of work: events, each board's cards, the AI's runs and jobs,
- * and what already ran. Drag a bar sideways to move it by days; drag an event's right edge to lengthen it.
+ * Four weeks across, one row per kind of work: events, each board's cards, the AI's runs and jobs.
+ * Drag a bar sideways to move it by days; drag an event's right edge to lengthen it.
  */
 export function Timeline({ items, people, days, selectedId, onOpen, onChange, onCreate, onDay }: ViewProps) {
   const head = useRef<HTMLDivElement>(null)
@@ -42,7 +42,6 @@ export function Timeline({ items, people, days, selectedId, onOpen, onChange, on
     })),
     { id: 'ai', label: 'AI & jobs', items: shown.filter((i) => i.kind === 'card-ai' || i.kind === 'job') },
   ]
-  const runs = shown.filter((i) => i.kind === 'run')
 
   const dragBar = (e: React.PointerEvent, item: CalendarItem, edge: 'move' | 'end') => {
     e.stopPropagation()
@@ -144,35 +143,6 @@ export function Timeline({ items, people, days, selectedId, onOpen, onChange, on
             </div>
           )
         })}
-
-        <div className="tl-row">
-          <span className="tl-label mono">
-            Past runs<span className="muted"> · {runs.length}</span>
-          </span>
-          <div className="tl-track tl-runs" style={cols}>
-            {keys.map((d, i) => {
-              const day = runs.filter((r) => r.start.slice(0, 10) === d)
-              return (
-                <div
-                  key={d}
-                  className={`tl-cell${d === today ? ' today' : ''}${days[i]?.getDay() === 1 ? ' monday' : ''}`}
-                >
-                  {day.slice(0, 6).map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      className={`tl-run run-${r.status}`}
-                      title={`${r.title} · ${r.start.slice(11, 16)} · ${r.status}`}
-                      aria-label={`${r.title} ${r.status}`}
-                      onClick={() => onOpen(r)}
-                    />
-                  ))}
-                  {day.length > 6 && <span className="mono-s muted">+{day.length - 6}</span>}
-                </div>
-              )
-            })}
-          </div>
-        </div>
       </div>
     </div>
   )

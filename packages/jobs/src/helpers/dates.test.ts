@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { addDays, addMinutes, daysApart, localStamp, mondayOf, WHEN_RE, wallClockField } from './dates.js'
+import { addDays, addMinutes, daysApart, instantOf, localStamp, mondayOf, WHEN_RE, wallClockField } from './dates.js'
 
 describe('wall-clock arithmetic', () => {
   it('adds minutes across midnight', () => {
@@ -28,6 +28,13 @@ describe('wall-clock arithmetic', () => {
 describe('localStamp', () => {
   it('formats a moment in a timezone', () => {
     expect(localStamp(new Date('2026-09-28T12:05:00Z'), 'Europe/Paris')).toBe('2026-09-28T14:05')
+  })
+})
+
+describe('instantOf', () => {
+  it('finds the moment of a local time, in summer and winter', () => {
+    expect(instantOf('2026-09-28T14:05', 'Europe/Paris').toISOString()).toBe('2026-09-28T12:05:00.000Z')
+    expect(instantOf('2026-12-28T14:05', 'Europe/Paris').toISOString()).toBe('2026-12-28T13:05:00.000Z')
   })
 })
 

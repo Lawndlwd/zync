@@ -11,6 +11,9 @@ x-common: &common
     TZ: ${TZ:-UTC}
     WORKSPACES_ROOT: /workspace
     OPENCODE_URL: http://opencode:4096
+    # opencode's server password (HTTP Basic, user "opencode"): opencode, the api and the scheduler
+    # share it. The browser never sees it: the api adds it to everything it forwards to opencode.
+    OPENCODE_PASSWORD: ${OPENCODE_PASSWORD:?set OPENCODE_PASSWORD to a long random string, e.g. openssl rand -hex 32}
     # The app's public address (used in notification links), e.g. https://zync.levende.net
     APP_URL: ${APP_URL:-}
   volumes:
@@ -76,7 +79,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      OPENCODE_LOG_LEVEL: ${OPENCODE_LOG_LEVEL:-INFO}
+      OPENCODE_LOG_LEVEL: ${OPENCODE_LOG_LEVEL:-info}
       # Forwarded to zync's MCP server (connected accounts, read through the api's internal port).
       ZYNC_INTERNAL_TOKEN: ${ZYNC_INTERNAL_TOKEN:-}
       ZYNC_API_INTERNAL_URL: http://api:3002

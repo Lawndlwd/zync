@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { dayLabel, pad2, ymd } from '../helpers/dates'
 import { clamp } from '../helpers/math'
 import { useNow } from '../hooks/useNow'
-import type { CalendarItem, Preview, ViewProps } from '../types/calendar'
+import type { CalendarItem, GuardBand, Preview, ViewProps } from '../types/calendar'
 import { Block } from './Block'
 import { dayAt, startDrag } from './drag'
 import {
@@ -27,8 +27,20 @@ import {
   snap,
 } from './helpers'
 
+const NO_GUARDS: GuardBand[] = []
+
 /** Week and Day: an all-day row, then 24 hours with blocks you can move, stretch and draw. */
-export function TimeGrid({ items, people, days, selectedId, onOpen, onChange, onCreate, onDay }: ViewProps) {
+export function TimeGrid({
+  items,
+  people,
+  days,
+  selectedId,
+  onOpen,
+  onChange,
+  onCreate,
+  onDay,
+  guards = NO_GUARDS,
+}: ViewProps) {
   const scroll = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
   const allDayRow = useRef<HTMLDivElement>(null)
@@ -233,6 +245,19 @@ export function TimeGrid({ items, people, days, selectedId, onOpen, onChange, on
               const ghost = preview?.id === 'new' && dayOf(preview.start) === d ? preview : null
               return (
                 <div key={d} data-day={d} className={`tg-col${d === today ? ' today' : ''}`}>
+                  {guards
+                    .filter((g) => g.day === d)
+                    .map((g) => (
+                      <div
+                        key={`${g.label}@${g.from}`}
+                        className="tg-guard hatch"
+                        style={{ top: g.from * PX_PER_MIN, height: (g.to - g.from) * PX_PER_MIN }}
+                        title={`Guard · ${g.label}`}
+                        aria-hidden="true"
+                      >
+                        <span className="mono-s">{g.label}</span>
+                      </div>
+                    ))}
                   {blocks.map(({ item, start, end, col, cols: n }) => (
                     <Block
                       key={item.id}
