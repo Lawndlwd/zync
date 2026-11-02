@@ -197,3 +197,59 @@ export function CalendarIcon() {
     </svg>
   )
 }
+
+/** Becoming: a half-filled circle (who you are, and who you're becoming). */
+export function IconBecoming({ size = 16, className, style }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      className={className}
+      style={style}
+      aria-hidden="true"
+    >
+      <circle cx="8" cy="8" r="5.8" />
+      <path d="M8 2.2a5.8 5.8 0 000 11.6z" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** Evidence Zync saw: a bolt, filled when seen, outlined while waiting. */
+export function IconBolt({ size = 11, filled = true }: IconProps & { filled?: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke={filled ? 'none' : 'currentColor'}
+      strokeWidth="1.4"
+      aria-hidden="true"
+    >
+      <path d="M9 1.5L3 9h4.5L7 14.5 13 7H8.5z" />
+    </svg>
+  )
+}
+
+export const IconShield = stroked(<path d="M8 1.8l5 2v4c0 3.2-2.2 5.3-5 6.4-2.8-1.1-5-3.2-5-6.4v-4z" />, 12, 1.4)
+export const IconMinusCircle = stroked(
+  <>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M5 8h6" />
+  </>,
+  10,
+  1.6,
+)
+export const IconTraining = stroked(<path d="M1.5 8h13M3.5 5.5v5M5.5 4v8M10.5 4v8M12.5 5.5v5" />, 16, 1.4)
+export const IconInfo = stroked(
+  <>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M8 7v4M8 5v.5" />
+  </>,
+  14,
+  1.4,
+)

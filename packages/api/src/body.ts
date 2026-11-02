@@ -1,4 +1,16 @@
-import { MEMORY_TYPES } from '@zync/jobs'
+import {
+  BodyInputSchema,
+  CustomExerciseInputSchema,
+  IdentityInputSchema,
+  IdentityPatchSchema,
+  MEMORY_TYPES,
+  RoutineInputSchema,
+  RoutinePatchSchema,
+  TrainingProfileInputSchema,
+  VOTE_KINDS,
+  WorkoutStartSchema,
+  WorkoutUpdateSchema,
+} from '@zync/jobs'
 import { z } from 'zod'
 
 import { LIBRARY_KINDS } from './opencode-library.js'
@@ -76,3 +88,37 @@ export const AuthenticationBody = z.object({
 
 /** The setup code (printed in the server log) or a recovery code. */
 export const CodeBody = z.object({ code: z.string().trim().min(1).max(64) })
+
+export const ConnectionPatchBody = z.object({ label: text })
+export const GoogleStartBody = z.object({ back: text })
+export const SlackBody = z.object({ token: trimmed.min(1, 'Paste the token'), label: text.optional() })
+export const TelegramStartBody = z.object({
+  apiId: z.coerce.number().int().positive('api_id is a number'),
+  apiHash: trimmed.min(1, 'api_hash is required'),
+  phone: trimmed.regex(/^\+?[\d\s-]{6,}$/, 'Phone number in the international form, e.g. +33 6 12 34 56 78'),
+})
+export const TelegramCodeBody = z.object({ login: text, code: trimmed.min(1) })
+export const TelegramPasswordBody = z.object({ login: text, password: text.min(1) })
+
+export const BriefCardBody = z.object({ board: text.min(1), status: text.optional() })
+export const BriefTodoPatchBody = z.object({ done: z.boolean() })
+
+export const IdentityBody = IdentityInputSchema
+export const IdentityPatchBody = IdentityPatchSchema
+export const VoteBody = z.object({
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  kind: z.enum(VOTE_KINDS),
+  source: z.enum(['tap', 'palette']).optional(),
+})
+export const MirrorAnswerBody = z.object({ answer: z.string().max(1000) })
+
+export const TrainingProfileBody = TrainingProfileInputSchema
+export const CustomExerciseBody = CustomExerciseInputSchema
+export const RoutineBody = RoutineInputSchema
+export const RoutinePatchBody = RoutinePatchSchema
+export const WorkoutStartBody = WorkoutStartSchema
+export const WorkoutBody = WorkoutUpdateSchema
+export const BodyWeightBody = BodyInputSchema

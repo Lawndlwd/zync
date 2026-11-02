@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Suspense, useMemo, useState } from 'react'
 
 import { api } from '../api'
+import { GuardHint } from '../becoming/GuardHint'
 import { Button } from '../components/Button'
-import { ButtonLink } from '../components/ButtonLink'
 import { DatePicker } from '../components/DatePicker'
 import { LazyMarkdownEditor } from '../components/LazyMarkdownEditor'
 import { PersonSelect } from '../components/PersonSelect'
@@ -13,11 +13,11 @@ import { TagInput } from '../components/TagInput'
 import { TitleInput } from '../components/TitleInput'
 import { statusOf } from '../helpers/boards'
 import { formatDateValue } from '../helpers/dates'
-import { sessionUrl } from '../helpers/urls'
 import { useContextSuggestions } from '../hooks/useContextSuggestions'
 import { useDebouncedSave } from '../hooks/useDebouncedSave'
 import { useExternalReload } from '../hooks/useExternalReload'
 import { IconChevDown, IconChevRight, IconSpark } from '../icons'
+import { useShell } from '../shell/ShellContext'
 import type { Board, Card, CardPatch, Draft } from '../types/boards'
 import type { Person } from '../types/people'
 import { durationOptions, emptyDraft } from './helpers'
@@ -85,6 +85,8 @@ export function CardDocument({
 
   const isAi = v.assignee === 'ai'
   const ai = card?.ai
+  const aiSession = ai?.sessionId
+  const shell = useShell()
   const running = ai?.state === 'running'
   const fileName = card?.file ?? (v.title.trim() ? `${v.title.trim()}.md` : 'Untitled.md')
   const propCount = [v.status, v.assignee, v.due, v.labels.length, isAi && v.runAt, isAi && v.context.length].filter(
@@ -163,6 +165,11 @@ export function CardDocument({
               ariaLabel="due"
               value={v.due}
               onChange={(due) => set({ due: due ?? undefined }, { due })}
+            />
+            <GuardHint
+              ws={ws}
+              stamp={v.due?.includes('T') ? v.due : undefined}
+              onMove={(due) => set({ due }, { due })}
             />
             {v.due?.includes('T') && (
               <>
@@ -247,10 +254,10 @@ export function CardDocument({
             >
               {running ? 'Running…' : '[▶] Run now'}
             </Button>
-            {ai?.sessionId && (
-              <ButtonLink size="sm" to={sessionUrl(ws, ai.sessionId)} className="btn-sage">
+            {aiSession && (
+              <Button size="sm" className="btn-sage" onClick={() => shell.openSession(aiSession)}>
                 {running ? 'Watch ↗' : 'Session ↗'}
-              </ButtonLink>
+              </Button>
             )}
           </div>
           {ai?.finishedAt && ai.summary && (

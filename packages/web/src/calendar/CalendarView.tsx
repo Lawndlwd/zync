@@ -10,17 +10,21 @@ import { PersonAvatar } from '../components/PersonAvatar'
 import { PillToggle } from '../components/PillToggle'
 import { Segmented } from '../components/Segmented'
 import { Select } from '../components/Select'
+import { becomingItems, guardBands, markGuarded } from '../helpers/becoming'
 import { ymd } from '../helpers/dates'
 import { isTyping } from '../helpers/dom'
 import { errorMessage } from '../helpers/format'
-import { wsUrl } from '../helpers/urls'
+import { identityUrl, wsUrl } from '../helpers/urls'
+import { useConnections } from '../hooks/useConnections'
 import { useHotkeys } from '../hooks/useHotkeys'
 import { usePeople } from '../hooks/usePeople'
 import { IconChevRight } from '../icons'
 import type { CardPatch } from '../types/boards'
 import type { CalendarFilter, CalendarItem, Selection, View } from '../types/calendar'
+import { DayBrief } from './DayBrief'
 import {
   DEFAULT_MINUTES,
+  externalItems,
   filterOf,
   minutesBetween,
   rangeLabel,
@@ -46,12 +50,12 @@ const FILTERS: Array<{ value: CalendarFilter; label: string }> = [
   { value: 'events', label: 'Events' },
   { value: 'cards', label: 'Cards' },
   { value: 'ai', label: 'AI & jobs' },
-  { value: 'runs', label: 'Past runs' },
+  { value: 'becoming', label: 'Becoming' },
 ]
 
 /**
  * Everything with a time in one place: events (pages in Calendar/), cards (due + duration, AI run
- * times), scheduled jobs and past runs. Drag to move, drag an edge to resize, drag on empty space to
+ * times) and scheduled jobs. Drag to move, drag an edge to resize, drag on empty space to
  * create. View, date and filters live in the URL so split panes and reloads keep them.
  */
 export function CalendarView() {
@@ -103,7 +107,36 @@ export function CalendarView() {
     placeholderData: (prev) => prev,
   })
 
-  const items = (data ?? []).filter(
+  // Connected Google calendars, read live: shown with zync's events, read-only.
+  const connections = useConnections()
+  const hasGoogle = !!connections.data?.connections.some((c) => c.provider === 'google')
+  const external = useQuery({
+    queryKey: ['external-events', ymd(from), ymd(to)],
+    queryFn: ({ signal }) => api.externalEvents(ymd(from), ymd(to), signal),
+    enabled: hasGoogle,
+    placeholderData: (prev) => prev,
+  })
+  // Days with a daily brief, marked on the month.
+  const briefs = useQuery({
+    queryKey: ['briefs', ws, ymd(from), ymd(to)],
+    queryFn: ({ signal }) => api.briefs(ws, ymd(from), ymd(to), signal),
+    enabled: view === 'month',
+  })
+  const briefDays = new Set(briefs.data?.map((b) => b.date))
+
+  // Becoming: where Zync placed each identity, and the guards it keeps free (not on the month).
+  const becoming = useQuery({
+    queryKey: ['becoming', ws, 'slots', ymd(from), ymd(to)],
+    queryFn: ({ signal }) => api.becomingSlots(ws, ymd(from), ymd(to), signal),
+    enabled: view !== 'month',
+    placeholderData: (prev) => prev,
+  })
+  const identities = becoming.data?.identities ?? []
+  const placed = view === 'month' ? [] : becomingItems(becoming.data?.slots ?? [], identities)
+  const guards = hidden.has('becoming') ? [] : guardBands(identities, days.map(ymd))
+
+  const all = [...(data ?? []), ...(hasGoogle ? externalItems(external.data?.items ?? []) : []), ...placed]
+  const items = markGuarded(all, identities).filter(
     (i) =>
       !hidden.has(filterOf(i)) &&
       (!who || i.assignee === who || i.people?.includes(who) || (who === 'ai' && filterOf(i) === 'ai')),
@@ -152,7 +185,9 @@ export function CalendarView() {
   }
 
   const open = (item: CalendarItem) => {
-    if (item.board && item.file) setSelection({ type: 'card', board: item.board, file: item.file })
+    if (item.kind === 'external') window.open(item.ref, '_blank', 'noopener,noreferrer')
+    else if (item.kind === 'becoming') void navigate(identityUrl(ws, item.ref))
+    else if (item.board && item.file) setSelection({ type: 'card', board: item.board, file: item.file })
     else if (item.kind === 'event' && item.file)
       setSelection({ type: 'event', file: item.file, date: item.recurring ? item.start.slice(0, 10) : undefined })
     else void navigate(wsUrl(ws, 'jobs'))
@@ -169,9 +204,7 @@ export function CalendarView() {
           <div className="row between g16 wrap">
             <div className="row g16" style={{ alignItems: 'baseline', minWidth: 0 }}>
               <h1 className="display cal-title">{rangeLabel(view, date, days)}</h1>
-              <span className="mono muted">
-                {data ? `${items.filter((i) => i.kind !== 'run').length} items` : isLoading ? 'Loading…' : ''}
-              </span>
+              <span className="mono muted">{data ? `${items.length} items` : isLoading ? 'Loading…' : ''}</span>
             </div>
             <div className="row g8 wrap">
               <Segmented label="View" value={view} options={VIEWS} onChange={(v) => go(v, date)} />
@@ -239,11 +272,20 @@ export function CalendarView() {
           {error ? (
             <p className="lede danger-t">{error.message}</p>
           ) : view === 'month' ? (
-            <MonthGrid {...shared} days={days} month={date.getMonth()} onDay={(d) => go('day', d)} />
+            <MonthGrid
+              {...shared}
+              days={days}
+              month={date.getMonth()}
+              briefDays={briefDays}
+              onDay={(d) => go('day', d)}
+            />
           ) : view === 'timeline' ? (
             <Timeline {...shared} days={days} onDay={(d) => go('day', d)} />
           ) : (
-            <TimeGrid {...shared} days={days} onDay={(d) => go('day', d)} />
+            <>
+              {view === 'day' && <DayBrief ws={ws} date={ymd(date)} />}
+              <TimeGrid {...shared} days={days} guards={guards} onDay={(d) => go('day', d)} />
+            </>
           )}
           <p className="mono-s muted cal-hint">
             Drag to move · drag the bottom edge to resize · drag on empty space to add · ←/→ · T today · M W D L views

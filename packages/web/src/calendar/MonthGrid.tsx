@@ -1,8 +1,6 @@
 import { useRef, useState } from 'react'
 
 import { WEEKDAYS_MONDAY_FIRST, ymd } from '../helpers/dates'
-import { plural } from '../helpers/format'
-import { isFailedRun } from '../helpers/runs'
 import { IconPlus } from '../icons'
 import type { CalendarItem, ViewProps } from '../types/calendar'
 import { Block } from './Block'
@@ -22,22 +20,18 @@ export function MonthGrid({
   onChange,
   onCreate,
   onDay,
-}: ViewProps & { month: number }) {
+  briefDays,
+}: ViewProps & { month: number; /** Days with a daily brief. */ briefDays?: Set<string> }) {
   const grid = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ id: string; delta: number } | null>(null)
   const today = ymd(new Date())
 
   const byDay = new Map<string, CalendarItem[]>()
-  const failed = new Map<string, number>()
   for (const raw of items) {
     const item =
       drag?.id === raw.id
         ? { ...raw, start: shiftDays(raw.start, drag.delta), end: shiftDays(raw.end, drag.delta) }
         : raw
-    if (item.kind === 'run') {
-      if (isFailedRun(item.status)) failed.set(item.start.slice(0, 10), (failed.get(item.start.slice(0, 10)) ?? 0) + 1)
-      continue
-    }
     for (const d of daysOf(item)) byDay.set(d, [...(byDay.get(d) ?? []), item])
   }
 
@@ -76,7 +70,6 @@ export function MonthGrid({
             (a, b) => Number(b.allDay) - Number(a.allDay) || a.start.localeCompare(b.start),
           )
           const more = list.length - MAX_CHIPS
-          const fails = failed.get(key)
           return (
             <div
               key={key}
@@ -90,11 +83,11 @@ export function MonthGrid({
                 <button type="button" className="mg-num" onClick={() => onDay(d)} title="Open this day">
                   {d.getDate()}
                 </button>
-                {fails ? (
-                  <span className="mono-s danger-t" title={plural(fails, 'failed run')}>
-                    ✕{fails}
-                  </span>
-                ) : null}
+                {briefDays?.has(key) && (
+                  <button type="button" className="mg-brief mono-s" onClick={() => onDay(d)} title="This day's brief">
+                    Brief
+                  </button>
+                )}
                 <button
                   type="button"
                   className="mg-add"

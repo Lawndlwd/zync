@@ -12,3 +12,4 @@ export const peopleNotesDir = (root = workspacesRoot()) => path.join(zyncDir(roo
 export const globalMemoryDir = (root = workspacesRoot()) => path.join(zyncDir(root), 'memory')
 export const workspaceMemoryDir = (wsPath: string) => path.join(zyncDir(wsPath), 'memory')
 export const treeOrderPath = (wsPath: string) => path.join(zyncDir(wsPath), 'order.json')
+export const activityPath = (wsPath: string) => path.join(zyncDir(wsPath), 'activity.jsonl')

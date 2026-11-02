@@ -71,7 +71,7 @@ export function JobsView() {
         )
       ) : null}
 
-      <RunHistory ws={ws} runs={data.runs} jobs={data.jobs} cards={data.cards} />
+      <RunHistory runs={data.runs} jobs={data.jobs} cards={data.cards} />
     </div>
   )
 }

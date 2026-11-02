@@ -3,7 +3,7 @@
   "workspaces": {
     ".": { "entry": ["opencode/configure.mjs"] },
     "packages/api": { "project": ["src/**/*.ts"] },
-    "packages/jobs": { "entry": ["src/scheduler.ts", "src/opencode-plugin.ts"], "project": ["src/**/*.ts"] },
+    "packages/jobs": { "entry": ["src/scheduler.ts", "src/opencode-plugin/server.ts"], "project": ["src/**/*.ts"] },
     "packages/web": { "project": ["src/**/*.{ts,tsx}"] }
   }
 }

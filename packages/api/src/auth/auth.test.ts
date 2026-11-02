@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 import { createApp } from '../app.js'
+import { Connections } from '../connections/service.js'
 import { authConfig } from './config.js'
 import { check } from './guard.js'
 import { Auth } from './service.js'
@@ -96,6 +97,23 @@ describe('the gate', () => {
   it('lets nothing through without a session', async () => {
     expect((await get('/zync/api/workspaces')).status).toBe(401)
     expect((await get('/some/opencode/path')).status).toBe(401)
+  })
+
+  it("lets Google's sign-in come back without a session, but only with a state the app issued", async () => {
+    const connections = new Connections({
+      dir: path.join(dir, 'connections'),
+      google: { clientId: 'id', clientSecret: 's', redirectUri: `${ORIGIN}/zync/api/connections/google/callback` },
+    })
+    app = createApp({ workspacesRoot: dir, auth, connections })
+    const cross = (url: string) =>
+      get(url).set('Sec-Fetch-Site', 'cross-site').set('Sec-Fetch-Mode', 'navigate').set('Sec-Fetch-Dest', 'document')
+    // Anything else about connections still needs a session.
+    expect((await get('/zync/api/connections')).status).toBe(401)
+    expect((await cross('/zync/api/connections/google/callback?state=forged&code=x')).status).toBe(400)
+    const state = new URL(connections.googleStart('/w/notes/settings')).searchParams.get('state') ?? ''
+    const res = await cross(`/zync/api/connections/google/callback?state=${state}&error=access_denied`)
+    expect(res.status).toBe(302)
+    expect(res.headers.location).toBe('/w/notes/settings?connectError=Google+access+was+refused')
   })
 
   it('sends a page visit to the sign-in page, and back afterwards', async () => {

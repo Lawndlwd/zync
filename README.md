@@ -98,6 +98,36 @@ Provider logins done in the chat UI persist in the `opencode-data` volume.
 > never sees it. Lost every passkey and every recovery code? Stop the stack, delete that volume's
 > `auth.json`, start again: a new setup code is printed.
 
+## Connections and the daily brief
+
+Settings → Connections links outside accounts, **read-only**: several Google accounts (Gmail and
+Calendar), Slack workspaces and your Telegram account. Nothing is copied into a workspace: the
+calendar shows Google events live, and the AI reads through zync's MCP tools (`search_mail`,
+`external_events`, `unread_messages`…), which have no way to send, reply or mark as read.
+
+The daily brief (Calendar or Overview → *Turn on daily brief*) is a job, `daily-brief`, at 07:00: the
+AI reads all of it and writes `Briefs/<date>.md`, a short page with suggested to-dos you turn into
+cards with one click. Change its time or pause it on the Jobs page.
+
+- **Google**: Google Cloud → create a project → enable the *Gmail API* and *Google Calendar API* →
+  OAuth consent screen (External, add yourself as a test user) → Credentials → *OAuth client ID*,
+  type *Web application*, redirect URI `APP_URL/zync/api/connections/google/callback`. Set
+  `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. Then **publish** the consent screen (*In production*):
+  in *Testing*, Google expires the connection every 7 days. Unverified is fine for your own
+  accounts (click through the warning once).
+- **Slack**: api.slack.com/apps → *Create app* → OAuth & Permissions → **User** token scopes
+  `im:read im:history mpim:read mpim:history search:read users:read` → install to your workspace
+  → paste the *User OAuth Token* (`xoxp-…`) in Settings.
+- **Telegram**: my.telegram.org → *API development tools* → create an app → `api_id` and
+  `api_hash`; Settings asks for them, your phone number, the code Telegram sends, and your 2FA
+  password if you have one. The session can be ended from Telegram → Settings → Devices.
+- `ZYNC_INTERNAL_TOKEN` (any long random string) lets the AI read them; without it only the web app
+  can.
+
+Secrets live in the `zync-connections` volume, mounted only in the api container. The AI's tools ask
+the api on its internal port (3002, not reachable through the tunnel) and never see a token. What the
+brief contains does go to the AI model you configured.
+
 ## Local
 
 ```sh

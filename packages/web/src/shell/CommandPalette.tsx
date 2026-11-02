@@ -2,20 +2,28 @@ import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useRef, useState } from 'react'
 
 import { api } from '../api'
-import { ago } from '../helpers/dates'
+import { VoteCircle } from '../becoming/VoteCircle'
+import { identityName } from '../helpers/becoming'
+import { ago, ymd } from '../helpers/dates'
 import { dirname } from '../helpers/paths'
 import { highlight, matchesAll, queryWords } from '../helpers/textMatch'
-import { boardUrl, fileUrl, wsUrl } from '../helpers/urls'
+import { boardUrl, fileUrl, identityUrl, trainingUrl, workoutUrl, wsUrl } from '../helpers/urls'
+import { useBecomingToday } from '../hooks/useBecomingToday'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { useNow } from '../hooks/useNow'
 import { useOpenGuide } from '../hooks/useOpenGuide'
+import { useRoutines } from '../hooks/useRoutines'
 import { useScrollActiveIntoView } from '../hooks/useScrollActiveIntoView'
-import { IconBoard, IconClock, IconFile, IconPlus, IconSearch, IconSpark, IconSplit } from '../icons'
+import { useStartWorkout } from '../hooks/useStartWorkout'
+import { useTrainingToday } from '../hooks/useTrainingToday'
+import { useVote } from '../hooks/useVote'
+import { IconBoard, IconClock, IconFile, IconPlus, IconSearch, IconSpark, IconSplit, IconTraining } from '../icons'
 import type { WorkspaceData } from '../types/workspace'
 import { useShell } from './ShellContext'
 
 type Item = {
   id: string
-  group: 'Pages & cards' | 'In files' | 'Jobs' | 'Actions'
+  group: 'Pages & cards' | 'In files' | 'Becoming' | 'Training' | 'Jobs' | 'Actions'
   icon: ReactNode
   text: ReactNode
   meta?: ReactNode
@@ -45,6 +53,12 @@ export function CommandPalette({ data, onClose }: { data: WorkspaceData; onClose
     placeholderData: (prev) => prev,
   })
   const hits = debounced.length >= 2 ? (inFiles.data?.results ?? []) : []
+  const now = useNow(60_000)
+  const becoming = useBecomingToday(ws, ymd(now))
+  const vote = useVote(ws)
+  const training = useTrainingToday(ws)
+  const routines = useRoutines(ws)
+  const starter = useStartWorkout(ws)
 
   const go = (to: string) => () => {
     onClose()
@@ -107,6 +121,70 @@ export function CommandPalette({ data, onClose }: { data: WorkspaceData; onClose
         ...place(isCard ? `${boardUrl(ws, dir)}?card=${encodeURIComponent(h.name)}` : fileUrl(ws, h.path)),
       })
     }
+    // Becoming: "vote run" → vote for the runner without leaving the page.
+    const voteWords = words.filter((w) => w !== 'vote')
+    for (const r of becoming.data?.rows ?? []) {
+      const name = identityName(r.identity.statement)
+      const asked =
+        query.length > 0 && (voteWords.length === 0 || matchesAll(`${r.identity.statement} ${name}`, voteWords))
+      if (!asked) continue
+      if (!r.vote)
+        for (const kind of ['full', 'small'] as const)
+          out.push({
+            id: `vote:${r.identity.file}:${kind}`,
+            group: 'Becoming',
+            icon: <VoteCircle vote={{ kind, source: 'palette' }} size={14} />,
+            text: `Vote: ${name} · ${kind}`,
+            meta:
+              kind === 'small' && r.identity.small ? (
+                <span className="mono-s muted">{r.identity.small.toLowerCase()}</span>
+              ) : undefined,
+            run: () => {
+              onClose()
+              void vote(r.identity.file, kind, 'palette')
+            },
+          })
+      out.push({
+        id: `identity:${r.identity.file}`,
+        group: 'Becoming',
+        icon: <IconFile size={14} />,
+        text: `Open ${r.identity.file}`,
+        ...place(identityUrl(ws, r.identity.file)),
+      })
+    }
+    // Training: resume the workout in progress, start a routine, open the setup.
+    const active = training.data?.active
+    if (active && m(`resume workout training ${active.name}`))
+      out.push({
+        id: 'training:resume',
+        group: 'Training',
+        icon: <IconTraining size={14} />,
+        text: `Resume workout · ${active.name}`,
+        ...place(workoutUrl(ws, active.file)),
+      })
+    if (!active && query.length > 0)
+      for (const r of routines.data ?? []) {
+        if (!matchesAll(`start ${r.name} workout training`, words)) continue
+        out.push({
+          id: `training:start:${r.file}`,
+          group: 'Training',
+          icon: <IconTraining size={14} />,
+          text: <>Start {hl(r.name)}</>,
+          meta: training.data?.planned?.file === r.file ? <span className="mono-s muted">today</span> : undefined,
+          run: () => {
+            onClose()
+            void starter.start(r.file)
+          },
+        })
+      }
+    if (query.length > 0 && m('training setup profile goal equipment'))
+      out.push({
+        id: 'training:setup',
+        group: 'Training',
+        icon: <IconTraining size={14} />,
+        text: 'Training setup',
+        ...place(trainingUrl(ws, 'setup')),
+      })
     for (const j of data.jobs) {
       if (j.job?.card || !m(j.name)) continue
       out.push({
@@ -183,7 +261,7 @@ export function CommandPalette({ data, onClose }: { data: WorkspaceData; onClose
 
   useScrollActiveIntoView(listRef, sel)
 
-  const groups: Array<Item['group']> = ['Pages & cards', 'In files', 'Jobs', 'Actions']
+  const groups: Array<Item['group']> = ['Pages & cards', 'In files', 'Becoming', 'Training', 'Jobs', 'Actions']
   let idx = -1
 
   return (

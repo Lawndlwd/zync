@@ -1,6 +1,7 @@
 import { addDays, MONTHS, MONTHS_SHORT, pad2, startOfDay, startOfWeek, ymd } from '../helpers/dates'
 import { clamp } from '../helpers/math'
 import type { CalendarFilter, CalendarItem, Selection, View } from '../types/calendar'
+import type { ExternalEvent } from '../types/connections'
 import type { Person } from '../types/people'
 
 // Calendar times are local wall-clock strings, exactly as stored in the files:
@@ -78,7 +79,7 @@ const AI_COLOR = '#8b5cf6'
 
 /** The color an item wears: AI purple for the AI's work, else its person's color. */
 export function colorOf(item: CalendarItem, people: Person[]): string | undefined {
-  if (item.kind === 'job' || item.kind === 'card-ai' || item.kind === 'run') return AI_COLOR
+  if (item.kind === 'job' || item.kind === 'card-ai') return AI_COLOR
   const who = item.kind === 'event' ? item.people?.[0] : item.assignee
   return who ? people.find((p) => p.id === who)?.color : undefined
 }
@@ -148,7 +149,13 @@ export const snap = (m: number) => Math.round(m / SNAP) * SNAP
 export const clampMin = (m: number) => clamp(m, 0, 24 * 60)
 
 export const filterOf = (i: CalendarItem): CalendarFilter =>
-  i.kind === 'event' ? 'events' : i.kind === 'card' ? 'cards' : i.kind === 'run' ? 'runs' : 'ai'
+  i.kind === 'event' || i.kind === 'external'
+    ? 'events'
+    : i.kind === 'card'
+      ? 'cards'
+      : i.kind === 'becoming'
+        ? 'becoming'
+        : 'ai'
 
 export function selectionKey(s: Selection): string {
   if (s.type === 'card') return `card:${s.board}/${s.file}`
@@ -162,3 +169,16 @@ export function selectionId(s: Selection | null): string | undefined {
   if (s.type === 'event') return `Calendar/${s.file}`
   return undefined
 }
+
+/** Events of connected Google calendars, shown like zync's own but read-only (`ref` is their link). */
+export const externalItems = (events: ExternalEvent[]): CalendarItem[] =>
+  events.map((e) => ({
+    id: `external:${e.connection}:${e.id}`,
+    kind: 'external',
+    title: e.title,
+    start: e.start,
+    end: e.end,
+    allDay: e.allDay,
+    ref: e.link,
+    editable: false,
+  }))

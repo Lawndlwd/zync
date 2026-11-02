@@ -26,4 +26,6 @@ export type JobRow = {
   }
   nextRuns: string[]
   lastRun: RunRecord | null
+  /** The run in progress, with the AI session to watch. */
+  running: { sessionId: string; started: string; trigger: 'schedule' | 'manual' } | null
 }

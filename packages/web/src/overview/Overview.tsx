@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router'
 
 import { Chip } from '../components/Chip'
 import { dueThisWeek, reviewCards } from '../helpers/boards'
-import { dateTimeLabel, sameDay, startOfDay, startOfWeek } from '../helpers/dates'
+import { dateTimeLabel, sameDay, startOfDay, startOfWeek, ymd } from '../helpers/dates'
 import { isTyping } from '../helpers/dom'
 import { plural } from '../helpers/format'
 import { isFailedRun } from '../helpers/runs'
@@ -14,6 +14,7 @@ import { useWorkspaceData } from '../hooks/useWorkspaceData'
 import { GettingStarted } from '../onboarding/GettingStarted'
 import { useShell } from '../shell/ShellContext'
 import type { Range } from '../types/overview'
+import { BecomingTile } from './BecomingTile'
 import { MyCards } from './MyCards'
 import { QuickAccess } from './QuickAccess'
 import { RangeButton } from './RangeButton'
@@ -22,6 +23,7 @@ import { RecentlyEdited } from './RecentlyEdited'
 import { RunResults } from './RunResults'
 import { RunsThisWeek } from './RunsThisWeek'
 import { Schedule } from './Schedule'
+import { TodayBrief } from './TodayBrief'
 import { Workload } from './Workload'
 
 export function Overview() {
@@ -108,6 +110,8 @@ export function Overview() {
       </div>
 
       <GettingStarted ws={ws} data={data} />
+      <BecomingTile ws={ws} date={ymd(now)} />
+      <TodayBrief ws={ws} />
 
       <div className="ov-grid">
         <QuickAccess quick={quick} />

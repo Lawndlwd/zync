@@ -71,7 +71,7 @@ describe('events', () => {
 })
 
 describe('calendarRange', () => {
-  it('merges events, cards, AI runs, jobs and past runs in the range', async () => {
+  it('merges events, cards, AI runs and jobs in the range, not past runs', async () => {
     await createEvent(ws, { title: 'Offsite', start: '2026-09-28', end: '2026-09-30' })
     await createEvent(ws, { title: 'Next month', start: '2026-10-20T09:00' })
     await createBoard(ws, { name: 'Sprint' })
@@ -98,7 +98,7 @@ describe('calendarRange', () => {
     expect(daily).toHaveLength(7)
     expect(daily.every((i) => i.recurring && !i.editable && i.start.endsWith('T09:00'))).toBe(true)
     expect(byKind('job').find((i) => i.ref === 'once')).toMatchObject({ start: '2026-10-01T12:00', editable: true })
-    expect(byKind('run')).toMatchObject([{ ref: 'daily', status: 'ok' }])
+    expect(items.some((i) => i.id.startsWith('run:'))).toBe(false)
     // The card's linked AI job is shown as the card, not as a job.
     expect(byKind('job').some((i) => i.ref.startsWith('card-'))).toBe(false)
   })

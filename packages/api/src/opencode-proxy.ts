@@ -6,24 +6,30 @@ import type { Request, Response } from 'express'
 // opencode's web UI served through the app's own domain, so opencode never needs a public address.
 // opencode has no base-path option, so it keeps the root: zync lives under /zync/*, "/" and /w/*,
 // and everything else is forwarded here (HTTP, event streams and websocket upgrades).
+// opencode wants HTTP Basic auth; the proxy adds it, so the browser never holds opencode's password
+// and only zync's own sign-in (auth/guard) stands in front.
 
 const HOP = ['connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'te', 'trailer']
 
-function forwardHeaders(req: IncomingMessage, target: URL): http.OutgoingHttpHeaders {
+function forwardHeaders(req: IncomingMessage, target: URL, auth?: string): http.OutgoingHttpHeaders {
   const headers: http.OutgoingHttpHeaders = { ...req.headers, host: target.host }
   for (const h of HOP) delete headers[h]
   // The browser talks to the app's origin; opencode would treat that Origin as a foreign site.
   delete headers.origin
+  delete headers.authorization
+  if (auth) headers.authorization = auth
   return headers
 }
 
-export function opencodeProxy(targetUrl: string) {
+export function opencodeProxy(targetUrl: string, auth?: string) {
   const target = new URL(targetUrl)
   return (req: Request, res: Response) => {
     const url = new URL(req.originalUrl, target)
-    const upstream = http.request(url, { method: req.method, headers: forwardHeaders(req, target) }, (up) => {
+    const upstream = http.request(url, { method: req.method, headers: forwardHeaders(req, target, auth) }, (up) => {
       const headers = { ...up.headers }
       for (const h of HOP) delete headers[h]
+      // A refusal must not open the browser's own password box.
+      delete headers['www-authenticate']
       res.writeHead(up.statusCode ?? 502, headers)
       // Event streams must reach the browser as they arrive.
       if (up.headers['content-type']?.includes('text/event-stream')) res.flushHeaders()
@@ -39,7 +45,7 @@ export function opencodeProxy(targetUrl: string) {
 }
 
 /** Websocket upgrades (opencode's terminal) for everything outside the app's own paths. */
-export function opencodeUpgrade(targetUrl: string, isAppPath: (path: string) => boolean) {
+export function opencodeUpgrade(targetUrl: string, isAppPath: (path: string) => boolean, auth?: string) {
   const target = new URL(targetUrl)
   return (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     if (isAppPath(req.url ?? '/')) {
@@ -48,6 +54,8 @@ export function opencodeUpgrade(targetUrl: string, isAppPath: (path: string) => 
     }
     const headers = { ...req.headers, host: target.host }
     delete headers.origin
+    delete headers.authorization
+    if (auth) headers.authorization = auth
     const upstream = http.request(new URL(req.url ?? '/', target), { method: req.method, headers })
     upstream.on('upgrade', (res, upSocket, upHead) => {
       const lines = [`HTTP/1.1 ${res.statusCode} ${res.statusMessage}`]

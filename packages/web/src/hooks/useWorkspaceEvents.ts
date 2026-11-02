@@ -29,6 +29,12 @@ export function useWorkspaceEvents(ws: string) {
         // Events, cards and jobs (and their runs) all show on the calendar.
         if (p.endsWith('.md') || p.startsWith('.opencode/jobs/'))
           void qc.invalidateQueries({ queryKey: ['calendar', ws] })
+        if (p.startsWith('Briefs/')) void qc.invalidateQueries({ queryKey: ['briefs', ws] })
+        // Training: profile, routines, workouts, custom exercises and the body-weight log.
+        if (p.startsWith('Training/')) void qc.invalidateQueries({ queryKey: ['training', ws] })
+        // Becoming reads identity pages, their votes, the activity log and the calendar.
+        if (p.endsWith('.md') || p.startsWith('Becoming/') || p === '.zync/activity.jsonl')
+          void qc.invalidateQueries({ queryKey: ['becoming', ws] })
       }
       if (visible) void qc.invalidateQueries({ queryKey: ['recent', ws] })
       pending.clear()

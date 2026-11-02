@@ -6,6 +6,7 @@ import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createApp } from './app.js'
+import { Connections } from './connections/service.js'
 
 let root: string
 let app: ReturnType<typeof createApp>
@@ -289,6 +290,66 @@ describe('calendar', () => {
     const r = await request(app).patch('/zync/api/ws/alpha/jobs/once').send({ at: '2026-10-02T08:30' }).expect(200)
     expect(r.body.at).toBe('2026-10-02T08:30')
     await request(app).patch('/zync/api/ws/alpha/jobs/daily').send({ at: '2026-10-02T08:30' }).expect(400)
+  })
+})
+
+describe('briefs', () => {
+  it('lists and reads a day, and turns a to-do into a card once', async () => {
+    await mkdir(path.join(root, 'alpha/Briefs'), { recursive: true })
+    await writeFile(
+      path.join(root, 'alpha/Briefs/2026-09-28.md'),
+      '---\ntodos:\n  - title: Reply to Sara\n    source: Gmail · work\n    link: https://mail.google.com/x\n---\n## Mail\n',
+    )
+    await request(app).post('/zync/api/ws/alpha/boards').send({ name: 'Work' }).expect(201)
+    const b = '/zync/api/ws/alpha/briefs'
+    expect((await request(app).get(`${b}?from=2026-09-01&to=2026-09-30`).expect(200)).body).toEqual([
+      { date: '2026-09-28', todos: 1, open: 1 },
+    ])
+    expect((await request(app).get(`${b}/2026-09-28`).expect(200)).body.todos[0].title).toBe('Reply to Sara')
+    await request(app).get(`${b}/2026-09-29`).expect(404)
+
+    const made = (await request(app).post(`${b}/2026-09-28/todos/0/card`).send({ board: 'Work' }).expect(201)).body
+    expect(made.card).toBe('Work/Reply to Sara.md')
+    expect(made.brief.todos[0].card).toBe('Work/Reply to Sara.md')
+    const card = await readFile(path.join(root, 'alpha/Work/Reply to Sara.md'), 'utf8')
+    expect(card).toMatch(/due: '?2026-09-28/)
+    expect(card).toContain('[Open](https://mail.google.com/x)')
+    await request(app).post(`${b}/2026-09-28/todos/0/card`).send({ board: 'Work' }).expect(409)
+    await request(app).post(`${b}/2026-09-28/todos/7/card`).send({ board: 'Work' }).expect(404)
+    await request(app).post(`${b}/2026-09-28/todos/0/card`).send({}).expect(400)
+  })
+
+  it('sets up the daily-brief job', async () => {
+    await request(app).post('/zync/api/ws/alpha/briefs/job').expect(201)
+    expect((await request(app).get('/zync/api/ws/alpha/jobs').expect(200)).body.map((j: any) => j.name)).toContain(
+      'daily-brief',
+    )
+    await request(app).post('/zync/api/ws/alpha/briefs/job').expect(409)
+  })
+})
+
+describe('connections', () => {
+  it('lists, validates logins and removes', async () => {
+    const connections = new Connections({ dir: path.join(root, '.connections') })
+    app = createApp({ workspacesRoot: root, connections })
+    expect((await request(app).get('/zync/api/connections').expect(200)).body).toEqual({
+      connections: [],
+      available: { google: false, slack: true, telegram: true },
+    })
+    await request(app).post('/zync/api/connections/google').send({ back: '/w/alpha/settings' }).expect(503)
+    await request(app).post('/zync/api/connections/slack').send({ token: 'not-a-user-token' }).expect(400)
+    await request(app)
+      .post('/zync/api/connections/telegram/start')
+      .send({ apiId: 'x', apiHash: '', phone: '1' })
+      .expect(400)
+    await request(app).post('/zync/api/connections/telegram/code').send({ login: 'gone', code: '12345' }).expect(410)
+    await request(app).delete('/zync/api/connections/nope').expect(404)
+    expect(
+      (await request(app).get('/zync/api/connections/events?from=2026-09-28&to=2026-09-29').expect(200)).body,
+    ).toEqual({
+      items: [],
+      failed: [],
+    })
   })
 })
 

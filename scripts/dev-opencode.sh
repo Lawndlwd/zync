@@ -15,6 +15,14 @@ if [ -f .env ]; then
   set +a
 fi
 
+# opencode v2 always asks for a password (HTTP Basic, user "opencode"); without one it makes up a new
+# one each start and the app and scheduler are refused. They read the same value from .env.
+if [ -z "${OPENCODE_PASSWORD:-}" ]; then
+  echo "OPENCODE_PASSWORD is not set: add OPENCODE_PASSWORD=\$(openssl rand -hex 32) to .env" >&2
+  exit 1
+fi
+export OPENCODE_PASSWORD
+
 export XDG_CONFIG_HOME="$PWD/data/opencode/config"
 # The server runs inside this repo (data/workspaces): without this it would walk up and load the
 # repo's own coding rules (AGENTS.md, CLAUDE.md, .opencode/) into the product's AI. Docker has no

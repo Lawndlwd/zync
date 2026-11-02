@@ -7,13 +7,44 @@ import type {
 
 import { encodePath } from './helpers/paths'
 import type { AuthSession, AuthStatus, Passkey } from './types/auth'
+import type {
+  BecomingSlots,
+  BecomingToday,
+  BecomingWeek,
+  Identity,
+  IdentityInput,
+  IdentityPatch,
+  Mirror,
+  VoteKind,
+} from './types/becoming'
 import type { Board, Card, CardPatch, Column } from './types/boards'
+import type { Brief, BriefSummary } from './types/briefs'
 import type { CalendarEvent, CalendarItem, EventPatch } from './types/calendar'
+import type { Connection, ConnectionList, ExternalEvent, Gathered } from './types/connections'
 import type { FileData, SearchResult, TreeEntry } from './types/files'
 import type { JobRow, RunRecord } from './types/jobs'
 import type { Memory, MemoryPatch, MemoryScope } from './types/memory'
 import type { LibraryItem, LibraryKind, OpencodeHealth } from './types/opencode'
 import type { Person } from './types/people'
+import type {
+  Exercise,
+  ExerciseDetail,
+  ExerciseInput,
+  ExercisePage,
+  ExerciseQuery,
+  FinishResult,
+  ProfileInput,
+  ProgressRange,
+  Routine,
+  RoutineInput,
+  RoutinePatch,
+  TrainingProfile,
+  TrainingProgress,
+  TrainingToday,
+  Workout,
+  WorkoutSummary,
+  WorkoutUpdate,
+} from './types/training'
 import type { AppConfig, Workspace } from './types/workspace'
 
 /** A non-2xx answer from the API: `status`, and the JSON body (e.g. a 409's current mtime). */
@@ -34,6 +65,7 @@ const errorText = (body: unknown): string | undefined =>
     : undefined
 
 const AUTH = '/zync/api/auth'
+const CONN = '/zync/api/connections'
 
 /** Signed out (or the session ended): go to the sign-in page, then come back here. */
 function signInAgain() {
@@ -60,6 +92,7 @@ const json = (method: string, body: unknown): RequestInit => ({
 })
 
 const ws = (name: string) => `/zync/api/ws/${encodeURIComponent(name)}`
+const training = (w: string) => `${ws(w)}/training`
 const memoryBase = (scope: MemoryScope, w: string) => (scope === 'global' ? '/zync/api/memory' : `${ws(w)}/memory`)
 
 export const api = {
@@ -107,6 +140,8 @@ export const api = {
   mkdir: (w: string, path: string) => req<{ path: string }>(`${ws(w)}/folder`, json('POST', { path })),
   move: (w: string, from: string, to: string) =>
     req<{ from: string; to: string }>(`${ws(w)}/move`, json('POST', { from, to })),
+  /** A fresh opencode v2 chat session for a workspace (no v2 URL creates one in place). */
+  createChatSession: (w: string) => req<{ id: string }>(`${ws(w)}/chat/session`, json('POST', {})),
   /** Sidebar order of one folder's entries (names). */
   setOrder: (w: string, dir: string, names: string[]) => req<void>(`${ws(w)}/order`, json('PUT', { dir, names })),
   upload: (w: string, dir: string, files: FileList | File[]) => {
@@ -174,6 +209,102 @@ export const api = {
     req<Card>(`${ws(w)}/boards/${encodeURIComponent(b)}/cards/${encodeURIComponent(id)}/run`, { method: 'POST' }),
 
   eventsUrl: (w: string) => `${ws(w)}/events`,
+
+  briefs: (w: string, from: string, to: string, signal?: AbortSignal) =>
+    req<BriefSummary[]>(`${ws(w)}/briefs?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal }),
+  brief: (w: string, date: string) => req<Brief>(`${ws(w)}/briefs/${encodeURIComponent(date)}`),
+  briefTodoToCard: (w: string, date: string, index: number, board: string, status?: string) =>
+    req<{ brief: Brief; card: string }>(
+      `${ws(w)}/briefs/${encodeURIComponent(date)}/todos/${index}/card`,
+      json('POST', { board, status }),
+    ),
+  setBriefTodoDone: (w: string, date: string, index: number, done: boolean) =>
+    req<Brief>(`${ws(w)}/briefs/${encodeURIComponent(date)}/todos/${index}`, json('PATCH', { done })),
+  enableBriefJob: (w: string) => req<unknown>(`${ws(w)}/briefs/job`, { method: 'POST' }),
+  becomingToday: (w: string, date: string) =>
+    req<BecomingToday>(`${ws(w)}/becoming/today?date=${encodeURIComponent(date)}`),
+  becomingSlots: (w: string, from: string, to: string, signal?: AbortSignal) =>
+    req<BecomingSlots>(`${ws(w)}/becoming/slots?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+      signal,
+    }),
+  identities: (w: string) => req<Identity[]>(`${ws(w)}/becoming/identities`),
+  createIdentity: (w: string, input: IdentityInput) =>
+    req<Identity>(`${ws(w)}/becoming/identities`, json('POST', input)),
+  identity: (w: string, file: string) => req<Identity>(`${ws(w)}/becoming/identities/${encodeURIComponent(file)}`),
+  updateIdentity: (w: string, file: string, patch: IdentityPatch) =>
+    req<Identity>(`${ws(w)}/becoming/identities/${encodeURIComponent(file)}`, json('PATCH', patch)),
+  deleteIdentity: (w: string, file: string) =>
+    req<void>(`${ws(w)}/becoming/identities/${encodeURIComponent(file)}`, { method: 'DELETE' }),
+  vote: (w: string, file: string, kind: VoteKind, date?: string, source: 'tap' | 'palette' = 'tap') =>
+    req<unknown>(
+      `${ws(w)}/becoming/identities/${encodeURIComponent(file)}/votes`,
+      json('POST', { kind, source, ...(date ? { date } : {}) }),
+    ),
+  becomingWeek: (w: string, week: string) =>
+    req<BecomingWeek>(`${ws(w)}/becoming/week?week=${encodeURIComponent(week)}`),
+  mirrors: (w: string) => req<string[]>(`${ws(w)}/becoming/mirrors`),
+  mirror: (w: string, week: string) => req<Mirror>(`${ws(w)}/becoming/mirrors/${encodeURIComponent(week)}`),
+  answerMirror: (w: string, week: string, index: number, answer: string) =>
+    req<Mirror>(`${ws(w)}/becoming/mirrors/${encodeURIComponent(week)}/questions/${index}`, json('PATCH', { answer })),
+  applyMirrorChange: (w: string, week: string) =>
+    req<unknown>(`${ws(w)}/becoming/mirrors/${encodeURIComponent(week)}/change`, { method: 'POST' }),
+  enableMirrorJob: (w: string) => req<unknown>(`${ws(w)}/becoming/mirror-job`, { method: 'POST' }),
+  becomingInterview: (w: string) => req<{ sessionId: string }>(`${ws(w)}/becoming/interview`, { method: 'POST' }),
+
+  trainingProfile: (w: string) => req<TrainingProfile | null>(`${training(w)}/profile`),
+  saveTrainingProfile: (w: string, profile: ProfileInput) =>
+    req<TrainingProfile>(`${training(w)}/profile`, json('PUT', profile)),
+  exercises: (w: string, query: ExerciseQuery, limit: number, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(query.offset) })
+    if (query.q) params.set('q', query.q)
+    if (query.muscle) params.set('muscle', query.muscle)
+    if (query.equipment) params.set('equipment', query.equipment)
+    return req<ExercisePage>(`${training(w)}/exercises?${params.toString()}`, { signal })
+  },
+  exercise: (w: string, id: string) => req<ExerciseDetail>(`${training(w)}/exercises/${encodeURIComponent(id)}`),
+  createExercise: (w: string, input: ExerciseInput) => req<Exercise>(`${training(w)}/exercises`, json('POST', input)),
+  routines: (w: string) => req<Routine[]>(`${training(w)}/routines`),
+  createRoutine: (w: string, input: RoutineInput) => req<Routine>(`${training(w)}/routines`, json('POST', input)),
+  updateRoutine: (w: string, file: string, patch: RoutinePatch) =>
+    req<Routine>(`${training(w)}/routines/${encodeURIComponent(file)}`, json('PATCH', patch)),
+  deleteRoutine: (w: string, file: string) =>
+    req<void>(`${training(w)}/routines/${encodeURIComponent(file)}`, { method: 'DELETE' }),
+  trainingToday: (w: string) => req<TrainingToday>(`${training(w)}/today`),
+  startWorkout: (w: string, routine?: string) =>
+    req<Workout>(`${training(w)}/workouts`, json('POST', routine ? { routine } : {})),
+  workouts: (w: string, month: string, signal?: AbortSignal) =>
+    req<WorkoutSummary[]>(`${training(w)}/workouts?month=${encodeURIComponent(month)}`, { signal }),
+  workout: (w: string, file: string) => req<Workout>(`${training(w)}/workouts/${encodeURIComponent(file)}`),
+  saveWorkout: (w: string, file: string, update: WorkoutUpdate) =>
+    req<Workout>(`${training(w)}/workouts/${encodeURIComponent(file)}`, json('PUT', update)),
+  finishWorkout: (w: string, file: string) =>
+    req<FinishResult>(`${training(w)}/workouts/${encodeURIComponent(file)}/finish`, { method: 'POST' }),
+  deleteWorkout: (w: string, file: string) =>
+    req<void>(`${training(w)}/workouts/${encodeURIComponent(file)}`, { method: 'DELETE' }),
+  trainingProgress: (w: string, range: ProgressRange) =>
+    req<TrainingProgress>(`${training(w)}/progress?range=${encodeURIComponent(range)}`),
+  logBodyWeight: (w: string, kg: number, date?: string) =>
+    req<unknown>(`${training(w)}/body`, json('POST', { kg, ...(date ? { date } : {}) })),
+  trainingPlan: (w: string) => req<{ sessionId: string }>(`${training(w)}/plan`, { method: 'POST' }),
+
+  connections: () => req<ConnectionList>(CONN),
+  renameConnection: (id: string, label: string) =>
+    req<Connection>(`${CONN}/${encodeURIComponent(id)}`, json('PATCH', { label })),
+  removeConnection: (id: string) => req<void>(`${CONN}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  /** Where to send the browser for Google's consent screen; it comes back to `back`. */
+  googleConnectUrl: (back: string) => req<{ url: string }>(`${CONN}/google`, json('POST', { back })),
+  connectSlack: (token: string, label?: string) => req<Connection>(`${CONN}/slack`, json('POST', { token, label })),
+  telegramStart: (apiId: string, apiHash: string, phone: string) =>
+    req<{ login: string }>(`${CONN}/telegram/start`, json('POST', { apiId, apiHash, phone })),
+  telegramCode: (login: string, code: string) =>
+    req<{ connection?: Connection; password?: true }>(`${CONN}/telegram/code`, json('POST', { login, code })),
+  telegramPassword: (login: string, password: string) =>
+    req<{ connection: Connection }>(`${CONN}/telegram/password`, json('POST', { login, password })),
+  /** Events of the connected Google calendars, read live. */
+  externalEvents: (from: string, to: string, signal?: AbortSignal) =>
+    req<Gathered<ExternalEvent>>(`${CONN}/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+      signal,
+    }),
 
   opencodeConfig: () =>
     req<{ path: string; exists: boolean; mtime: number; content: string }>('/zync/api/opencode/config'),

@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
-import { boardUrl, chatUrlFor, fileUrl, folderUrl, libraryUrl, sessionUrl, wsUrl } from './urls'
+import {
+  boardUrl,
+  chatUrlFor,
+  fileUrl,
+  folderUrl,
+  libraryUrl,
+  routineUrl,
+  sessionUrl,
+  trainingUrl,
+  workoutUrl,
+  wsUrl,
+} from './urls'
 
 describe('app urls', () => {
   it('builds workspace urls with encoded segments', () => {
@@ -13,10 +24,17 @@ describe('app urls', () => {
     expect(libraryUrl('w')).toBe('/w/w/opencode')
     expect(libraryUrl('w', 'skills/x/SKILL.md')).toBe('/w/w/opencode/skills/x/SKILL.md')
     expect(sessionUrl('w', 'ses 1')).toBe('/w/w/chat?session=ses%201')
+    expect(trainingUrl('w')).toBe('/w/w/training')
+    expect(trainingUrl('w', 'log')).toBe('/w/w/training/log')
+    expect(workoutUrl('w', '2026-09-29-push day.md')).toBe('/w/w/training/workout/2026-09-29-push%20day.md')
+    expect(routineUrl('w', 'push.md')).toBe('/w/w/training/routines?open=push.md')
   })
 
-  it('addresses a chat directory as base64url', () => {
-    expect(chatUrlFor('/data/w')).toBe('/L2RhdGEvdw')
-    expect(chatUrlFor('/data/w', 'ses_1')).toBe('/L2RhdGEvdw/session/ses_1')
+  it('addresses a v2 chat session as the base64url of the origin', () => {
+    expect(chatUrlFor('http://127.0.0.1:4096', 'ses_1')).toBe('/server/aHR0cDovLzEyNy4wLjAuMTo0MDk2/session/ses_1')
+    // UTF-8, unpadded base64url
+    expect(chatUrlFor('https://zync.é.test', 'ses_1')).toBe(
+      `/server/${Buffer.from('https://zync.é.test').toString('base64url')}/session/ses_1`,
+    )
   })
 })

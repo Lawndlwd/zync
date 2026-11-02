@@ -45,6 +45,15 @@ export function localStamp(date = new Date(), timeZone = defaultTimezone()): str
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
 }
 
+/** The moment a local wall-clock "YYYY-MM-DDTHH:MM" happens in `timeZone` (inverse of `localStamp`). */
+export function instantOf(stamp: string, timeZone = defaultTimezone()): Date {
+  const wanted = asUtc(stamp).getTime()
+  let guess = wanted
+  // Two passes settle the offset, also when the first guess falls on the other side of a DST change.
+  for (let i = 0; i < 2; i++) guess += wanted - asUtc(localStamp(new Date(guess), timeZone)).getTime()
+  return new Date(guess)
+}
+
 /**
  * A frontmatter wall-clock field. YAML turns unquoted dates into Date objects: normalise them back
  * to "YYYY-MM-DD" (midnight) or "YYYY-MM-DDTHH:MM".

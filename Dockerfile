@@ -18,17 +18,19 @@ FROM base AS deps
 RUN pnpm install --prod --frozen-lockfile --filter "@zync/api..."
 
 FROM node:24-bookworm-slim AS runtime
-ARG OPENCODE_VERSION=1.18.30
+ARG OPENCODE_VERSION=2.2.5
 RUN apt-get update \
   && apt-get install -y --no-install-recommends git curl ca-certificates ripgrep python3 tini gosu \
   && rm -rf /var/lib/apt/lists/*
-RUN npm install -g "opencode-ai@${OPENCODE_VERSION}" && npm cache clean --force \
+RUN npm install -g "@opencode/cli@${OPENCODE_VERSION}" && npm cache clean --force \
   # `opencode web` tries to open a browser; there is none in a container.
   && ln -s /bin/true /usr/local/bin/xdg-open
 
 WORKDIR /app
 COPY --from=deps /app ./
 COPY --from=build /app/packages/jobs/dist packages/jobs/dist
+# The exercise catalog, read at runtime by dist/training/catalog.js (../../assets).
+COPY --from=build /app/packages/jobs/assets packages/jobs/assets
 COPY --from=build /app/packages/api/dist packages/api/dist
 COPY --from=build /app/packages/web/dist packages/web/dist
 COPY opencode opencode

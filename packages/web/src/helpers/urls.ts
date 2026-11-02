@@ -1,3 +1,4 @@
+import type { TrainingTab } from '../types/training'
 import { encodePath } from './paths'
 
 // App URLs. Workspace pages live under /w/<ws>/…; each path segment is encoded.
@@ -14,13 +15,26 @@ export const libraryUrl = (ws: string, path = '') => wsUrl(ws, `opencode${path ?
 
 export const sessionUrl = (ws: string, sessionId: string) => wsUrl(ws, `chat?session=${encodeURIComponent(sessionId)}`)
 
-export function chatUrlFor(dir: string, sessionId?: string): string {
-  const bytes = new TextEncoder().encode(dir)
+/** opencode v2's chat session page for this origin: `/server/<base64url(origin)>/session/<id>`. */
+export function chatUrlFor(origin: string, sessionId: string): string {
+  const bytes = new TextEncoder().encode(origin)
   let bin = ''
   for (const b of bytes) bin += String.fromCharCode(b)
   const encoded = btoa(bin).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
-  const base = `/${encoded}`
-  return sessionId ? `${base}/session/${sessionId}` : base
+  return `/server/${encoded}/session/${encodeURIComponent(sessionId)}`
 }
 
 export const folderUrl = (ws: string, dir: string) => wsUrl(ws, dir ? `files?dir=${encodeURIComponent(dir)}` : 'files')
+
+/** The Becoming board, with one identity's page open beside it. */
+export const identityUrl = (ws: string, file: string) => wsUrl(ws, `becoming?open=${encodeURIComponent(file)}`)
+
+/** Training: Today, or one of its tabs (and the setup form). */
+export const trainingUrl = (ws: string, tab?: TrainingTab) => wsUrl(ws, tab ? `training/${tab}` : 'training')
+
+/** The live (or finished) workout page. */
+export const workoutUrl = (ws: string, file: string) => wsUrl(ws, `training/workout/${encodeURIComponent(file)}`)
+
+/** The routines list, with one routine's editor open beside it. */
+export const routineUrl = (ws: string, file: string) =>
+  `${trainingUrl(ws, 'routines')}?open=${encodeURIComponent(file)}`

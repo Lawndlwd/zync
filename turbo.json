@@ -30,6 +30,7 @@
   "globalPassThroughEnv": [
     "WORKSPACES_ROOT",
     "OPENCODE_URL",
+    "OPENCODE_PASSWORD",
     "OPENCODE_SERVER_PASSWORD",
     "APP_URL",
     "PORT",

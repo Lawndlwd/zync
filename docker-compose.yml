@@ -11,6 +11,9 @@ x-common: &common
     TZ: ${TZ:-UTC}
     WORKSPACES_ROOT: /workspace
     OPENCODE_URL: http://opencode:4096
+    # opencode's server password (HTTP Basic, user "opencode"): opencode, the api and the scheduler
+    # share it. The browser never sees it: the api adds it to everything it forwards to opencode.
+    OPENCODE_PASSWORD: ${OPENCODE_PASSWORD:?set OPENCODE_PASSWORD to a long random string, e.g. openssl rand -hex 32}
     # The app's public address (used in notification links), e.g. https://zync.levende.net
     APP_URL: ${APP_URL:-}
   volumes:
@@ -37,10 +40,19 @@ services:
       NTFY_URL: ${NTFY_URL:-https://ntfy.sh}
       NTFY_TOPIC: ${NTFY_TOPIC:-}
       NTFY_TOKEN: ${NTFY_TOKEN:-}
+      # Settings → Connections: the login secrets of Google, Slack and Telegram, in a volume only this
+      # container mounts. Google needs an OAuth client (README → Connections).
+      ZYNC_CONNECTIONS_DIR: /zync-connections
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # The AI reads connected accounts through the internal port 3002 with this token (any long
+      # random string, e.g. `openssl rand -hex 32`). Unset: the AI can't read them.
+      ZYNC_INTERNAL_TOKEN: ${ZYNC_INTERNAL_TOKEN:-}
     volumes:
       - ${WORKSPACES_HOST_DIR}:/workspace
       - opencode-config:/opencode-config
       - zync-auth:/zync-auth
+      - zync-connections:/zync-connections
     # `default`: opencode and the scheduler. `tunnel`: cloudflared. Not on dokploy-network, so other
     # Dokploy apps can't reach it, and no port is published.
     networks: [default, tunnel]
@@ -67,7 +79,10 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      OPENCODE_LOG_LEVEL: ${OPENCODE_LOG_LEVEL:-INFO}
+      OPENCODE_LOG_LEVEL: ${OPENCODE_LOG_LEVEL:-info}
+      # Forwarded to zync's MCP server (connected accounts, read through the api's internal port).
+      ZYNC_INTERNAL_TOKEN: ${ZYNC_INTERNAL_TOKEN:-}
+      ZYNC_API_INTERNAL_URL: http://api:3002
     volumes:
       - ${WORKSPACES_HOST_DIR}:/workspace
       - opencode-config:/home/node/.config/opencode
@@ -101,6 +116,7 @@ services:
 
 volumes:
   zync-auth:
+  zync-connections:
   opencode-config:
   opencode-data:
 

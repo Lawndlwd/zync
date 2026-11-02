@@ -73,6 +73,7 @@ const job = (name: string, nextRuns: string[], extra: Partial<NonNullable<JobRow
   name,
   nextRuns,
   lastRun: null,
+  running: null,
   job: { name, context: [], notify: 'never', enabled: true, instructions: '', ...extra },
 })
 

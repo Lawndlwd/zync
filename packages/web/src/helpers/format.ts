@@ -32,3 +32,6 @@ export function initials(name: string): string {
       .toUpperCase() || '?'
   )
 }
+
+/** "writer" → "Writer". */
+export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)

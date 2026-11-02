@@ -1,6 +1,11 @@
+import { ymd } from '../helpers/dates'
 import { isFailedRun } from '../helpers/runs'
 import { wsUrl } from '../helpers/urls'
+import { useBecomingToday } from '../hooks/useBecomingToday'
+import { useNow } from '../hooks/useNow'
+import { useTrainingToday } from '../hooks/useTrainingToday'
 import {
+  IconBecoming,
   IconBoard,
   IconCalendar,
   IconClock,
@@ -10,6 +15,7 @@ import {
   IconPeople,
   IconSettings,
   IconSpark,
+  IconTraining,
 } from '../icons'
 import type { Creating } from '../types/shell'
 import type { WorkspaceData } from '../types/workspace'
@@ -33,6 +39,10 @@ export function Sidebar({
   creating: Creating | null
   setCreating: (c: Creating | null) => void
 }) {
+  const now = useNow(60_000)
+  const becoming = useBecomingToday(ws, ymd(now))
+  const training = useTrainingToday(ws)
+  const voted = becoming.data?.rows.filter((r) => r.vote).length ?? 0
   const failed = data.jobs.filter((j) => isFailedRun(j.lastRun?.status)).length
 
   return (
@@ -53,6 +63,18 @@ export function Sidebar({
           count={data.boards.length || undefined}
         />
         <SidebarItem to={wsUrl(ws, 'calendar')} icon={<IconCalendar />} label="Calendar" />
+        <SidebarItem
+          to={wsUrl(ws, 'becoming')}
+          icon={<IconBecoming />}
+          label="Becoming"
+          count={becoming.data?.rows.length ? `${voted}/${becoming.data.rows.length}` : undefined}
+        />
+        <SidebarItem
+          to={wsUrl(ws, 'training')}
+          icon={<IconTraining />}
+          label="Training"
+          count={training.data?.active ? 'live' : training.data?.planned ? 'today' : undefined}
+        />
         <SidebarItem
           to={wsUrl(ws, 'jobs')}
           icon={<IconClock />}

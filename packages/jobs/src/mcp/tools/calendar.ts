@@ -31,7 +31,7 @@ export function registerCalendarTools(server: McpServer): void {
     'list_calendar',
     {
       description:
-        'Everything with a time between two dates: calendar events, cards (due / AI runAt, with their duration), scheduled job runs and past runs. ' +
+        'Everything with a time between two dates: calendar events, cards (due / AI runAt, with their duration), scheduled job runs. ' +
         'Use it to see what the user has planned before adding or moving things. ' +
         'A recurring event shows once per occurrence (recurring: true); change the series with update_event (start, end, repeat). Events are moved with update_event, cards with update_card (due, duration, runAt), one-shot jobs with update_job (at). Recurring job occurrences cannot be moved one by one.',
       inputSchema: {

@@ -17,7 +17,7 @@ const KEY = {
 export const DEFAULT_CHAT_THEME = 'matrix'
 const FOLLOW = 'zync:chatFollowTheme'
 
-// opencode 1.18's built-in themes; the live list is read from opencode's command catalog when present.
+// opencode v2's built-in themes; the live list is read from opencode's command catalog when present.
 const BUILTIN = [
   'amoled',
   'aura',

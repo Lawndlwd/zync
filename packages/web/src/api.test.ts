@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { api, ApiError } from './api'
 import { basename, dirname, joinPath } from './helpers/paths'
-import { chatUrlFor } from './helpers/urls'
 
 describe('path helpers', () => {
   it('dirname / basename / joinPath on workspace paths', () => {
@@ -11,20 +10,6 @@ describe('path helpers', () => {
     expect(basename('a/b/c.md')).toBe('c.md')
     expect(joinPath('', 'c.md')).toBe('c.md')
     expect(joinPath('a', 'c.md')).toBe('a/c.md')
-  })
-})
-
-describe('chatUrlFor', () => {
-  it('addresses the directory as unpadded base64url', () => {
-    expect(chatUrlFor('/workspaces/ggg')).toBe('/L3dvcmtzcGFjZXMvZ2dn')
-  })
-
-  it('encodes non-ASCII paths as UTF-8', () => {
-    expect(chatUrlFor('/w/é')).toBe(`/${Buffer.from('/w/é').toString('base64url')}`)
-  })
-
-  it('appends the session', () => {
-    expect(chatUrlFor('/w', 'ses_1')).toBe('/L3c/session/ses_1')
   })
 })
 
