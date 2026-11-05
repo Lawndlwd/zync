@@ -23,6 +23,7 @@ import { globalMemoryRoutes, personNotesRoutes, workspaceMemoryRoutes } from './
 import { errorHandler } from './middleware/error-handler.js'
 import { opencodeProxy } from './opencode-proxy.js'
 import { opencodeRoutes, type RestartTiming } from './opencode-routes.js'
+import { opencodeSwReplacement } from './opencode-sw.js'
 import { peopleRoutes } from './people-routes.js'
 import { appFallback } from './spa.js'
 import { trainingRoutes } from './training-routes.js'
@@ -103,6 +104,8 @@ export function createApp(opts: AppOptions) {
   app.use(API, (_req, res) => {
     res.status(404).json({ error: 'Not found' })
   })
+
+  app.get('/sw.js', opencodeSwReplacement)
 
   const web = opts.webDist && existsSync(opts.webDist) ? opts.webDist : null
   const proxy = opts.opencodeUrl ? opencodeProxy(opts.opencodeUrl, opts.opencodeAuth) : null

@@ -28,6 +28,9 @@ const PUBLIC = new Set([
   // Google's consent screen sends the browser back here without the (SameSite=Strict) session
   // cookie; the one-time state it carries was issued to a signed-in session (connections/service.ts).
   '/zync/api/connections/google/callback',
+  // Replaces opencode's worker (opencode-sw.ts). It holds no data, and a browser whose session ended
+  // must still get it: the old worker would otherwise keep answering /login with opencode's page.
+  '/sw.js',
 ])
 const isPublic = (path: string) => PUBLIC.has(path) || path.startsWith('/zync/assets/')
 /** The app's pages: without a session they redirect to the sign-in page. */

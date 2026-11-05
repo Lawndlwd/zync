@@ -99,6 +99,12 @@ describe('the gate', () => {
     expect((await get('/some/opencode/path')).status).toBe(401)
   })
 
+  it("hands out the replacement for opencode's service worker without a session", async () => {
+    const res = await get('/sw.js')
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toContain('text/javascript')
+  })
+
   it("lets Google's sign-in come back without a session, but only with a state the app issued", async () => {
     const connections = new Connections({
       dir: path.join(dir, 'connections'),
