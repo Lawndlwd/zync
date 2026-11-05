@@ -160,6 +160,7 @@ export function WorkoutEditor({ ws, workout, units }: { ws: string; workout: Wor
             <WorkoutExerciseBlock
               // oxlint-disable-next-line react/no-array-index-key -- the same exercise may appear twice; moving remounts on purpose
               key={`${e.exercise}:${i}`}
+              ws={ws}
               item={e}
               previous={workout.previous[e.exercise]}
               units={units}

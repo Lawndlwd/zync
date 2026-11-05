@@ -1012,6 +1012,8 @@ body.cal-dragging,body.cal-dragging *{cursor:grabbing !important;user-select:non
 .tr-sets tr.done td:last-child{border-radius:0 6px 6px 0}
 .tr-warm{color:var(--danger)}
 .tr-thumb{width:40px;height:40px;flex-shrink:0;border-radius:var(--r-sm);object-fit:cover;background:var(--quiet);border:1px solid var(--line-2)}
+.tr-demo{width:96px;height:96px;flex-shrink:0;object-fit:contain;border-radius:var(--r-md);background:#fff;border:1px solid var(--line-2)}
+.tr-ex-head{align-items:flex-start}
 .tr-gif{width:100%;max-height:320px;object-fit:contain;border-radius:var(--r-md);background:#fff;border:1px solid var(--line-2)}
 .btn.tr-pick{height:auto;min-height:52px;width:100%;justify-content:flex-start;gap:10px;padding:6px 8px;border:0;border-bottom:1px solid var(--line-2);border-radius:0;font-family:inherit;font-size:14px;letter-spacing:0;text-transform:none;white-space:normal}
 .btn.tr-pick:hover{background:var(--quiet);border-style:none none solid}

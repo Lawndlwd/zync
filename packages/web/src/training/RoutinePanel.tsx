@@ -188,6 +188,7 @@ export function RoutinePanel({
                 <RoutineExerciseEditor
                   // oxlint-disable-next-line react/no-array-index-key -- the same exercise may appear twice; moving remounts on purpose
                   key={`${e.exercise}:${i}`}
+                  ws={ws}
                   item={e}
                   first={i === 0}
                   last={i === draft.exercises.length - 1}

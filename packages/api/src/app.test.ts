@@ -48,6 +48,24 @@ describe('files', () => {
     expect(hidden.body.entries.map((e: any) => e.name)).toContain('.secret')
   })
 
+  it('keeps top-level app folders out of the tree and recent files, unless hidden files are shown', async () => {
+    for (const dir of ['Training', 'Calendar', 'Becoming', 'Ideas', 'notes/Training'])
+      await mkdir(path.join(root, 'alpha', dir), { recursive: true })
+    await writeFile(path.join(root, 'alpha/Training/log.md'), 'x')
+    await writeFile(path.join(root, 'alpha/notes/Training/plan.md'), 'x')
+
+    const names = async (url: string) =>
+      (await request(app).get(`/zync/api/ws/alpha/${url}`).expect(200)).body.entries.map((e: any) => e.name)
+    expect(await names('tree')).toEqual(['notes'])
+    expect(await names('tree?path=notes')).toContain('Training')
+    expect(await names('tree?hidden=1')).toEqual(expect.arrayContaining(['Training', 'Calendar', 'Becoming', 'Ideas']))
+    // Their files still open, and a folder of the same name elsewhere stays listed.
+    await request(app).get('/zync/api/ws/alpha/tree?path=Training').expect(200)
+    const recent = (await request(app).get('/zync/api/ws/alpha/recent').expect(200)).body
+    expect(recent.entries.map((e: any) => e.path)).toContain('notes/Training/plan.md')
+    expect(recent.entries.map((e: any) => e.path)).not.toContain('Training/log.md')
+  })
+
   it('lists recent files recursively, newest first, skipping dotfiles', async () => {
     await new Promise<void>((resolve) => {
       setTimeout(resolve, 15)

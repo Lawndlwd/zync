@@ -2,7 +2,7 @@ import { copyFile, mkdir, readdir, readFile, rename, rm, stat, unlink, writeFile
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { badRequest, conflict, safeResolve, syncCardFile } from '@zync/jobs'
+import { BECOMING_DIR, badRequest, CALENDAR_DIR, conflict, safeResolve, syncCardFile, TRAINING_DIR } from '@zync/jobs'
 import express, { Router } from 'express'
 import multer from 'multer'
 
@@ -15,6 +15,9 @@ import { applyOrder, readOrder, renameInOrder, setOrder } from './tree-order.js'
 import { wsOf } from './workspace-param.js'
 
 const HIDDEN = new Set(['.git', 'node_modules', '.DS_Store'])
+/** Top-level folders with a page of their own: kept out of the file tree unless hidden files are shown. */
+const APP_FOLDERS = new Set([BECOMING_DIR, CALENDAR_DIR, TRAINING_DIR, 'Ideas'])
+const inAppFolder = (rel: string) => APP_FOLDERS.has(rel.split('/', 1)[0] ?? '')
 const MAX_TEXT_BYTES = 5 * 1024 * 1024
 /** Files a browser would run scripts in when opened directly. */
 const ACTIVE_CONTENT = /\.(html?|xhtml|svg|xml|xsl)$/i
@@ -43,7 +46,10 @@ export function fsRoutes(): Router {
     const showHidden = req.query.hidden === '1'
     const dir = await safeResolve(ws.path, rel)
     const dirents = await readdir(dir, { withFileTypes: true })
-    const shown = dirents.filter((d) => !HIDDEN.has(d.name) && (showHidden || !d.name.startsWith('.')))
+    const atRoot = dir === path.resolve(ws.path)
+    const shown = dirents.filter(
+      (d) => !HIDDEN.has(d.name) && (showHidden || (!d.name.startsWith('.') && !(atRoot && APP_FOLDERS.has(d.name)))),
+    )
     const entries: TreeEntry[] = []
     for (const [i, s] of (
       await Promise.all(shown.map((d) => stat(path.join(dir, d.name)).catch(() => null)))
@@ -78,7 +84,9 @@ export function fsRoutes(): Router {
     const ws = await wsOf(req)
     const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100)
     // Tagging the (possibly cached) entries with the same `type` every time is harmless.
-    const files = (await listFilesCached(ws.path, watchVersion(ws.path))).toSorted((a, b) => b.mtime - a.mtime)
+    const files = (await listFilesCached(ws.path, watchVersion(ws.path)))
+      .filter((f) => !inAppFolder(f.path))
+      .toSorted((a, b) => b.mtime - a.mtime)
     res.json({ total: files.length, entries: files.slice(0, limit).map((f) => Object.assign(f, { type: 'file' })) })
   })
 

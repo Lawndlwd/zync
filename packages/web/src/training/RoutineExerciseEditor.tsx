@@ -6,9 +6,11 @@ import { amountFrom, nextPlannedSet, REST_OPTIONS, restOptionLabel, weightText, 
 import { IconChevDown, IconChevUp, IconCross } from '../icons'
 import type { PlannedSet, RoutineExercise, Units } from '../types/training'
 import { AmountInput } from './AmountInput'
+import { ExercisePicture } from './ExercisePicture'
 
 /** One exercise of a routine: its scheme, rest, and the planned sets (+/−). */
 export function RoutineExerciseEditor({
+  ws,
   item,
   first,
   last,
@@ -17,6 +19,7 @@ export function RoutineExerciseEditor({
   onMove,
   onRemove,
 }: {
+  ws: string
   item: RoutineExercise
   first: boolean
   last: boolean
@@ -31,38 +34,43 @@ export function RoutineExerciseEditor({
 
   return (
     <section className="tr-rx col g10" aria-label={item.name}>
-      <div className="row g6">
-        <span className="grow trunc" style={{ fontWeight: 500 }}>
-          {item.name}
-        </span>
-        <IconButton small label="Move up" disabled={first} onClick={() => onMove(-1)}>
-          <IconChevUp size={13} />
-        </IconButton>
-        <IconButton small label="Move down" disabled={last} onClick={() => onMove(1)}>
-          <IconChevDown size={13} />
-        </IconButton>
-        <IconButton small label={`Remove ${item.name}`} onClick={onRemove}>
-          <IconCross size={12} sw={1.6} />
-        </IconButton>
-      </div>
-      <div className="row g8">
-        <TextInput
-          compact
-          className="grow"
-          value={item.scheme}
-          placeholder="3×8-12 · 90s"
-          aria-label={`${item.name} scheme`}
-          onChange={(e) => onChange({ ...item, scheme: e.target.value })}
-        />
-        <Select
-          compact
-          ariaLabel={`${item.name} rest`}
-          value={String(rest)}
-          options={[...new Set([...REST_OPTIONS, rest])]
-            .toSorted((a, b) => a - b)
-            .map((s) => ({ value: String(s), label: restOptionLabel(s) }))}
-          onChange={(s) => onChange({ ...item, rest: Number(s) })}
-        />
+      <div className="row g12 tr-ex-head">
+        <ExercisePicture ws={ws} id={item.exercise} name={item.name} />
+        <div className="col g10 grow" style={{ minWidth: 0 }}>
+          <div className="row g6">
+            <span className="grow trunc" style={{ fontWeight: 500 }}>
+              {item.name}
+            </span>
+            <IconButton small label="Move up" disabled={first} onClick={() => onMove(-1)}>
+              <IconChevUp size={13} />
+            </IconButton>
+            <IconButton small label="Move down" disabled={last} onClick={() => onMove(1)}>
+              <IconChevDown size={13} />
+            </IconButton>
+            <IconButton small label={`Remove ${item.name}`} onClick={onRemove}>
+              <IconCross size={12} sw={1.6} />
+            </IconButton>
+          </div>
+          <div className="row g8">
+            <TextInput
+              compact
+              className="grow"
+              value={item.scheme}
+              placeholder="3×8-12 · 90s"
+              aria-label={`${item.name} scheme`}
+              onChange={(e) => onChange({ ...item, scheme: e.target.value })}
+            />
+            <Select
+              compact
+              ariaLabel={`${item.name} rest`}
+              value={String(rest)}
+              options={[...new Set([...REST_OPTIONS, rest])]
+                .toSorted((a, b) => a - b)
+                .map((s) => ({ value: String(s), label: restOptionLabel(s) }))}
+              onChange={(s) => onChange({ ...item, rest: Number(s) })}
+            />
+          </div>
+        </div>
       </div>
       <table className="tbl tr-sets">
         <thead>
