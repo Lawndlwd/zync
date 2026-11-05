@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 
+import { IconButton } from '../components/IconButton'
+import { menuAnchor } from '../helpers/dom'
 import { dirname } from '../helpers/paths'
-import { IconBoard, IconChevDown, IconChevRight, IconFile, IconFolder, IconSpin } from '../icons'
+import { IconBoard, IconChevDown, IconChevRight, IconFile, IconFolder, IconMore, IconSpin } from '../icons'
 import type { TreeEntry } from '../types/files'
 import type { TreeCtx, TreeDropZone } from '../types/shell'
 import { depthProps, draggedPaths } from './helpers'
@@ -187,6 +189,19 @@ export function TreeNode({
         ) : null}
         <span className="ti-name">{entry.name}</span>
         {meta}
+        {/* Touch screens have no right-click (iOS has no long-press menu either). */}
+        <IconButton
+          small
+          className="ti-more"
+          label={`Actions for ${entry.name}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            const { x, y } = menuAnchor(e.currentTarget.getBoundingClientRect())
+            ctx.menu(entry, x, y)
+          }}
+        >
+          <IconMore />
+        </IconButton>
       </div>
       {isDir && open && children(entry.path, depth + 1)}
     </>

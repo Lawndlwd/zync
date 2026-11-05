@@ -11,10 +11,11 @@ import {
 
 import { api } from '../api'
 import { Spotlight } from '../components/Spotlight'
+import { runningCards } from '../helpers/boards'
 import { isTyping } from '../helpers/dom'
 import { chatUrlFor, sessionUrl, wsUrl } from '../helpers/urls'
 import { useHotkeys } from '../hooks/useHotkeys'
-import { useMediaQuery } from '../hooks/useMediaQuery'
+import { useNarrow } from '../hooks/useNarrow'
 import { PALETTE_SEEN_PREF } from '../hooks/useOnboarding'
 import { usePaneSizes } from '../hooks/usePaneSizes'
 import { usePref } from '../hooks/usePref'
@@ -28,7 +29,7 @@ import { ChatDock } from './ChatDock'
 import { lastChatSession, rememberChatSession, sessionExists } from './chatSession'
 import { CommandPalette } from './CommandPalette'
 import { DockDivider } from './DockDivider'
-import { viewOf } from './helpers'
+import { isTabPath, viewOf } from './helpers'
 import { newPaneId } from './newPaneId'
 import { PaneDivider } from './PaneDivider'
 import { PaneHeader } from './PaneHeader'
@@ -37,6 +38,7 @@ import { writePref } from './prefs'
 import { ShellContext } from './ShellContext'
 import { Sidebar } from './Sidebar'
 import { SplitPane } from './SplitPane'
+import { TabBar } from './TabBar'
 import { TopBar } from './TopBar'
 
 const MAX_PANES = 2
@@ -48,7 +50,7 @@ export function Layout() {
   const [search] = useSearchParams()
   const data = useWorkspaceData(ws)
   const [theme, setTheme] = useTheme()
-  const narrow = useMediaQuery('(max-width: 820px)')
+  const narrow = useNarrow()
 
   const [splitPref, setSplitPref] = usePref<'rail' | 'split'>('zync:dock', 'rail')
   const [pctPref, setPctPref] = usePref<string>('zync:dockPct', '0.45')
@@ -70,7 +72,8 @@ export function Layout() {
 
   const isChat = location.pathname.endsWith('/chat')
   const sessionParam = isChat ? search.get('session') : null
-  const dock = isChat ? 'full' : splitPref
+  // A phone shows one thing at a time: chat is its own screen, never a column beside the page.
+  const dock = isChat ? 'full' : narrow ? 'rail' : splitPref
   // Where full-screen chat returns to: the last non-chat address.
   const [lastPath, setLastPath] = useState(() => wsUrl(ws, 'overview'))
   const here = location.pathname + location.search
@@ -228,11 +231,16 @@ export function Layout() {
 
   const openBeside = useCallback(
     (path: string) => {
+      // No room for a split on a phone: it opens in place.
+      if (narrow) {
+        void navigate(path)
+        return
+      }
       const id = newPaneId()
       commit([...panesRef.current.filter((p) => p.path !== path), { id, path }].slice(-MAX_PANES), { push: true })
       setActive(id)
     },
-    [commit],
+    [commit, narrow, navigate],
   )
   const setPanePath = useCallback(
     (id: string, path: string) => {
@@ -248,7 +256,7 @@ export function Layout() {
     if (go) paneNav.current[id] = go
     else delete paneNav.current[id]
   }, [])
-  const activePane = panes.find((p) => p.id === active)
+  const activePane = narrow ? undefined : panes.find((p) => p.id === active)
   const open = useCallback(
     (path: string) => {
       const go = activePane && paneNav.current[activePane.id]
@@ -264,14 +272,14 @@ export function Layout() {
   )
   const openInOther = useCallback(
     (fromId: string, path: string) => {
-      if (!panes.length) return false
+      if (narrow || !panes.length) return false
       const target = sides.find((s) => s.id !== fromId)
       if (!target) return false
       if (target.id === 'main') void navigate(path)
       else paneNav.current[target.id]?.(path)
       return true
     },
-    [panes.length, sides, navigate],
+    [narrow, panes.length, sides, navigate],
   )
   const panesBox = useRef<HTMLDivElement>(null)
   const [paneSizes, setPaneSizes] = usePaneSizes(1 + panes.length)
@@ -350,6 +358,8 @@ export function Layout() {
     } else if (mod && e.key === '\\') {
       e.preventDefault()
       setSideCollapsed(sideCollapsed === '1' ? '0' : '1')
+    } else if (e.key === 'Escape' && drawer) {
+      setDrawer(false)
     } else if (e.key === 'Escape' && isChat && !palette) {
       void navigate(lastPath)
     } else if (!mod && !e.altKey && !isTyping(e.target) && !palette) {
@@ -367,7 +377,7 @@ export function Layout() {
   return (
     <ShellContext.Provider value={shell}>
       <div className="z app-root">
-        <TopBar data={data} theme={theme} setTheme={setTheme} onMenu={() => setDrawer((d) => !d)} />
+        <TopBar data={data} theme={theme} setTheme={setTheme} narrow={narrow} />
         <div ref={appRef} className={`app${dragging ? ' dragging' : ''}`}>
           {drawer && <div className="scrim" onClick={() => setDrawer(false)} />}
           <Sidebar
@@ -456,6 +466,16 @@ export function Layout() {
             }}
           />
         </div>
+        {narrow && (
+          <TabBar
+            ws={ws}
+            running={runningCards(data.cards).length}
+            moreOn={drawer || !isTabPath(ws, location.pathname)}
+            drawerOpen={drawer}
+            onMore={() => setDrawer((d) => !d)}
+            onNavigate={() => setDrawer(false)}
+          />
+        )}
         {palette && <CommandPalette data={data} onClose={() => setPalette(false)} />}
         {tip && <Spotlight key={tip.target} tip={tip} onClose={() => setTip(null)} />}
       </div>
