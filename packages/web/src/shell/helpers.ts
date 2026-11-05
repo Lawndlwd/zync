@@ -5,6 +5,12 @@ import { basename } from '../helpers/paths'
 import { wsUrl } from '../helpers/urls'
 import type { ViewContext } from '../types/shell'
 
+const TAB_SECTIONS = new Set(['overview', 'boards', 'chat', 'calendar'])
+
+/** Whether the phone tab bar has its own tab for this address (otherwise it lives under "More"). */
+export const isTabPath = (ws: string, pathname: string) =>
+  TAB_SECTIONS.has(pathname.slice(wsUrl(ws).length + 1).split('/')[0] ?? '')
+
 export function viewOf(ws: string, pathname: string): ViewContext | null {
   const rest = pathname.slice(wsUrl(ws).length + 1)
   const [section, ...tail] = rest.split('/')

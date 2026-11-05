@@ -108,7 +108,7 @@ export function ChatDock({
           )}
           <span className="grow" />
           <button
-            className="ibtn ibtn-s"
+            className="ibtn ibtn-s hide-narrow"
             aria-label={mode === 'full' ? 'Exit full screen chat (Esc)' : 'Full screen chat (⌘⇧J)'}
             aria-pressed={mode === 'full'}
             onClick={onFull}
@@ -116,7 +116,7 @@ export function ChatDock({
             <IconExpand />
           </button>
           <button
-            className="ibtn ibtn-s"
+            className="ibtn ibtn-s hide-narrow"
             aria-label="Pop out chat"
             disabled={!src}
             onClick={() => src && window.open(src, `zync-chat-${ws}`)}
@@ -142,7 +142,7 @@ export function ChatDock({
             />
           ))}
         </div>
-        <div className="row between mono-s muted" style={{ padding: '0 14px 12px' }}>
+        <div className="row between mono-s muted hide-narrow" style={{ padding: '0 14px 12px' }}>
           <span className="row g6">
             <i
               className={loaded[ws] ? undefined : 'pulse'}

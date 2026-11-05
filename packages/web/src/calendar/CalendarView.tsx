@@ -17,6 +17,7 @@ import { errorMessage } from '../helpers/format'
 import { identityUrl, wsUrl } from '../helpers/urls'
 import { useConnections } from '../hooks/useConnections'
 import { useHotkeys } from '../hooks/useHotkeys'
+import { useNarrow } from '../hooks/useNarrow'
 import { usePeople } from '../hooks/usePeople'
 import { IconChevRight } from '../icons'
 import type { CardPatch } from '../types/boards'
@@ -67,8 +68,10 @@ export function CalendarView() {
   const [search, setSearch] = useSearchParams()
   const [selection, setSelection] = useState<Selection | null>(null)
 
+  // Seven columns don't fit a phone: it starts on one day.
+  const defaultView: View = useNarrow() ? 'day' : 'week'
   const viewParam = search.get('view')
-  const view: View = VIEWS.find((v) => v.value === viewParam)?.value ?? 'week'
+  const view: View = VIEWS.find((v) => v.value === viewParam)?.value ?? defaultView
   const dateParam = search.get('date')
   const date = useMemo(
     () => (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? toDate(dateParam) : new Date()),
@@ -97,7 +100,7 @@ export function CalendarView() {
     [setSearch],
   )
   const go = (v: View, d: Date) =>
-    setParams({ view: v === 'week' ? null : v, date: ymd(d) === ymd(new Date()) ? null : ymd(d) })
+    setParams({ view: v === defaultView ? null : v, date: ymd(d) === ymd(new Date()) ? null : ymd(d) })
 
   const { from, to, days } = rangeOf(view, date)
   const key = ['calendar', ws, ymd(from), ymd(to)]

@@ -29,6 +29,7 @@ function stroked(children: ReactNode, defSize: number, defSw: number) {
   )
 }
 
+export const IconMore = stroked(<path d="M3.5 8h.01M8 8h.01M12.5 8h.01" strokeLinecap="round" />, 16, 2)
 export const IconMenu = stroked(<path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />, 18, 1.4)
 export const IconChevDown = stroked(<path d="M4 6l4 4 4-4" />, 12, 1.6)
 export const IconChevRight = stroked(<path d="M6 4l4 4-4 4" />, 12, 1.6)
